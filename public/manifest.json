@@ -1,0 +1,42 @@
+{
+    "short_name": "andreasaoneo",
+    "name": "Andreasaoneo Homepage",
+    "background_color": "#051333",
+    "description": "My design and development portfolio",
+    "display": "standalone",
+    "orientation": "portrait",
+    "theme_color": "#051333",
+    "icons": [
+        {
+            "src": "assets/images/@45.png",
+            "type": "image/png",
+            "sizes": "45x45"
+        },
+        {
+            "src": "assets/images/@75.png",
+            "type": "image/png",
+            "sizes": "75x75"
+        },
+        {
+            "src": "assets/images/@100.png",
+            "type": "image/png",
+            "sizes": "100x100"
+        },
+        {
+            "src": "assets/images/@170.png",
+            "type": "image/png",
+            "sizes": "170x170"
+        },
+        {
+            "src": "assets/images/@white.png",
+            "type": "image/png",
+            "sizes": "500x500"
+        },
+        {
+            "src": "assets/images/@600.png",
+            "type": "image/png",
+            "sizes": "600x600"
+        }
+    ],
+    "start_url": "/index.html"
+}

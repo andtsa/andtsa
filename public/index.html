@@ -1,45 +1,232 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
-        <script async src="https://www.googletagmanager.com/gtag/js?id=UA-102061482-2"></script>
+        <meta charset="UTF-8">
+        <link rel="canonical" href="https://andreas.aoneo.cc/">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script async src="https://www.googletagmanager.com/gtag/js?id=UA-102647146-1"></script>
         <script>
             window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
+            function gtag() { dataLayer.push(arguments); }
             gtag('js', new Date());
-            gtag('config', 'UA-102061482-2');
+            gtag('config', 'UA-102647146-1');
         </script>
-        
-        <link href="https://fonts.googleapis.com/css?family=Montserrat:100,100italic,200,300,regular,500,600,700,900" rel="stylesheet">
+        <link async rel="manifest" href="assets/favicons/manifest.json">
+        <link rel="apple-touch-startup-image" href="assets/images/@herobg.png">
+        <meta name="apple-mobile-web-app-status-bar-style" content="#051333">
         <meta charset="UTF-8">
-        <link rel="stylesheet" href="assets/style.css">
-        <link rel="icon" href="assets/images/logo.png" type="image/png">
-        <meta name="msapplication-TileColor" content="#ffffff">
-        <meta name="theme-color" content="#ffffff">
-        <meta name="author" content="Andreas">
-        <meta name="og:name" content="Andreas">
+        <!-- <link async rel="stylesheet" href="style.min.css"> -->
+        <link rel="icon" href="assets/images/@whiteL.png" type="image/png">
+        <meta name="msapplication-TileColor" content="#080826">
+        <meta name="theme-color" content="#080826">
+        <meta name="author" content="Andreas Tsatsanis">
+        <meta name="description" content="A Design and Dev portfolio with some mini tools">
+        <meta name="og:name" content="Andreas Tsatsanis">
         <meta property="og:title" content="Home">
-        <meta property="og:site_name" content="Aoneo.cc">
+        <meta property="og:site_name" content="https://andreas.aoneo.cc">
         <meta property="og:type" content="website">
-        <title> Home  -  Andreasaoneo </title>
+        <!-- <script async src="/__/firebase/4.13.0/firebase-app.js"></script>
+        <script async src="/__/firebase/init.js"></script> -->
+        <title> Home | Andreas Tsatsanis </title>
+
+        <!-- Critical CSS -->
+        <style>
+            @font-face {
+                font-family: Din;
+                src: url('assets/din.ttf');
+            }
+            * {
+                font-size: 50px;
+                margin: 0;
+                padding: 0;
+                box-sizing: border-box;
+                font-family: Din, sans-serif;
+                transition: 200ms ease;
+            }
+            .hero {
+                background-image: url('assets/images/@herobgs.webp'), linear-gradient(#353051, #06011b);
+                background-repeat: no-repeat;
+                background-size: cover;
+                text-align: center;
+                color: #ffffff;
+            }
+
+            .logo {
+                width: 300px;
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -100%);
+            }
+            .name {
+                position: absolute;
+                top: 60%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                font-size: 80%;
+                letter-spacing: 2px;
+                line-height: 0.5;
+                text-shadow: 0 5px 5px #00000023;
+            }
+            .about {
+                position: absolute;
+                top: 70%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                font-size: 50%;
+                line-height: 0.8;
+                text-shadow: 0 5px 10px #00000023;
+                letter-spacing: 1px;
+            }
+            .down {
+                height: 30px;
+                position: absolute;
+                top: 85%;
+                left: 50%;
+                transform: translatex(-50%);
+            }
+            .page{width:100vw;height:100vh;display:block}.down:hover .downTop{transform:translatey(5px)}.down:hover .downBottom{transform:translatey(-5px)}@media only screen and (max-height:500px){.logo{width:100px;position:absolute;top:50%;left:50%;transform:translate(-50%,-100%)}.about,.name{transform:translate(-50%,-50%);position:absolute;left:50%}.name{top:65%;font-size:60%;letter-spacing:2px;line-height:.8;text-shadow:0 5px 5px #00000023;}.about{top:80%;font-size:30%;line-height:.8;text-shadow:0 5px 10px #00000023;}.down{height:10px;position:absolute;top:90%;left:50%;transform:translatex(-50%)}}@media only screen and (max-width:470px){.name{position:absolute;top:65%;left:50%;transform:translate(-50%,-50%);font-size:50%;letter-spacing:2px;line-height:.8;text-shadow:0 5px 5px #00000023;}}
+            @media only screen and (max-height: 800px) {
+                .logo {
+                    width: 200px;
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -100%);
+                }
+                .name {
+                    position: absolute;
+                    top: 65%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    font-size: 70%;
+                    letter-spacing: 2px;
+                    line-height: 0.9;
+                    text-shadow: 0 5px 5px #00000023;
+                }
+                .about {
+                    position: absolute;
+                    top: 80%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    font-size: 40%;
+                    line-height: 1;
+                    text-shadow: 0 5px 10px #00000023;
+                }
+                .down {
+                    height: 20px;
+                    position: absolute;
+                    top: 90%;
+                    left: 50%;
+                    transform: translatex(-50%);
+                }
+            }
+
+            footer {
+                display: fixed;
+                top: 200vh;
+                left: 0;
+                width: 100vw;
+                height: 0vh;
+            }
+
+            .social {
+                background-color: #142742;
+                width:100vw;
+                height:100vh;
+            }
+            .socialHeader {
+                width: 100vw;
+                background: url('assets/images/@sh.png');
+                background-size: cover;
+            }
+            .icons {
+                text-align: center;
+                padding: 5vh 7vw;
+                background-color: #142742;
+            }
+            .socialIcon {
+                width: 300px;
+                height: 300px;
+                border-radius: 100%;
+                transition: 250ms ease;
+            }
+            .socialIcon:hover {
+                transform: translateY(-7px);
+                background: radial-gradient(#00000008, #00000000);
+            }
+            .socialIcon:active {
+                transform: translateY(-2px);
+                background: radial-gradient(#00000015, #00000000);
+            }
+            .line {
+                display: block;
+                margin: 10px auto;
+            }
+            @media only screen and (max-width: 1160px) {
+                .line {
+                    width: 30vw;
+                }
+            }
+        </style>
     </head>
     <body>
-        <div class="page frst">
-            <h1 class="title"> Andreas </h1>
-            <p class="sub"> Branding / UI Designer & Web Developer </p>
-            <a href="https://instagram.com/andreasaoneo" target="_blank"><img src="assets/images/insta.svg" alt="Instagram" class="icon ins"></a>
-            <a href="https://discord.gg/VThsFXR" target="_blank"><img src="assets/images/discord.svg" alt="Discord" class="icon dis"></a>
-            <a href="https://dribbble.com/aoneo"><img src="assets/images/dribbble.svg" alt="Dribbble" class="icon drb"></a>
-            <a href="https://github.com/andreasaoneo"><img src="assets/images/github.svg" alt="Github" class="icon git"></a>
-            <a href="http://clockjs.tk" target="_blank"><img src="assets/images/clock.svg" alt="Clock.js" class="icon clk"></a>
+        <!-- <nav class="nav">
+            <img src="assets/images/@whiteS.svg" class="navImg navItem">
+            <ul class="navUl">
+                <li class="navLi"> <a href="#" class="navLink"> Home </a> </li>
+                <li class="navLi"> <a href="" class="navLink"> Design </a> </li>
+                <li class="navLi"> <a href="" class="navLink"> Dev </a> </li>
+                <li class="navLi"> <a href="" class="navLink"> Contact </a> </li>
+            </ul>
+        </nav> -->
+        <div class="hero page">
+            <img src="assets/images/@displayLogo.png" alt="Logo" class="logo">
+            <h1 class="name"> Andreas Tsatsanis </h1>
+            <h2 class="about"> Web Developer and <br> Branding / UI/UX designer </h2>
+            <svg onclick="smoothScroll('social');" width="100%" height="100%" viewBox="0 0 70 40" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:1.41421;" class="down">
+                <g transform="matrix(1,0,0,1,-43623.7,-3111.88)">
+                    <g transform="matrix(0.48,0,0,0.36,20184.7,2192.07)">
+                        <g transform="matrix(-2.08333,-3.4018e-16,2.55135e-16,-2.77778,148626,5200.31)" >
+                            <path d="M47901.7,952.307C47901.7,952.307 47896.2,952.307 47892.8,952.307C47891.1,952.307 47889.5,951.805 47888,950.864C47884.9,948.821 47879.1,945.008 47874.7,942.092C47871.1,939.707 47866.4,939.707 47862.8,942.092C47858.3,945.008 47852.5,948.821 47849.4,950.864C47848,951.805 47846.3,952.307 47844.6,952.307C47841.2,952.307 47835.8,952.307 47835.8,952.307C47835.8,952.307 47853.3,940.814 47862.8,934.569C47866.4,932.184 47871.1,932.184 47874.7,934.569C47884.2,940.814 47901.7,952.307 47901.7,952.307Z"
+                                style="fill:white;fill-opacity:0.941176;" class="downTop" />
+                        </g>
+                        <g transform="matrix(-2.08333,-3.4018e-16,2.55135e-16,-2.77778,148626,5241.06)">
+                            <path d="M47900.9,951.55C47900.9,951.55 47895.4,951.55 47892.1,951.55C47890.4,951.55 47888.7,951.064 47887.3,950.151C47884.3,948.236 47878.9,944.727 47874.7,941.998C47871.1,939.666 47866.4,939.688 47862.8,942.052C47858.7,944.752 47853.5,948.196 47850.6,950.107C47849.1,951.048 47847.5,951.55 47845.8,951.55C47842.4,951.55 47837,951.55 47837,951.55C47837,951.55 47853.6,940.595 47862.8,934.543C47866.4,932.172 47871.1,932.158 47874.7,934.508C47884,940.552 47900.9,951.55 47900.9,951.55Z"
+                                style="fill:white;fill-opacity:0.941176;" class="downBottom" />
+                        </g>
+                    </g>
+                </g>
+            </svg>
         </div>
-        
-        <!-- <div class="page scnd">
-            <h2 class="heading"> About Me </h2>
-            <p class="about"> I'm a Graphic Designer & Frontend Web Developer specialising in Branding and UI design. I'm currently working on web application development, this website and my personal branding, but I'm open to work opportunities. Outside the digital world, I love skateboarding, <a href="https://instagram.com/duskfreerun"> parkour </a> and photography. </p>
+
+        <div class="social" id="social">
+            <img src="assets/images/@ssh.png" alt="" class="socialHeader">
+            <div class="icons">
+                <img onclick="window.open('https://dribbble.com/aoneo', '_blank').focus();" src="assets/images/@dribbble.svg" alt="Dribbble" class="socialIcon">
+                <img onclick="window.open('https://twitter.com/andreasaoneo', '_blank').focus();" src="assets/images/@twitter.svg" alt="Twitter" class="socialIcon">
+                <img onclick="window.open('https://instagram.com/andreasaoneo', '_blank').focus();" src="assets/images/@instagram.svg" alt="Instagram" class="socialIcon">
+                <img onclick="window.open('https://github.com/andreasaoneo', '_blank').focus();" src="assets/images/@github.svg" alt="Github" class="socialIcon">
+            </div>
+            <img src="assets/images/@line.png" alt="" class="line">
+        </div>
+
+        <footer id="footer">
             
-        </div> -->
-
-
-        <script src="assets/index.js"></script>
+        </footer>
+        <script>
+            if (navigator.serviceWorker.controller) {
+                console.log('Active service worker found, no need to register')
+            } else {
+                //Register the ServiceWorker
+                navigator.serviceWorker.register('serviceWorker.js', {
+                    scope: './'
+                }).then(function(reg) {
+                    console.log('Service worker has been registered for scope:'+ reg.scope);
+                });
+            }
+        </script>
+        <script src="app.js"></script>
     </body>
 </html>
+
