@@ -150,14 +150,15 @@
                 height: 300px;
                 border-radius: 100%;
                 transition: 250ms ease;
+                cursor: pointer;
             }
             .socialIcon:hover {
                 transform: translateY(-7px);
-                background: radial-gradient(#00000008, #00000000);
+                background: radial-gradient(#00000015, #00000000);
             }
             .socialIcon:active {
                 transform: translateY(-2px);
-                background: radial-gradient(#00000015, #00000000);
+                background: radial-gradient(#00000035, #00000000);
             }
             .line {
                 display: block;
@@ -168,9 +169,15 @@
                     width: 30vw;
                 }
             }
+            @media only screen and (max-width: 700px) {
+                .line {
+                    display: none;
+                }
+            }
         </style>
     </head>
-    <body>
+    <body style="background-color: #142742;">
+
         <!-- <nav class="nav">
             <img src="assets/images/@whiteS.svg" class="navImg navItem">
             <ul class="navUl">
@@ -211,9 +218,9 @@
             <img src="assets/images/@line.png" alt="" class="line">
         </div>
 
-        <footer id="footer">
+        <!-- <footer id="footer">
             
-        </footer>
+        </footer> -->
         <script>
             if (navigator.serviceWorker.controller) {
                 console.log('Active service worker found, no need to register')

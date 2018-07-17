@@ -36,7 +36,7 @@ var checkResponse = function(request) {
 var addToCache = function(request) {
   return caches.open("offline").then(function(cache) {
     return fetch(request).then(function(response) {
-      console.log("Add page to offline" + response.url);
+      console.log("Add page / asset to cache" + response.url);
       return cache.put(request, response);
     });
   });
