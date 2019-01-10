@@ -1,0 +1,10 @@
+{
+	"workbench.colorTheme": "Material Theme Palenight",
+	"workbench.fontAliasing": "antialiased",
+	"workbench.iconTheme": "material-icon-theme",
+	"editor.fontFamily": "SF Mono bold, Menlo, Monaco, 'Courier New', monospace",
+	"editor.fontLigatures": true,
+	"editor.fontWeight": "200",
+	"editor.formatOnType": true,
+	"markdown.preview.fontFamily": "SF Pro Display, -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', 'HelveticaNeue-Light', 'Ubuntu', 'Droid Sans', sans-serif"
+}

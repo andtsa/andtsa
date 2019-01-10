@@ -1,0 +1,52 @@
+@font-face {
+	font-family: Din;
+	src: url('../assets/din.ttf');
+}
+* {
+	font-size: 50px;
+	margin: 0;
+	padding: 0;
+	box-sizing: border-box;
+	font-family: Din, sans-serif;
+	transition: 200ms ease;
+}
+
+.nav {
+	position: fixed;
+	top: 0;
+	left: 0;
+	width: 100vw;
+	font-size: 20px;
+}
+
+.navImg {
+	height: 50px;
+	width: auto;
+	padding: 5px;
+}
+
+.navUl {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+	background-color: #142742;
+	float: right;
+	font-size: 50%;
+}
+
+.navLi {
+    float: right;
+}
+
+.navLink {
+    display: block;
+    color: white;
+    text-align: center;
+    padding: 14px 16px;
+    text-decoration: none;
+}
+
+.navLink:hover {
+    color: #073f8f;
+}

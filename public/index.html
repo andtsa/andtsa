@@ -2,7 +2,7 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8">
-        <link rel="canonical" href="https://andreas.aoneo.cc/">
+        <link rel="canonical" href="https://www.andreats.com/">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <script async src="https://www.googletagmanager.com/gtag/js?id=UA-102647146-1"></script>
         <script>
@@ -16,6 +16,7 @@
         <meta name="apple-mobile-web-app-status-bar-style" content="#051333">
         <meta charset="UTF-8">
         <!-- <link async rel="stylesheet" href="style.min.css"> -->
+        <link rel="stylesheet" href="./css/style.css">
         <link rel="icon" href="assets/images/@whiteL.png" type="image/png">
         <meta name="msapplication-TileColor" content="#080826">
         <meta name="theme-color" content="#080826">
@@ -23,174 +24,29 @@
         <meta name="description" content="A Design and Dev portfolio with some mini tools">
         <meta name="og:name" content="Andreas Tsatsanis">
         <meta property="og:title" content="Home">
-        <meta property="og:site_name" content="https://andreas.aoneo.cc">
+        <meta property="og:site_name" content="https://www.andreats.com/">
         <meta property="og:type" content="website">
         <!-- <script async src="/__/firebase/4.13.0/firebase-app.js"></script>
         <script async src="/__/firebase/init.js"></script> -->
         <title> Home | Andreas Tsatsanis </title>
 
-        <!-- Critical CSS -->
-        <style>
-            @font-face {
-                font-family: Din;
-                src: url('assets/din.ttf');
-            }
-            * {
-                font-size: 50px;
-                margin: 0;
-                padding: 0;
-                box-sizing: border-box;
-                font-family: Din, sans-serif;
-                transition: 200ms ease;
-            }
-            .hero {
-                background-image: url('assets/images/@herobgs.webp'), linear-gradient(#353051, #06011b);
-                background-repeat: no-repeat;
-                background-size: cover;
-                text-align: center;
-                color: #ffffff;
-            }
-
-            .logo {
-                width: 300px;
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -100%);
-            }
-            .name {
-                position: absolute;
-                top: 60%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                font-size: 80%;
-                letter-spacing: 2px;
-                line-height: 0.5;
-                text-shadow: 0 5px 5px #00000023;
-            }
-            .about {
-                position: absolute;
-                top: 70%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                font-size: 50%;
-                line-height: 0.8;
-                text-shadow: 0 5px 10px #00000023;
-                letter-spacing: 1px;
-            }
-            .down {
-                height: 30px;
-                position: absolute;
-                top: 85%;
-                left: 50%;
-                transform: translatex(-50%);
-            }
-            .page{width:100vw;height:100vh;display:block}.down:hover .downTop{transform:translatey(5px)}.down:hover .downBottom{transform:translatey(-5px)}@media only screen and (max-height:500px){.logo{width:100px;position:absolute;top:50%;left:50%;transform:translate(-50%,-100%)}.about,.name{transform:translate(-50%,-50%);position:absolute;left:50%}.name{top:65%;font-size:60%;letter-spacing:2px;line-height:.8;text-shadow:0 5px 5px #00000023;}.about{top:80%;font-size:30%;line-height:.8;text-shadow:0 5px 10px #00000023;}.down{height:10px;position:absolute;top:90%;left:50%;transform:translatex(-50%)}}@media only screen and (max-width:470px){.name{position:absolute;top:65%;left:50%;transform:translate(-50%,-50%);font-size:50%;letter-spacing:2px;line-height:.8;text-shadow:0 5px 5px #00000023;}}
-            @media only screen and (max-height: 800px) {
-                .logo {
-                    width: 200px;
-                    position: absolute;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -100%);
-                }
-                .name {
-                    position: absolute;
-                    top: 65%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    font-size: 70%;
-                    letter-spacing: 2px;
-                    line-height: 0.9;
-                    text-shadow: 0 5px 5px #00000023;
-                }
-                .about {
-                    position: absolute;
-                    top: 80%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    font-size: 40%;
-                    line-height: 1;
-                    text-shadow: 0 5px 10px #00000023;
-                }
-                .down {
-                    height: 20px;
-                    position: absolute;
-                    top: 90%;
-                    left: 50%;
-                    transform: translatex(-50%);
-                }
-            }
-
-            footer {
-                display: fixed;
-                top: 200vh;
-                left: 0;
-                width: 100vw;
-                height: 0vh;
-            }
-
-            .social {
-                background-color: #142742;
-                width:100vw;
-                height:100vh;
-            }
-            .socialHeader {
-                width: 100vw;
-                background: url('assets/images/@sh.png');
-                background-size: cover;
-            }
-            .icons {
-                text-align: center;
-                padding: 5vh 7vw;
-                background-color: #142742;
-            }
-            .socialIcon {
-                width: 300px;
-                height: 300px;
-                border-radius: 100%;
-                transition: 250ms ease;
-                cursor: pointer;
-            }
-            .socialIcon:hover {
-                transform: translateY(-7px);
-                background: radial-gradient(#00000015, #00000000);
-            }
-            .socialIcon:active {
-                transform: translateY(-2px);
-                background: radial-gradient(#00000035, #00000000);
-            }
-            .line {
-                display: block;
-                margin: 10px auto;
-            }
-            @media only screen and (max-width: 1160px) {
-                .line {
-                    width: 30vw;
-                }
-            }
-            @media only screen and (max-width: 700px) {
-                .line {
-                    display: none;
-                }
-            }
-        </style>
     </head>
     <body style="background-color: #142742;">
-
-        <!-- <nav class="nav">
-            <img src="assets/images/@whiteS.svg" class="navImg navItem">
-            <ul class="navUl">
-                <li class="navLi"> <a href="#" class="navLink"> Home </a> </li>
-                <li class="navLi"> <a href="" class="navLink"> Design </a> </li>
-                <li class="navLi"> <a href="" class="navLink"> Dev </a> </li>
-                <li class="navLi"> <a href="" class="navLink"> Contact </a> </li>
-            </ul>
-        </nav> -->
+        <div class="button_container" id="toggle"><span class="top"></span><span class="middle"></span><span class="bottom"></span></div>
+        <div class="overlay" id="overlay">
+            <nav class="overlay-menu">
+                <ul>
+                    <li><a href="#">Home</a></li>
+                    <li><a href="#">About</a></li>
+                    <li><a href="#">Work</a></li>
+                    <li><a href="#">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
         <div class="hero page">
-            <img src="assets/images/@displayLogo.png" alt="Logo" class="logo">
+            <img src="./assets/images/@displayLogo.png" alt="" class="logo">
             <h1 class="name"> Andreas Tsatsanis </h1>
-            <h2 class="about"> Web Developer and <br> Branding / UI/UX designer </h2>
+            <h2 class="about"> Fullstack Developer and <br> Branding / UI/UX designer </h2>
             <svg onclick="smoothScroll('social');" width="100%" height="100%" viewBox="0 0 70 40" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" xmlns:serif="http://www.serif.com/" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:1.41421;" class="down">
                 <g transform="matrix(1,0,0,1,-43623.7,-3111.88)">
                     <g transform="matrix(0.48,0,0,0.36,20184.7,2192.07)">
@@ -208,19 +64,20 @@
         </div>
 
         <div class="social" id="social">
-            <img src="assets/images/@ssh.png" alt="" class="socialHeader">
+            <img src="./assets/images/@ssh.png" alt="" class="socialHeader">
             <div class="icons">
-                <img onclick="window.open('https://dribbble.com/aoneo', '_blank').focus();" src="assets/images/@dribbble.svg" alt="Dribbble" class="socialIcon">
+                <img onclick="window.open('https://dribbble.com/andreats', '_blank').focus();" src="assets/images/@dribbble.svg" alt="Dribbble" class="socialIcon">
                 <img onclick="window.open('https://twitter.com/andreasaoneo', '_blank').focus();" src="assets/images/@twitter.svg" alt="Twitter" class="socialIcon">
-                <img onclick="window.open('https://instagram.com/andreasaoneo', '_blank').focus();" src="assets/images/@instagram.svg" alt="Instagram" class="socialIcon">
+                <img onclick="window.open('https://instagram.com/andreastsatsanis', '_blank').focus();" src="assets/images/@instagram.svg" alt="Instagram" class="socialIcon">
                 <img onclick="window.open('https://github.com/andreasaoneo', '_blank').focus();" src="assets/images/@github.svg" alt="Github" class="socialIcon">
             </div>
-            <img src="assets/images/@line.png" alt="" class="line">
+            <img src="./assets/images/@line.png" alt="" class="line">
         </div>
 
         <!-- <footer id="footer">
             
         </footer> -->
+        <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
         <script>
             if (navigator.serviceWorker.controller) {
                 console.log('Active service worker found, no need to register')
@@ -233,7 +90,8 @@
                 });
             }
         </script>
-        <script src="app.js"></script>
+        <script src="./js/app.js"></script>
+        <script src="./js/nav.js"></script>
     </body>
 </html>
 

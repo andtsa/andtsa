@@ -1,0 +1,25 @@
+{
+  "name": "andreats",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/andreasaoneo/andreasaoneo.git"
+  },
+  "author": "Andreas Tsatsanis",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/andreasaoneo/andreasaoneo/issues"
+  },
+  "homepage": "https://www.andreats.com/",
+  "devDependencies": {
+    "gulp": "^4.0.0",
+    "gulp-clean-css": "^4.0.0",
+    "gulp-sass": "^4.0.2",
+    "gulp-webserver": "^0.9.1"
+  }
+}

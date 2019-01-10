@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<link href="https://fonts.googleapis.com/css?family=Ubuntu+Condensed&amp;subset=greek,greek-ext,latin-ext" rel="stylesheet">
+		<title> Steam Engine </title>
+		<style>
+			* {
+				margin: 0;
+				padding: 0;
+				font-family: 'Ubuntu Condensed', sans-serif;
+				font-size: 50px;
+				transition: 750ms ease;
+				cursor: default;
+
+			}
+			*::selection { 
+                background-color: #8519ebaa;
+				color: #E0C3FC;
+            } 
+
+			html {
+				scroll-behavior: smooth;
+			}
+
+			
+			/*=============================================
+			=                GLOBAL STYLES                =
+			=============================================*/
+			
+			.page {
+				width: 100vw;
+				height: 100vh;
+				background-color: #FFDEE9;
+				background-image: -webkit-linear-gradient(15deg, #FFDEE9 0%, #B5FFFC 100%);
+				background-image: -moz-linear-gradient(15deg, #FFDEE9 0%, #B5FFFC 100%);
+				background-image: -o-linear-gradient(15deg, #FFDEE9 0%, #B5FFFC 100%);
+				background-image: linear-gradient(15deg, #FFDEE9 0%, #B5FFFC 100%);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+			
+			
+			
+			/*=====      End of Global Styles      ======*/
+			
+			
+			
+			/*=============================================
+			=                  Hero Area                  =
+			=============================================*/
+			
+			.hero {
+				width: 100vw;
+				height: 100vh;
+				background-color: #D9AFD9;
+				background-image: -webkit-linear-gradient(72deg, #D9AFD9 0%, #97D9E1 100%);
+				background-image: -moz-linear-gradient(72deg, #D9AFD9 0%, #97D9E1 100%);
+				background-image: -o-linear-gradient(72deg, #D9AFD9 0%, #97D9E1 100%);
+				background-image: linear-gradient(72deg, #D9AFD9 0%, #97D9E1 100%);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+			}
+
+			.title {
+				font-size: 150%;
+				background: linear-gradient(72deg, #2c3d9e 0%, #8519eb 90%);
+				-webkit-background-clip: text;
+				background-clip: text;
+				-webkit-text-fill-color: transparent;
+			}
+			
+			.fsbtn {
+				width: 30px;
+				height: 30px;
+				position: absolute;
+				top: 40px;
+				right: 40px;
+			}
+
+			.fsbtn:hover {
+				width: 34px;
+				height: 34px;
+				top: 38px;
+				right: 38px;
+			}
+			
+			/*=====       End of Hero area         ======*/
+			
+			
+			/*=============================================
+			=            Content, images area             =
+			=============================================*/
+			
+			.txt {
+				font-size: 40%;
+				max-width: 400px;
+				max-height: 700px;
+				display: inline-block;
+				padding: 20px;
+				background-color: #8EC5FC;
+				background-image: -webkit-linear-gradient(62deg, #8EC5FC 0%, #E0C3FC 100%);
+				background-image: -moz-linear-gradient(62deg, #8EC5FC 0%, #E0C3FC 100%);
+				background-image: -o-linear-gradient(62deg, #8EC5FC 0%, #E0C3FC 100%);
+				background-image: linear-gradient(62deg, #8EC5FC 0%, #E0C3FC 100%);
+				margin: 50px;
+				border-radius: 10px;
+				color: #2c3d9e;
+			}
+
+			.sph {
+				max-width: 400px;
+				max-height: 700px;
+				display: inline-block;
+				padding: 20px;
+				background-color: #8EC5FC;
+				background-image: -webkit-linear-gradient(62deg, #8EC5FC 0%, #E0C3FC 100%);
+				background-image: -moz-linear-gradient(62deg, #8EC5FC 0%, #E0C3FC 100%);
+				background-image: -o-linear-gradient(62deg, #8EC5FC 0%, #E0C3FC 100%);
+				background-image: linear-gradient(62deg, #8EC5FC 0%, #E0C3FC 100%);
+				margin: 50px;
+				border-radius: 10px;
+			}
+
+			.simg {
+				max-width: 400px;
+				max-height: 700px;
+				border-radius: 7px;
+			}
+
+			.c:hover {
+				transform: translateY(-5px);
+				box-shadow: 0 5px 15px #2a165881;
+			}
+
+			.modal {
+				display: none; /* Hidden by default */
+				position: fixed; /* Stay in place */
+				z-index: 1; /* Sit on top */
+				padding-top: 100px; /* Location of the box */
+				left: 0;
+				top: 0;
+				width: 100%; /* Full width */
+				height: 100%; /* Full height */
+				overflow: auto; /* Enable scroll if needed */
+				background-color: rgb(0,0,0); /* Fallback color */
+				background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+				border-radius: 10px;
+			}
+
+			.mimg {
+				height: 75vh;
+				width: auto;
+			}
+
+			/* Modal Content */
+			.modal-content {
+				background-color: #fefefe;
+				margin: auto;
+				padding: 20px;
+				border: 1px solid #888;
+				width: 80%;
+			}
+
+				/* The Close Button */
+			.close {
+				color: #aaaaaa;
+				float: right;
+				font-size: 28px;
+				font-weight: bold;
+			}
+
+			.close:hover,
+			.close:focus {
+				color: #000;
+				text-decoration: none;
+				cursor: pointer;
+			}
+			
+			/*=====  End of Content, images area   ======*/
+			
+			
+			/*=============================================
+			=            F o o t e r   a r e a            =
+			=============================================*/
+			
+			.footer {
+				width: 100vw;
+				height: 100px;
+				background-color: #4158D0;
+				background-image: -webkit-linear-gradient(32deg, #4158D0 0%, #C850C0 46%, #FFCC70 100%);
+				background-image: -moz-linear-gradient(32deg, #4158D0 0%, #C850C0 46%, #FFCC70 100%);
+				background-image: -o-linear-gradient(32deg, #4158D0 0%, #C850C0 46%, #FFCC70 100%);
+				background-image: linear-gradient(32deg, #4158D0 0%, #C850C0 46%, #FFCC70 100%);
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				color: #FFDEE9;
+			}
+
+			.srcs {
+				font-size: 40%;
+				color: #D9AFD9;
+			}
+
+			.src {
+				margin: 0 50px;
+			}
+
+			.as {
+				color: #FFCC70;
+				text-decoration: none;
+				font-size: inherit;
+			}
+
+			.web {
+				font-size: 45%;
+				margin: 0 50px;
+			}
+
+			.social {
+				font-size: 50%;
+				margin: 0 50px;
+			}
+
+			.web a {
+				color: #8EC5FC;
+				text-decoration: none;
+				font-size: inherit;
+			}
+
+			ion-icon {
+				font-size: inherit;
+				color: #8519eb;
+				cursor: pointer;
+
+			}
+			
+			/*=====  End of F o o t e r   a r e a  ======*/
+			
+			
+			
+		</style>
+	</head>
+	<body>
+		<div class="hero">
+			<img src="./assets/fs.svg" alt="" id="fs" class="fsbtn" onclick="openFullscreen(); this.width = 0;">
+			<h1 class="title"> Η Αιολόσφαιρα του Ήρων </h1>
+		</div>
+		<div class="page">
+			<p class="txt c">
+				Η αιολόσφαιρα του Ήρωνος (1ος αι. μ.Χ.), είναι η πρώτη «ατμομηχανή» της ιστορίας.
+				<br>
+				Πρόκειται για τον πρόδρομο του ατμοστροβίλου, που με την προσθήκη μιας τροχαλίας για τη μετάδοση της κίνησης, θα
+				μπορούσε να έχει οδηγήσει την ελληνιστική εποχή (αν δεν ανακοπτόταν από τις οικονομικοκοινωνικοπολιτικές συνθήκες της
+				εποχής) στη Βιομηχανική επανάσταση, με απρόβλεπτες συνέπειες για την ανθρωπότητα.
+				<br>
+				Σύμφωνα με τον Ήρωνα τον Αλεξανδρέα (Πνευματικά) που θεωρούμε ότι μνημονεύει τη χρυσή ελληνιστική εποχή του 2ου και 3ου
+				αι. π.Χ. αποτελούνταν από μία σφαίρα (με δύο καμπύλα ακροφύσια) που εδραζόταν στα καμπυλωμένα άκρα δύο σωληνίσκων που
+				βρίσκονταν στην οροφή ενός στεγανού λέβητα.
+				<br>
+				Το νερό ατμοποιούνταν με τη θέρμανση του λέβητα, εισερχόταν στη σφαίρα και εξερχόταν με ταχύτητα από τα δύο ακροφύσια
+				εξαναγκάζοντας τη σφαίρα σε αντίθετη συνεχή περιστροφή.
+				<br><br>
+				ΠΗΓΕΣ: «Ήρων, Πνευματικά, B 11»
+			</p>
+			<div class="sph c">
+				<img src="./assets/bs.jpg" alt="" class="simg c" id="myBtn">
+			</div>
+			<div id="myModal" class="modal">
+			
+				<!-- Modal content -->
+				<div class="modal-content">
+					<span class="close">&times;</span>
+					<img src="./assets/bs.jpg" alt="" class="mimg">
+					<img src="./assets/aiol.jpg" alt="" class="mimg" style="float: right;">
+				</div>
+			
+			</div>
+			
+		</div>
+
+		<div class="footer">
+			<div class="src">
+				<h3 class="srcs">ΠΗΓΕΣ: «Ήρων, Πνευματικά, B 11», <a class="as" href="https://el.wikipedia.org/wiki/%CE%89%CF%81%CF%89%CE%BD">WKP</a>, <a class="as"  href="https://www.archaiologia.gr/">ARC&A</a></h3>
+			</div>
+			<div class="links">
+				<h3 class="web"><a href="https://andreats.com/">Andreas Tsatsanis</a></h3>
+			</div>
+			<div class="social">
+				<ion-icon name="logo-dribbble" onclick="window.location.href = 'https://dribbble.com/andreats'"></ion-icon>  <ion-icon name="logo-instagram" onclick="window.location.href = 'https://instagram.com/andreastsatsanis'"></ion-icon> <ion-icon name="logo-github"onclick="window.location.href = 'https://github.com/andreasaoneo/'"></ion-icon> <ion-icon name="logo-twitter" onclick="window.location.href = 'https://twitter.com/andreasaoneo/'"></ion-icon>
+			</div>
+		</div>
+
+
+		<script src="https://unpkg.com/ionicons@4.5.0/dist/ionicons.js"></script>
+		<script>
+			/* Get the documentElement (<html>) to display the page in fullscreen */
+			var elem = document.documentElement;
+
+			/* View in fullscreen */
+			function openFullscreen() {
+				if (elem.requestFullscreen) {
+					elem.requestFullscreen();
+				} else if (elem.mozRequestFullScreen) { /* Firefox */
+					elem.mozRequestFullScreen();
+				} else if (elem.webkitRequestFullscreen) { /* Chrome, Safari and Opera */
+					elem.webkitRequestFullscreen();
+				} else if (elem.msRequestFullscreen) { /* IE/Edge */
+					elem.msRequestFullscreen();
+				}
+			}
+
+			/* Close fullscreen */
+			function closeFullscreen() {
+				if (document.exitFullscreen) {
+					document.exitFullscreen();
+				} else if (document.mozCancelFullScreen) { /* Firefox */
+					document.mozCancelFullScreen();
+				} else if (document.webkitExitFullscreen) { /* Chrome, Safari and Opera */
+					document.webkitExitFullscreen();
+				} else if (document.msExitFullscreen) { /* IE/Edge */
+					document.msExitFullscreen();
+				}
+			}
+			
+		</script>
+		<script>
+			// Get the modal
+			var modal = document.getElementById('myModal');
+
+			// Get the button that opens the modal
+			var btn = document.getElementById("myBtn");
+
+			// Get the <span> element that closes the modal
+			var span = document.getElementsByClassName("close")[0];
+
+			// When the user clicks the button, open the modal 
+			btn.onclick = function () {
+				modal.style.display = "block";
+			}
+
+			// When the user clicks on <span> (x), close the modal
+			span.onclick = function () {
+				modal.style.display = "none";
+			}
+
+			// When the user clicks anywhere outside of the modal, close it
+			window.onclick = function (event) {
+				if (event.target == modal) {
+					modal.style.display = "none";
+				}
+			}
+		</script>
+	</body>
+</html>
