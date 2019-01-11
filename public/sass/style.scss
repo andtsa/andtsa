@@ -1,5 +1,5 @@
 $color-background: #F5F5F5;
-$color-main: #1abc9c;
+$color-main: linear-gradient(-41deg,#4785fd,#a279ff);
 $color-active: #FFF;
 $color-link: #FFF;
 
@@ -9,7 +9,7 @@ $button-width: 35px;
 
 @font-face {
 	font-family: Din;
-	src: url(assets/din.ttf);
+	src: url(./../assets/din.ttf);
 }
 * {
 	font-size: 50px;
@@ -31,11 +31,12 @@ $button-width: 35px;
     }
 }
 .hero {
-	background-image: url(assets/images/@herobgs.webp),linear-gradient(#353051,#06011b);
+	background-image: url(./../assets/images/@herobgs.webp),linear-gradient(#353051,#06011b);
 	background-repeat: no-repeat;
 	background-size: cover;
 	text-align: center;
-	color: #fff;
+    color: #fff;
+    z-index: -2;
 }
 
 
@@ -66,7 +67,7 @@ $button-width: 35px;
     &:after {
       content: '';
       position: absolute;
-      background: $color-main;
+      background: #fff;
       height: 2px;
       width: 0%;
       transform: translateX(-50%);
@@ -82,12 +83,6 @@ $button-width: 35px;
   }
 }
 
-h1 {
-  position: relative;
-  text-align: center;
-  font-family: 'Varela Round', serif;
-}
-
 .button_container {
   position: fixed;
   top: 5%;
@@ -95,7 +90,7 @@ h1 {
   height: $button-height;
   width: $button-width;
   cursor: pointer;
-  z-index: 100;
+  z-index: 10;
   transition: opacity .25s ease;
   
   &:hover {
@@ -119,7 +114,7 @@ h1 {
   }
   
   span {
-  background: $color-main;
+  background: #fff;
   border: none;
   height: 5px;
   width: 100%;
@@ -150,12 +145,13 @@ h1 {
   visibility: hidden;
   transition: opacity .35s, visibility .35s, height .35s;
   overflow: hidden;
+  z-index: -2;
   
   &.open {
     opacity: .9;
     visibility: visible;
     height: 100%;
-    
+    z-index: 2;
     li {
       animation: fadeInRight .5s ease forwards;
       animation-delay: .35s;
@@ -176,8 +172,7 @@ h1 {
     height: 70%;
     top: 50%;
     transform: translateY(-50%);
-    font-size: 50px;
-    font-family: 'Varela Round', serif;
+    font-size: 100%;
     font-weight: 400;
     text-align: center;
   }
@@ -253,7 +248,8 @@ h1 {
 	font-size: 80%;
 	letter-spacing: 2px;
 	line-height: .5;
-	text-shadow: 0 5px 5px #00000023;
+    text-shadow: 0 5px 5px #00000023;
+    font-family: Din, sans-serif;
 }
 .about {
 	position: absolute;
@@ -271,7 +267,7 @@ h1 {
 	top: 85%;
 	left: 50%;
 	transform: translatex(-50%);
-	z-index: 10000;
+	z-index: 1;
 	&:hover {
 		.downTop {
 			transform: translatey(5px);
@@ -300,10 +296,10 @@ footer {
 }
 .socialHeader {
 	width: 100vw;
-	background: url(assets/images/@sh.png);
+	background: url(./../assets/images/@sh.png);
 	background-size: cover;
 	width: 100vw;
-	background: url(assets/images/@sh.png);
+	background: url(./../assets/images/@sh.png);
 	background-size: cover;
 }
 .icons {
