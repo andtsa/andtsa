@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<link rel="canonical" href="https://www.andreats.com/">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<script async src="https://www.googletagmanager.com/gtag/js?id=UA-102647146-1"></script>
+		<script>
+			window.dataLayer = window.dataLayer || [];
+			function gtag() { dataLayer.push(arguments); }
+			gtag('js', new Date());
+			gtag('config', 'UA-102647146-1');
+		</script>
+		<link async rel="manifest" href="./../assets/favicons/manifest.json">
+		<link rel="apple-touch-startup-image" href="./../assets/images/@herobg.png">
+		<meta name="apple-mobile-web-app-status-bar-style" content="#051333">
+		<meta charset="UTF-8">
+		<link rel="stylesheet" href="./../css/style.css">
+		<link rel="stylesheet" href="./../css/showcase.css">
+		<link rel="stylesheet" href="./../css/nav.css">
+		<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.12/css/all.css">
+		<link rel="icon" href="./../assets/images/@fav.png" type="image/png">
+		<meta name="msapplication-TileColor" content="#080826">
+		<meta name="theme-color" content="#080826">
+		<meta name="author" content="Andreas Tsatsanis">
+		<meta name="description" content="Design Archive">
+		<meta name="og:name" content="Andreas Tsatsanis">
+		<meta property="og:title" content="Design Archive">
+		<meta property="og:site_name" content="https://www.andreats.com/">
+		<meta property="og:type" content="website">
+		<title> Design Archive | Andreas Tsatsanis </title>
+
+	</head>
+
+	<body style="background-color: #142742;">
+		<div class="button_container" id="toggle"><span class="top"></span><span class="middle"></span><span class="bottom"></span></div>
+		<div class="overlay" id="overlay">
+			<nav class="overlay-menu">
+				<ul>
+					<li><a href="./../">Home</a></li>
+					<li><a href="./../underconstruction/">Design</a></li>
+					<li><a href="./../underconstruction/">Dev</a></li>
+					<li><a href="./../underconstruction/">Contact</a></li>
+				</ul>
+			</nav>
+		</div>
+		
+		<br>
+		<section class="gallery">
+			<div class="gallery-container">
+				<div class="grid">
+					<div class="column-xs-12 column-md-4">
+						<figure class="img-container">
+							<img src="./../assets/images/create(L).png">
+						</figure>
+					</div>
+					<div class="column-xs-12 column-md-4">
+						<figure class="img-container">
+							<img src="./../assets/images/p(s).png">
+						</figure>
+					</div>
+					<div class="column-xs-12 column-md-4">
+						<figure class="img-container">
+							<img src="./../assets/images/poly.png">
+						</figure>
+					</div>
+					<div class="column-xs-12 column-md-6">
+						<figure class="img-container">
+							<img src="./../assets/images/sunday.png">
+						</figure>
+					</div>
+					<div class="column-xs-12 column-md-6">
+						<figure class="img-container">
+							<img src="./../assets/images/create(d).png">
+						</figure>
+					</div>
+					<div class="column-xs-12">
+						<figure class="img-container">
+							<img src="./../assets/images/pencil.png">
+						</figure>
+					</div>
+					<div class="column-xs-12 column-md-4">
+						<figure class="img-container">
+							<img src="./../assets/images/p(w).png">
+						</figure>
+					</div>
+					<div class="column-xs-12 column-md-4">
+						<figure class="img-container">
+							<img src="./../assets/images/newsongs cover II.png">
+						</figure>
+					</div>
+					<div class="column-xs-12 column-md-4">
+						<figure class="img-container">
+							<img src="./../assets/images/4.png">
+						</figure>
+					</div>
+					<div class="column-xs-12 column-md-6">
+						<figure class="img-container">
+							<img src="./../assets/images/london.png">
+						</figure>
+					</div>
+					<div class="column-xs-12 column-md-6">
+						<figure class="img-container">
+							<img src="./../assets/images/paris.png">
+						</figure>
+					</div>
+				</div>
+			</div>
+		</section>
+
+
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+		<script>
+			if (navigator.serviceWorker.controller) {
+				console.log('Active service worker found, no need to register')
+			} else {
+				//Register the ServiceWorker
+				navigator.serviceWorker.register('./../serviceWorker.js', {
+					scope: './../'
+				}).then(function (reg) {
+					console.log('Service worker has been registered for scope:' + reg.scope);
+				});
+			}
+		</script>
+		<script src="./../js/app.js"></script>
+		<script src="./../js/nav.js"></script>
+	</body>
+
+</html>

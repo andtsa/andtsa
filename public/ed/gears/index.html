@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>Gears</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<link href="https://fonts.googleapis.com/css?family=Montserrat:200,400,600" rel="stylesheet">
+		<!-- <link rel="stylesheet" type="text/css" media="screen" href="main.css"> -->
+		<!-- <script src="app.js"></script> -->
+		<style>
+			* {
+				box-sizing: border-box;
+				margin: 0;
+				padding: 0;
+				font-family: 'Montserrat', sans-serif;
+				font-weight: 200;
+			}
+			*::selection {
+				color: #b6eaff;
+				background: #171c38;
+			}
+			.title {
+				margin-left: 23vw;
+			}
+			.slidecontainer {
+				width: 100%;
+			}
+
+			.slider {
+				-webkit-appearance: none;
+				width: 50%;
+				height: 25px;
+				background: #b6eaff;
+				outline: none;
+				opacity: 0.7;
+				-webkit-transition: .2s;
+				transition: opacity .2s;
+			}
+
+			.slider:hover {
+				opacity: 1;
+			}
+
+			.slider::-webkit-slider-thumb {
+				-webkit-appearance: none;
+				appearance: none;
+				width: 25px;
+				height: 25px;
+				background: #171c38;
+				cursor: pointer;
+			}
+
+			.slider::-moz-range-thumb {
+				width: 25px;
+				height: 25px;
+				background: #171c38;
+				cursor: pointer;
+			}
+			.button {
+				background-color: #171c38; /* Green */
+				border: none;
+				color: white;
+				padding: 16px 32px;
+				text-align: center;
+				text-decoration: none;
+				display: inline-block;
+				font-size: 16px;
+				margin: 4px 2px;
+				-webkit-transition-duration: 0.4s; /* Safari */
+				transition-duration: 0.4s;
+				cursor: pointer;
+			}
+			#c {
+				float: right;
+				display: block;
+				position: absolute;
+				top: 0;
+				right: 0;
+				background: #171c38;
+			}
+			.filler {
+				width: 50vw;
+				height: 50vh;
+				float: right;
+				display: block;
+				position: absolute;
+				top: 50vh;
+				right: 0;
+				background: #171c38;
+			}
+			span {
+				display: inline;
+			}
+			p {
+				display: inline;
+			}
+			input {
+				display: block;
+			}
+			.output {
+				background: #171c38;
+				border-radius: 100%;
+				width: 140px;
+				height: 140px;
+				color: white;
+				padding: 45px 0;
+				text-align: center;
+				margin: 20px 50px;
+			}
+			.o {
+				display: inline-block;
+			}
+		</style>
+	</head>
+	<body>
+		<br>
+		<h1 class="title">Gears</h1>
+		<br>
+		<br>
+		<p>Radius of powered gear: </p><span id="r1o">50</span>
+		<input type="range" min="1" max="100" value="50" class="slider" id="r1">
+		<br>
+		<br>
+		<p>Radius of second gear: </p><span id="r2o">50</span>
+		<input type="range" min="1" max="100" value="50" class="slider" id="r2">
+		<br>
+		<br>
+		<p>Rotations per minute for powered gear: </p><span id="rpmo">50</span><p>rpm</p>
+		<input type="range" min="1" max="100" value="50" class="slider" id="rpm">
+		<br>
+
+		<div class="o">
+			<p>RPM of second gear:</p>
+			<h1 class="output" id="or">00</h1>
+		</div>
+		<div class="o">
+			<p>Perimeter of first gear:</p>
+			<h1 class="output" id="op1">00</h1>
+		</div>
+		<div class="o">
+			<p>Perimeter of second gear:</p>
+			<h1 class="output" id="op2">00</h1>
+		</div>
+
+		<canvas id="c"></canvas>
+		<div class="filler"></div>
+
+
+		<script src="./canvas.js"></script>
+		<script src="./animating.js"></script>
+		<script>
+			let rpmInitial = document.getElementById('rpm');
+			let r1 = document.getElementById('r1');
+			let r2 = document.getElementById('r2');
+			let r1o = document.getElementById('r1o');
+			let r2o = document.getElementById('r2o');
+			let rpmo = document.getElementById('rpmo');
+			let rpmRes = document.getElementById('rpm2');
+			let btn = document.getElementById('btn');
+			let outputr = document.getElementById('or');
+			let outputp1 = document.getElementById('op1');
+			let outputp2 = document.getElementById('op2');
+
+			let perimeter = r => {
+				return (Math.round(100 * (2 * Math.PI * r)))/100;
+			}
+
+			let calc = (r1, r2, rpm) => {
+				return (Math.round(1000 * ((rpm * (2 * Math.PI * r1)) / (2 * Math.PI * r2))))/1000;
+			}
+
+			r1.oninput = () => {
+				r1o.innerText = r1.value;
+			}
+			r2.oninput = () => {
+				r2o.innerText = r2.value;
+			}
+			rpm.oninput = () => {
+				rpmo.innerText = rpmInitial.value;
+			}
+
+			animate();
+		</script>
+	</body>
+</html>

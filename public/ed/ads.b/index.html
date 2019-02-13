@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title> Ads with Beethoven's Music </title>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="shortcut icon" href="icon.ico" type="image/x-icon">
+        <link rel='stylesheet prefetch' href='https://cdnjs.cloudflare.com/ajax/libs/bulma/0.7.2/css/bulma.css'>
+        <link href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet" integrity="sha384-wvfXpqpZZVQGK6TAh5PVlGOfQNHSoD2xbE+QkPxCAFlNEevoEH3Sl0sibVcOQVnN" crossorigin="anonymous">
+        <link rel="stylesheet" href="./style.css">
+        <style>
+            *, *:after, *:before {
+                box-sizing: border-box;
+                -moz-box-sizing: border-box;
+                transition: 250ms ease;
+            }
+            .card:hover {
+                transform: translatey(-5px);
+                box-shadow: 0 5px 10px #00000054;
+            }
+            a {
+                color: #5bb2ff;
+                position: relative;
+            }
+            a:hover {
+                color: #7ec3ff;
+            }
+            a::after {
+                content: "";
+                position: absolute;
+                width: 100%;
+                height: 1px;
+                bottom: 0;
+                left: 0;
+                background-color: rgb(60, 226, 135);
+                visibility: hidden;
+                -webkit-transform: scaleX(0);
+                transform: scaleX(0);
+                -webkit-transition: all 0.3s ease-in-out 0s;
+                transition: all 0.3s ease-in-out 0s;
+            }
+            a:hover:after {
+                visibility: visible;
+                -webkit-transform: scaleX(.9);
+                transform: scaleX(.9);
+            }
+        </style>
+    </head>
+    <body>
+    <div class="container">
+        <div id="flow">
+            <span class="flow-1"></span>
+            <span class="flow-2"></span>
+            <span class="flow-3"></span>
+            <span class="flow-1"></span>
+            <span class="flow-2"></span>
+            <span class="flow-3"></span>
+        </div>
+        <div class="section">
+            <div class="row columns">
+                <div class="column is-one-third">
+                    <div class="card large">
+                        <div class="card-image">
+                            <figure class="image">
+                                <img src="./reebok.png" alt="reebok">
+                            </figure>
+                        </div>
+                        <div class="card-content">
+                            <div class="content">
+                                <a href="https://www.youtube.com/watch?v=Cq4rid57ofw">Reebok commercial</a>
+                                <br> Music: <a href="https://www.youtube.com/watch?v=vCHREyE5GzQ">Allegretto</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="column is-one-third">
+                    <div class="card large">
+                        <div class="card-image">
+                            <figure class="image">
+                                <img src="./intel.png" alt="Intel">
+                            </figure>
+                        </div>
+                        <div class="card-content">
+                            <div class="content">
+                                <a href="https://www.youtube.com/watch?v=JU9LoDd_5bo">Intel commercial</a>
+                                <br> Music: <a href="https://www.youtube.com/watch?v=fOk8Tm815lE">5th Symphony</a> (remixed)
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="column is-one-third">
+                    <div class="card large">
+                        <div class="card-image">
+                            <figure class="image">
+                                <img src="./tweed.png" alt="Tweed">
+                            </figure>
+                        </div>
+                        <div class="card-content">
+                            <div class="content">
+                                <a href="https://www.youtube.com/watch?v=iUpM58hI_ic">Tweed commercial</a>
+                                <br> Music: <a href="https://www.youtube.com/watch?v=EM8RlCZP0KQ">The finale of the 6th Symphony</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row columns is-multiline">
+                <div class="column is-one-third">
+                    <div class="card large">
+                        <div class="card-image">
+                            <figure class="image">
+                                <img src="./cingular.png" alt="Cingular">
+                            </figure>
+                        </div>
+                        <div class="card-content">
+                            <div class="content">
+                                <a href="https://www.youtube.com/watch?v=5z2DLB63h58&list=PL1706DDC13DF1A1E6&index=2">Cingular (αργότερα AT&T) commercial</a>
+                                <br> Music: <a href="https://www.youtube.com/watch?v=t3217H8JppI">9th Symphony</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="column is-one-third">
+                    <div class="card large">
+                        <div class="card-image">
+                            <figure class="image">
+                                <img src="./bmovie.png" alt="Beethoven Movie">
+                            </figure>
+                        </div>
+                        <div class="card-content">
+                            <div class="content">
+                                <a href="https://www.youtube.com/watch?v=5fgkoAFKQ-M">Beethoven Movie commercial</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <footer class="footer">
+            <div class="container">
+                <div class="content has-text-centered">
+                    <p>
+                        Andreas Tsatsanis
+                        <br>
+                        <a href="./ads.md">.md</a>
+                        <a href="./ads.txt">.txt</a>
+                    </p>
+                </div>
+            </div>
+        </footer>
+        <script src="./app.js"></script>
+    </body>
+</html>

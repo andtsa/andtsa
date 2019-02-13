@@ -7,7 +7,12 @@ var preLoad = function() {
   console.log("Install Event processing");
   return caches.open("offline").then(function(cache) {
     console.log("Cached index and offline page during Install");
-    return cache.addAll(["/offline.html", "/index.html", "/shop/index.html"]);
+    return cache.addAll([
+      "./offline.html",
+      "./index.html",
+      "./shop/index.html",
+      "./assets/**/*"
+    ]);
   });
 };
 
