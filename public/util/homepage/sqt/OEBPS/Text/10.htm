@@ -1,0 +1,646 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xml:lang="en"
+      lang="en"
+      xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:epub="http://www.idpf.org/2007/ops">
+<head>
+<title>Effective Software Testing</title>
+<link rel="stylesheet" type="text/css" href="../../override_v1.css"/>
+<link rel="stylesheet" type="text/css" href="../../stylesheet.css"/><link rel="stylesheet" type="text/css" href="../../page_styles.css"/>
+</head>
+<body>
+<div id="book-content">
+<div id="sbo-rt-content" class="calibre"><h1 class="tochead" id="heading_id_2"><a id="pgfId-998407"></a><a id="pgfId-1027261"></a>10 Test code quality</h1>
+
+  <p class="co-summary-head"><a id="pgfId-1011754"></a>This chapter covers</p>
+
+  <ul class="calibre12">
+    <li class="co-summary-bullet"><a class="calibre13" id="pgfId-1011760"></a>Principles and best practices of good and maintainable test code</li>
+
+    <li class="co-summary-bullet"><a class="calibre13" id="pgfId-1011774"></a>Avoiding test smells that hinder the comprehension and evolution of test code</li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1011784"></a>You have probably noticed that once <i class="fm-italics">test infected</i>, the number of JUnit tests a software development team writes and maintains can become significant. In practice, test code bases grow quickly. Moreover, we have observed that Lehman’s law of evolution, “Code tends to rot, unless one actively works against it” (1980), also applies to test code. A 2018 literature review by Garousi and Küçük shows that our body of knowledge about things that can go wrong with test code is already comprehensive.</p>
+
+  <p class="body"><a id="pgfId-1011815"></a>As with production code, <i class="fm-italics">we must put extra effort into writing high-quality test code bases so they can be maintained and developed sustainably</i>. In this chapter, I discuss two opposite perspectives of writing test code. First, we examine what constitutes good and maintainable test code, and best practices that can help you keep complexity under control. Then we look at what constitutes problematic test code. We focus on key <i class="fm-italics">test smells</i> that hinder test code comprehension and evolution.</p>
+
+  <p class="body"><a id="pgfId-1011824"></a>I have discussed some of this material informally in previous chapters. This chapter consolidates that knowledge.</p>
+
+  <h2 class="fm-head" id="heading_id_3"><a id="pgfId-1011830"></a>10.1 Principles of maintainable test code</h2>
+
+  <p class="body"><a id="pgfId-1011840"></a><a id="marker-1011841"></a>What does good test code look like? There is a great deal of literature about test code quality, which I rely on in this section. Much of what I say here can be found in the works of Langr, Hunt, and Thomas (2015); Meszaros (2007); and Beck (2019)—as always, with my own twist.</p>
+
+  <h3 class="fm-head1" id="heading_id_4"><a id="pgfId-1011849"></a>10.1.1 Tests should be fast</h3>
+
+  <p class="body"><a id="pgfId-1011859"></a><a id="marker-1011860"></a>Tests are a developer’s safety net. Whenever we perform maintenance or evolution in source code, we use the feedback from the test suite to understand whether the system is working as expected. The faster we get feedback from the test code, the better. Slower test suites force us to run the tests less often, making them less effective. Therefore, good tests are fast. There is no hard line that separates slow from fast tests. You should apply common sense.</p>
+
+  <p class="body"><a id="pgfId-1011868"></a>If you are facing a slow test, consider the following:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1011874"></a>Using mocks or stubs to replace slower components that are part of the test</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1011888"></a>Redesigning the production code so slower pieces of code can be tested separately from fast pieces of code</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1011898"></a>Moving slower tests to a different test suite that you can run less often</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1011908"></a>Sometimes you cannot avoid slow tests. Think of SQL tests: they are much slower than unit tests, but there is not much you can do about it. I separate slow tests from fast ones: this way, I can run my fast tests all the time and the slow tests when I modify the production code that has a slow test tied to it. I also run the slow tests before committing my code and in continuous integration. <a id="marker-1011910"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_5"><a id="pgfId-1011917"></a>10.1.2 Tests should be cohesive, independent, and isolated</h3>
+
+  <p class="body"><a id="pgfId-1011953"></a><a id="marker-1011928"></a>Tests should be as cohesive, independent, and isolated as possible. Ideally, a single test method should test a single functionality or behavior of the system. <i class="fm-italics">Fat tests</i> (or, as the <a id="marker-1011942"></a>test smells community calls them, <i class="fm-italics">eager tests</i>) exercise multiple functionalities and are often complex in terms of implementation. Complex test code reduces our ability to understand what is being tested at a glance and makes future maintenance more difficult. If you face such a test, break it into multiple smaller tests. Simpler and shorter tests are better.</p>
+
+  <p class="body"><a id="pgfId-1011962"></a>Moreover, tests should not depend on other tests to succeed. The test result should be the same whether the test is executed in isolation or together with the rest of the test suite. It is not uncommon to see cases where test B only works if test A is executed first. This is often the case when test B relies on the work of test A to set up the environment for it. Such tests become highly unreliable.</p>
+
+  <p class="body"><a id="pgfId-1011968"></a>If you have a test that is somewhat dependent on another test, refactor the test suite so each test is responsible for setting up the whole environment it needs. Another tip that helps make tests independent is to make sure your tests clean up their messes: for example, by deleting any files they created on the disk and cleaning up values they inserted into a database. This will force tests to set up things themselves and not rely on data that was already there. <a id="marker-1011970"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_6"><a id="pgfId-1011977"></a>10.1.3 Tests should have a reason to exist</h3>
+
+  <p class="body"><a id="pgfId-1011997"></a><a id="marker-1011988"></a>You want tests that either help you find bugs or help you document behavior. You <i class="fm-italics">do not</i> want tests that, for example, increase code coverage. If a test does not have a good reason to exist, it should not exist. Remember that you must maintain all your tests. The perfect test suite is one that can detect all the bugs with the minimum number of tests. While having such a perfect test suite is impossible, making sure you do not have useless tests is a good start. <a id="marker-1012002"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_7"><a id="pgfId-1012009"></a>10.1.4 Tests should be repeatable and not flaky</h3>
+
+  <p class="body"><a id="pgfId-1012029"></a><a id="marker-1012020"></a>A <i class="fm-italics">repeatable</i> test gives the same result no matter how many times it is executed. Developers lose their trust in tests that present flaky behavior (sometimes pass and sometimes fail, without any changes in the system or test code).</p>
+
+  <p class="body"><a id="pgfId-1012038"></a>Flaky tests hurt the productivity of software development teams. It is hard to know whether a flaky test is failing because the behavior is buggy or because it is flaky. Little by little, flaky tests can make us lose confidence in our test suites. Such lack of confidence may lead us to deploy our systems even though the tests fail (they may be broken because of flakiness, not because the system is misbehaving).</p>
+
+  <p class="body"><a id="pgfId-1012044"></a>The prevalence and impact of flaky tests in the software development world have increased over time (or, at least, we talk more about them now). Companies like Google and Facebook have publicly talked about problems caused by flaky tests.</p>
+
+  <p class="body"><a id="pgfId-1012050"></a>A test can become flaky for many reasons:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012056"></a><i class="fm-italics1">Because it depends on external or shared resources</i> —If a test depends on a database, many things can cause flakiness. For example, the database may not be available at the moment the test is executed, it may contain data that the test does not expect, or two developers may be running the test suite at the same time and sharing the same database, causing one to break the test of the other.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012077"></a><i class="fm-italics1">Due to improper time-outs</i> —This is a common reason in web testing. Suppose a test has to wait for something to happen in the system: for example, a request coming back from a web service, which is then displayed in an HTML element. If the web application is slower than normal, the test may fail because it did not wait long enough.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012112"></a><i class="fm-italics1">Because of a hidden interaction between different test methods</i> —Test <code class="fm-code-in-text">A</code> somehow influences the result of test <code class="fm-code-in-text">B</code>, possibly causing it to fail.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1012121"></a>The work of Luo et al. (2014) also shed light on the causes of flaky tests. After analyzing 201 flaky tests in open source systems, the authors noticed the following:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012127"></a>Async wait, concurrency, and test order dependency are the three most common causes of flakiness.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012141"></a>Most flaky tests are flaky from the time they are written.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012151"></a>Flaky tests are rarely due to the platform-specifics (they do not fail because of different operating systems).</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012161"></a>Flakiness is often due to dependencies on external resources and can be fixed by cleaning the shared state between test runs.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1012177"></a>Detecting the cause of a flaky test is challenging. Software engineering researchers have proposed automated tools to detect flaky tests. If you are curious about such tools and the current state of the art, I suggest that you read the following:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012183"></a>The work of Bell et al. (2018), who proposed DeFlaker, a tool that monitors the coverage of the latest code changes and marks a test as flaky if any new failing test did not exercise any of the changed code.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012197"></a>The work of Lam et al. (2019), who proposed iDFlakies, a tool that executes tests in random order, looking for flakiness.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1013048"></a>Because these tools are not fully ready, it is up to us to find the flaky tests and fix them. Meszaros has made a decision table that may help you with that task. You can find it in his book (2007) or on his website (<a class="url" href="http://xunitpatterns.com/Erratic%20Test.html">http://xunitpatterns.com/Erratic%20Test.html</a>). <a id="marker-1031994"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_8"><a id="pgfId-1013080"></a>10.1.5 Tests should have strong assertions</h3>
+
+  <p class="body"><a id="pgfId-1013100"></a><a id="marker-1013091"></a>Tests exist to assert that the exercised code behaved as expected. Writing good assertions is therefore key to a good test. An extreme example of a test with bad assertions is one with <i class="fm-italics">no</i> assertions. This seems strange, but believe it or not, it happens—not because we do not know what we are doing, but because writing a good assertion can be tricky. In cases where observing the outcome of behavior is not easily achievable, I suggest refactoring the class or method under test to increase its observability. Revisit chapter 7 if you need tips for how to do so.</p>
+
+  <p class="body"><a id="pgfId-1013190"></a>Assertions should be as strong as possible. You want your tests to fully validate the behavior and break if there is any slight change in the output. Imagine that <a id="marker-1013111"></a>a method <code class="fm-code-in-text">calculateFinalPrice()</code> in a <code class="fm-code-in-text">ShoppingCart</code> class changes <a id="marker-1013137"></a>two <a id="marker-1013143"></a>properties: <code class="fm-code-in-text">finalPrice</code> and the <code class="fm-code-in-text">taxPaid</code>. If your <a id="marker-1013169"></a>tests only ensure the value of the <code class="fm-code-in-text">finalPrice</code> property, a bug may happen in the way <code class="fm-code-in-text">taxPaid</code> is set, and your tests will not notice it. Make sure you are asserting everything that needs to be asserted. <a id="marker-1013195"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_9"><a id="pgfId-1013202"></a>10.1.6 Tests should break if the behavior changes</h3>
+
+  <p class="body"><a id="pgfId-1013212"></a><a id="marker-1013213"></a>Tests let you know that you broke the expected behavior. If you break the behavior and the test suite is still green, something is wrong with your tests. That may happen because of weak assertions (which we have discussed) or because the method is covered but not tested (this happens, as discussed in chapter 9). Also recall that I mentioned the work of Vera-Pérez and colleagues (2019) and the existence of pseudo-tested methods.</p>
+
+  <p class="body"><a id="pgfId-1013221"></a>Whenever you write a test, make sure it will break if the behavior changes. The TDD cycle allows developers to always see the test breaking. That happens because the behavior is not yet implemented, but I like the idea of “let’s see if the test breaks if the behavior does not exist or is incorrect.” I am not afraid of purposefully introducing a bug in the code, running the tests, and seeing them red (and then reverting the bug). <a id="marker-1013223"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_10"><a id="pgfId-1013230"></a>10.1.7 Tests should have a single and clear reason to fail</h3>
+
+  <p class="body"><a id="pgfId-1013240"></a><a id="marker-1013241"></a>We love tests that fail. They indicate problems in our code, usually long before the code is deployed. But the test failure is the first step toward understanding and fixing the bug. Your test code should help you understand what caused the bug.</p>
+
+  <p class="body"><a id="pgfId-1013249"></a>There are many ways you can do that. If your test follows the earlier principles, the test is cohesive and exercises only one (hopefully small) behavior of the software system. Give your test a name that indicates its intention and the behavior it exercises. Make sure anyone can understand the input values passed to the method under test. If the input values are complex, use good variable names that explain what they are about and code comments in natural language. Finally, make sure the assertions are clear, and explain why a value is expected. <a id="marker-1013251"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_11"><a id="pgfId-1013258"></a>10.1.8 Tests should be easy to write</h3>
+
+  <p class="body"><a id="pgfId-1013268"></a><a id="marker-1013269"></a>There should be no friction when it comes to writing tests. If it is hard to do so (perhaps writing an integration test requires you to set up the database, create complex objects one by one, and so on), it is too easy for you to give up and not do it.</p>
+
+  <p class="body"><a id="pgfId-1013277"></a>Writing unit tests tends to be easy most of the time, but it may get complicated when the class under test requires too much setup or depends on too many other classes. Integration and system tests also require each test to set up and tear down the (external) infrastructure.</p>
+
+  <p class="body"><a id="pgfId-1013283"></a>Make sure tests are always easy to write. Give developers all the tools to do that. If tests require a database to be set up, provide developers with an API that requires one or two method calls and voilà—the database is ready for tests.</p>
+
+  <p class="body"><a id="pgfId-1013289"></a>Investing time in writing good test infrastructure is fundamental and pays off in the long term. Remember the test base classes we created to facilitate SQL integration tests and all the POs we created to facilitate web testing in chapter 9? This is the type of infrastructure I am talking about. After the test infrastructure was in place, the rest was easy. <a id="marker-1013291"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_12"><a id="pgfId-1013298"></a>10.1.9 Tests should be easy to read</h3>
+
+  <p class="body"><a id="pgfId-1013308"></a><a id="marker-1013309"></a>I touched on this point when I said that tests should have a clear reason to fail. I will reinforce it now. Your test code base will grow significantly. But you probably will not read it until there is a bug or you add another test to the suite.</p>
+
+  <p class="body"><a id="pgfId-1013317"></a>It is well known that developers spend more time reading than writing code. Therefore, saving reading time will make you more productive. All the things you know about code readability and use in your production code apply to test code, as well. Do not be afraid to invest some time in refactoring it. The next developer will thank you.</p>
+
+  <p class="body"><a id="pgfId-1013323"></a>I follow two practices when making my tests readable: make sure all the information (especially the inputs and assertions) is clear enough, and use test data builders whenever I build complex data structures.</p>
+
+  <p class="body"><a id="pgfId-1013329"></a>Let’s illustrate these two ideas with an example. The following listing shows an <code class="fm-code-in-text">Invoice</code> class.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1013395"></a>Listing 10.1 <code class="fm-code-in-text">Invoice</code> class</p>
+  <pre class="programlisting"><a id="pgfId-1013344"></a>public class Invoice {
+<a id="pgfId-1013448"></a> 
+<a id="pgfId-1013443"></a>  private final double value;
+<a id="pgfId-1013454"></a>  private final String country;
+<a id="pgfId-1013460"></a>  private final CustomerType customerType;
+<a id="pgfId-1013471"></a> 
+<a id="pgfId-1013466"></a>  public Invoice(double value, String country, CustomerType customerType) {
+<a id="pgfId-1013477"></a>    this.value = value;
+<a id="pgfId-1013483"></a>    this.country = country;
+<a id="pgfId-1013489"></a>    this.customerType = customerType;
+<a id="pgfId-1013495"></a>  }
+<a id="pgfId-1013506"></a> 
+<a id="pgfId-1013501"></a>  public double calculate() {   <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1013518"></a>    double ratio = 0.1;
+<a id="pgfId-1013529"></a> 
+<a id="pgfId-1013524"></a>    // some business rule here to calculate the ratio
+<a id="pgfId-1013535"></a>    // depending on the value, company/person, country ...
+<a id="pgfId-1013546"></a> 
+<a id="pgfId-1013541"></a>    return value * ratio;
+<a id="pgfId-1013552"></a>  }
+<a id="pgfId-1013558"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1035504"></a><span class="fm-combinumeral">❶</span> The method we will soon test. Imagine business rule here.</p>
+
+  <p class="body"><a id="pgfId-1013584"></a>Not-very-clear test code for the <code class="fm-code-in-text">calculate()</code> method could <a id="marker-1013595"></a>look like the next listing.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1013656"></a>Listing 10.2 A not-very-clear test for an invoice</p>
+  <pre class="programlisting"><a id="pgfId-1013605"></a>@Test
+<a id="pgfId-1013695"></a>void test1() {
+<a id="pgfId-1013701"></a>  Invoice invoice = new Invoice(new BigDecimal("2500"), "NL",
+<a id="pgfId-1013707"></a>  <span class="fm-code-continuation-arrow">➥</span> CustomerType.COMPANY);
+<a id="pgfId-1013724"></a>  double v = invoice.calculate();
+<a id="pgfId-1013730"></a>  assertThat(v).isEqualTo(250);
+<a id="pgfId-1013736"></a>}</pre>
+
+  <p class="body"><a id="pgfId-1013758"></a>At first glance, it may be hard to understand what all the information in the code means. It may require some extra effort to see what this invoice looks like. Imagine an entity class from a real enterprise system: an <code class="fm-code-in-text">Invoice</code> class may have dozens of attributes. The name of the test and the name of the cryptic variable <code class="fm-code-in-text">v</code> do not clearly explain what they mean. It is also not clear if the choice of “NL” as a country or “COMPANY” as a customer type makes any difference for the test or whether they are random values.</p>
+
+  <p class="body"><a id="pgfId-1013767"></a>A better version of this test method could be as follows.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1013824"></a>Listing 10.3 A more readable version of the test</p>
+  <pre class="programlisting"><a id="pgfId-1013773"></a>@Test
+<a id="pgfId-1013863"></a>void taxesForCompanies() {
+<a id="pgfId-1013869"></a>  Invoice invoice = new InvoiceBuilder()
+<a id="pgfId-1013875"></a>      .asCompany()
+<a id="pgfId-1013881"></a>      .withCountry("NL")
+<a id="pgfId-1013887"></a>      .withAValueOf(2500.0)
+<a id="pgfId-1013893"></a>      .build();                                      <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1013910"></a> 
+<a id="pgfId-1013905"></a>  double calculatedValue = invoice.calculate();      <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1013927"></a> 
+<a id="pgfId-1013922"></a>  assertThat(calculatedValue)                        <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1013939"></a>    .isEqualTo(250.0); // 2500 * 0.1 = 250
+<a id="pgfId-1013945"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1035281"></a><span class="fm-combinumeral">❶</span> The Invoice object is now built through a fluent builder.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1035302"></a><span class="fm-combinumeral">❷</span> The variable that holds the result has a better name.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1035326"></a><span class="fm-combinumeral">❸</span> The assertion has a comment to explain where the 250 comes from.</p>
+
+  <p class="body"><a id="pgfId-1014019"></a>First, the name of the test method—<code class="fm-code-in-text">taxesForCompanies</code>—clearly expresses what behavior the method is exercising. This is a best practice: name your test method after what it tests. Why? Because a good method name may save developers from having to read the method’s body to understand what is being tested. In practice, it is common to skim the test suite, looking for a specific test or learning more about that class. Meaningful test names help. Some developers would argue for an even more detailed method name, such as <code class="fm-code-in-text">taxesForCompanyAreTaxRateMultipliedByAmount</code>. A developer skimming the test suite can understand even the business rule.</p>
+
+  <p class="body"><a id="pgfId-1014064"></a>Many of the methods we tested in previous chapters, while complex, had a single responsibility: for example, <code class="fm-code-in-text">substringsBetween</code> in chapter 2, or <code class="fm-code-in-text">leftPad</code> in chapter 3. We even created single parameterized tests with a generic name. We did not need a set of test methods with nice names, as the name of the method under test said it all. But in enterprise systems, where we have business-like methods such as <code class="fm-code-in-text">calculateTaxes</code> or <code class="fm-code-in-text">calculateFinalPrice</code>, each test method (or partition) covers a different business rule. Those can be expressed in the name of that test method.</p>
+
+  <p class="body"><a id="pgfId-1014099"></a>Next, using <code class="fm-code-in-text">InvoiceBuilder</code> (the implementation of which I show shortly) clearly expresses what this invoice is about: it is an invoice for a company (as clearly stated by the <code class="fm-code-in-text">asCompany()</code> method), “NL” is the country of that invoice, and the invoice has a value of 2500. The result of the behavior goes to a variable whose name says it all (<code class="fm-code-in-text">calculatedValue</code>). The assertion contains a comment that explains where the 250 comes from.</p>
+
+  <p class="body"><a id="pgfId-1014158"></a><code class="fm-code-in-text">InvoiceBuilder</code> is an example of an implementation of a <i class="fm-italics">test data builder</i> (as defined <a id="marker-1014127"></a>by Pryce [2007]). The builder helps us create test scenarios by providing a clear and expressive API. The use of fluent interfaces (such as <code class="fm-code-in-text">asCompany().withAValueOf()...</code>) is also a common implementation choice. In terms of its implementation, <code class="fm-code-in-text">InvoiceBuilder</code> is a Java class. The trick that allows methods to be chained is to return the class in the methods (methods return <code class="fm-code-in-text">this</code>), as shown in the following listing.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1014218"></a>Listing 10.4 Invoice test data builder</p>
+  <pre class="programlisting"><a id="pgfId-1014167"></a>public class InvoiceBuilder {
+<a id="pgfId-1014262"></a> 
+<a id="pgfId-1014257"></a>  private String country = "NL";                             <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1014274"></a>  private CustomerType customerType = CustomerType.PERSON;
+<a id="pgfId-1014280"></a>  private double value = 500;
+<a id="pgfId-1014291"></a> 
+<a id="pgfId-1014286"></a>  public InvoiceBuilder withCountry(String country) {        <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1014303"></a>    this.country = country;
+<a id="pgfId-1014309"></a>    return this;
+<a id="pgfId-1014315"></a>  }
+<a id="pgfId-1014326"></a> 
+<a id="pgfId-1014321"></a>  public InvoiceBuilder asCompany() {
+<a id="pgfId-1014332"></a>    this.customerType = CustomerType.COMPANY;
+<a id="pgfId-1014338"></a>    return this;
+<a id="pgfId-1014344"></a>  }
+<a id="pgfId-1014355"></a> 
+<a id="pgfId-1014350"></a>  public InvoiceBuilder withAValueOf(double value) {
+<a id="pgfId-1014361"></a>    this.value = value;
+<a id="pgfId-1014367"></a>    return this;
+<a id="pgfId-1014373"></a>  }
+<a id="pgfId-1014384"></a> 
+<a id="pgfId-1014379"></a>  public Invoice build() {                                   <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1014396"></a>    return new Invoice(value, country, customerType);
+<a id="pgfId-1014402"></a>  }
+<a id="pgfId-1014408"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1035061"></a><span class="fm-combinumeral">❶</span> The builder contains predefined values allowing the user to only set the values they need to customize for the current test.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1035082"></a><span class="fm-combinumeral">❷</span> The builder contains many methods that let the test change a specific value (such as the country).</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1035099"></a><span class="fm-combinumeral">❸</span> Once the required Invoice is set up, the builder builds an instance of it.</p>
+
+  <p class="body"><a id="pgfId-1014466"></a>You should feel free to customize your builders. A common trick is to make the builder build a common version of the class without requiring the call to all the setup methods. You can then, in one line, build a complex invoice, as you see in the next listing.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1014523"></a>Listing 10.5 Building an invoice with a single line</p>
+  <pre class="programlisting"><a id="pgfId-1014472"></a>var invoice = new InvoiceBuilder().build();</pre>
+
+  <p class="body"><a id="pgfId-1014584"></a>In such a case, the <code class="fm-code-in-text">build</code> method (without any <a id="marker-1014573"></a>setup) will always build an invoice for a person with a value of 500.0 and “NL” as the country (see the initialized values in <code class="fm-code-in-text">InvoiceBuilder</code>).</p>
+
+  <p class="body"><a id="pgfId-1014615"></a>Other developers may write shortcut methods that build other common fixtures for the class. In listing 10.6, the <code class="fm-code-in-text">anyCompany()</code> method returns <a id="marker-1030818"></a>an Invoice that belongs to a company (and the default value for the other fields). The <code class="fm-code-in-text">fromTheUS()</code> method builds <a id="marker-1030819"></a>an Invoice for someone in the U.S.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1014681"></a>Listing 10.6 Other helper methods in the builder</p>
+  <pre class="programlisting"><a id="pgfId-1014630"></a>public Invoice anyCompany() {
+<a id="pgfId-1014720"></a>  return new Invoice(value, country, CustomerType.COMPANY);
+<a id="pgfId-1014726"></a>}
+<a id="pgfId-1014732"></a>public Invoice fromTheUS() {
+<a id="pgfId-1014743"></a>  return new Invoice(value, "US", customerType);
+<a id="pgfId-1014749"></a>}</pre>
+
+  <p class="body"><a id="pgfId-1017301"></a>Building complex test data is such a recurrent task that frameworks are available to help, such as Java Faker (<a class="url" href="https://github.com/DiUS/java-faker">https://github.com/DiUS/java-faker</a>) for the Java world and factory_bot (<a class="url" href="https://github.com/thoughtbot/factory_bot">https://github.com/thoughtbot/factory_bot</a>) for Ruby. I am sure you can find one for your programming language.</p>
+
+  <p class="body"><a id="pgfId-1020966"></a>Finally, you may have noticed the comment near the assertion: <code class="fm-code-in-text">2500</code> <code class="fm-code-in-text">*</code> <code class="fm-code-in-text">0.1</code> <code class="fm-code-in-text">=</code> <code class="fm-code-in-text">250</code>. Some developers would suggest that the need for this comment indicates the code requires improvement. To remove the comment, we can introduce explanatory variables: in listing 10.7, we use the <code class="fm-code-in-text">invoiceValue</code> and <code class="fm-code-in-text">tax</code> variables in the assertion. It is up to you and your team members to agree on the best approach for you.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1021026"></a>Listing 10.7 Making the test more readable via explanatory variables</p>
+  <pre class="programlisting"><a id="pgfId-1020975"></a>@Test
+<a id="pgfId-1021065"></a>void taxesForCompanyAreTaxRateMultipliedByAmount() {
+<a id="pgfId-1021071"></a>  double invoiceValue = 2500.0;                        <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1021083"></a>  double tax = 0.1;
+<a id="pgfId-1021094"></a> 
+<a id="pgfId-1021089"></a>  Invoice invoice = new InvoiceBuilder()
+<a id="pgfId-1021100"></a>      .asCompany()
+<a id="pgfId-1021106"></a>      .withCountry("NL")
+<a id="pgfId-1021112"></a>      .withAValueOf(invoiceValue)                      <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1021124"></a>      .build();
+<a id="pgfId-1021135"></a> 
+<a id="pgfId-1021130"></a>  double calculatedValue = invoice.calculate();
+<a id="pgfId-1021146"></a> 
+<a id="pgfId-1021141"></a>  assertThat(calculatedValue)
+<a id="pgfId-1021152"></a>    .isEqualTo(invoiceValue * tax);                    <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1021164"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1034846"></a><span class="fm-combinumeral">❶</span> Declares the invoiceValue and tax variables</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1034867"></a><span class="fm-combinumeral">❷</span> Uses the variable instead of the hard-coded value</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1034884"></a><span class="fm-combinumeral">❸</span> The assertion uses the explanatory variables instead of hard-coded numbers.</p>
+
+  <p class="body"><a id="pgfId-1021222"></a>To sum up, introducing test data builders, using variable names to explain the meaning of information, having clear assertions, and adding comments where code is not expressive enough will help developers better comprehend the test code. <a id="marker-1021224"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_13"><a id="pgfId-1021231"></a>10.1.10 Tests should be easy to change and evolve</h3>
+
+  <p class="body"><a id="pgfId-1021241"></a><a id="marker-1021242"></a>Although we like to think that we always design stable classes with single responsibilities that are closed for modification but open for extension (see Martin [2014] for more about the Open Closed Principle), in practice, that does not always happen. Your production code will change, and that will force your tests to change as well.</p>
+
+  <p class="body"><a id="pgfId-1021250"></a>Therefore, your task when implementing test code is to ensure that changing it will not be too painful. I do not think it is possible to make it completely painless, but you can reduce the number of points that will require changes. For example, if you see the same snippet of code in 10 different test methods, consider extracting it. If a change happens and you are forced to change that code snippet, you now only have to change it in 1 place rather than 10.</p>
+
+  <p class="body"><a id="pgfId-1021256"></a>Your tests are coupled to the production code in one way or another. That is a fact. The more your tests know about how the production code works, the harder it is to change them. As we discussed in chapter 6, a clear disadvantage of using mocks is the significant coupling with the production code. Determining how much your tests need to know about the production code to test it properly is a significant challenge. <a id="marker-1021258"></a><a id="marker-1021261"></a></p>
+
+  <h2 class="fm-head" id="heading_id_14"><a id="pgfId-1021267"></a>10.2 Test smells</h2>
+
+  <p class="body"><a id="pgfId-1021323"></a><a id="marker-1021278"></a>In the previous sections, we discussed some best practices for writing good test code. Now let’s discuss test smells. The term <i class="fm-italics">code smell</i> indicates symptoms <a id="marker-1021292"></a>that may indicate deeper problems in the system’s source code. Some well-known examples are <i class="fm-italics">Long Method</i>, <i class="fm-italics">Long Class</i>, and <i class="fm-italics">God Class</i>. Several research <a id="marker-1021328"></a>papers <a id="marker-1021334"></a>show <a id="marker-1021340"></a>that code smells hinder the comprehensibility and maintainability of software systems (such as the work by Khomh and colleagues [2009]).</p>
+
+  <p class="body"><a id="pgfId-1021350"></a>While the term has long been applied to production code, our community has been developing catalogs of smells that are specific to test code. Research has also shown that test smells are prevalent in real life and, unsurprisingly, often hurt the maintenance and comprehensibility of the test suite (Spadini et al., 2020).</p>
+
+  <p class="body"><a id="pgfId-1021369"></a>The following sections examine several well-known test smells. A more comprehensive list can be <a id="marker-1021358"></a>found in <i class="fm-italics">xUnit Test Patterns</i> by Meszaros (2007). I also <a id="marker-1021374"></a>recommend reading the foundational paper on test smells by Deursen and colleagues (2001).</p>
+
+  <h3 class="fm-head1" id="heading_id_15"><a id="pgfId-1021384"></a>10.2.1 Excessive duplication</h3>
+
+  <p class="body"><a id="pgfId-1021394"></a><a id="marker-1021395"></a>It is not surprising that code duplication can happen in test code since it is widespread in production code. Tests are often similar in structure, as you may have noticed in several of the code examples in this book. We even used parameterized tests to reduce duplication. A less attentive developer may end up writing duplicate code (copy-pasting often happens in real life, as Treude, Zaidman, and I observed in an empirical study [2021]) instead of putting some effort into implementing a better solution.</p>
+
+  <p class="body"><a id="pgfId-1021403"></a>Duplicated code can reduce the productivity of software developers. If we need to change a duplicated piece of code, we must apply the same change in all the places where the code is duplicated. In practice, it is easy to forget one of these places and end up with problematic test code. Duplicating code may also hinder the ability to evolve the test suite, as mentioned earlier. If the production code changes, you do not want to have to change too much test code. Isolating duplicated code reduces this pain.</p>
+
+  <p class="body"><a id="pgfId-1021409"></a>I advise you to refactor your test code often. Extracting duplicate code to private methods or external classes is often a good, quick, cheap solution to the problem. But being pragmatic is key: a little duplication may not harm you, and you should use your experience to judge when refactoring is needed. <a id="marker-1021411"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_16"><a id="pgfId-1021418"></a>10.2.2 Unclear assertions</h3>
+
+  <p class="body"><a id="pgfId-1021428"></a><a id="marker-1021429"></a>Assertions are the first thing a developer looks at when a test fails. A good assertion clearly reveals its reason for failure, is legible, and is as specific as possible. The test smell emerges when it is hard to understand the assertions or the reason for their failure.</p>
+
+  <p class="body"><a id="pgfId-1021437"></a>There are several reasons for this smell to happen. Some features or business rules are so complex that they require a complex set of assertions to ensure their behavior. In these situations, we end up writing complex assert instructions that are not easy to understand. To help with such cases, I recommend writing customized assert instructions that abstract away part of the complexity of the assertion code, and writing code comments that explain quickly and in natural language what those assertions are about. The latter mainly applies when the assertions are not self-explanatory. Do not be afraid to write a comment in your code if it will help future developers understand what is going on.</p>
+
+  <p class="body"><a id="pgfId-1021443"></a>Interestingly, a common best practice in the test best practice literature is the “one assertion per method” strategy. The idea is that a test with a single assertion can only focus on a single behavior, and it is easier for developers to understand if the assertion fails. I strongly disagree with this rule. If my test is cohesive enough and focuses on a single feature, the assertions should ensure that the entire behavior is as expected. This may mean asserting that many fields were updated and have a new value. It may also mean asserting that the mock interacted with other dependencies properly. There are many cases in which using multiple assertions in a single test is useful. Forcing developers to have a single assertion per test method is extreme—but your tests also should not have useless assertions.</p>
+
+  <p class="body"><a id="pgfId-1021449"></a>Frameworks often offer the possibility of doing <i class="fm-italics">soft assertions</i>: assertions that <a id="marker-1021460"></a>do not stop the test if they fail but are reported only at the very end of the test execution (which is still considered a failed test). For example, AssertJ offers this ability (<a class="url" href="http://mng.bz/aDeo">http://mng.bz/aDeo</a>).</p>
+
+  <p class="body"><a id="pgfId-1021471"></a>Finally, even if you know what to assert for, picking the right assertion method provided by whatever test framework you are using can make a difference. Using the wrong or not ideal assert instruction may lead to imprecise assertion error messages. I strongly suggest using AssertJ and its extensive collection of assertions. <a id="marker-1021473"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_17"><a id="pgfId-1021480"></a>10.2.3 Bad handling of complex or external resources</h3>
+
+  <p class="body"><a id="pgfId-1021490"></a><a id="marker-1021491"></a>Understanding test code that uses external resources can be difficult. The test should ensure that the resource is readily available and prepared for it. The test should also clean up its mess afterward.</p>
+
+  <p class="body"><a id="pgfId-1021499"></a>A common smell is to be optimistic about the external resource. Resource optimism happens when a test assumes that a necessary resource (such as a database) is readily available at the start of its execution. The problem is that when the resource is not available, the test fails, often without a clear message that explains the reason. This can confuse developers, who may think a new bug has been introduced in the system.</p>
+
+  <p class="body"><a id="pgfId-1021521"></a>To avoid such resource optimism, a test should not assume that the resource is already in the correct state. The test should be responsible for setting up the state itself. This can mean the test is responsible for populating a database, writing the required files to the disk, or starting up a Tomcat server. This setup may require complex code, and you should also make your best effort to abstract away such complexity by, for example, moving such code to other classes (like <code class="fm-code-in-text">DatabaseInitialization</code> or <code class="fm-code-in-text">TomcatLoader</code>) and allowing the test code to focus on the test cases.</p>
+
+  <p class="body"><a id="pgfId-1021530"></a>Another common test smell happens when the test assumes that the resource is available all the time. Imagine a test method that interacts with a web service, which may be down for reasons we do not control. To avoid this test smell, you have two options: avoid depending on external resources by using stubs and mocks or, if the test cannot avoid using the external dependency, make the test suite robust enough. For example, make your test suite skip that test when the resource is unavailable, and provide an alert explaining why that was the case. This may seem counterintuitive, but remember that developers trust their test suites. Having a single test fail for the wrong reasons can make you lose confidence in the entire test suite.</p>
+
+  <p class="body"><a id="pgfId-1021536"></a>From a readability perspective, it should be easy to understand all the (external) resources required and used by the test. Imagine that a test requires a test file in some directory. If the file is not there, the test fails. A first-time developer may have difficulty understanding this prerequisite. Avoid having such mystery guests in your test suite. The test code should be explicit about all its external dependencies. <a id="marker-1021538"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_18"><a id="pgfId-1021545"></a>10.2.4 Fixtures that are too general</h3>
+
+  <p class="body"><a id="pgfId-1021565"></a><a id="marker-1021556"></a>A <i class="fm-italics">fixture</i> is the set of input values used to exercise the component under test. As you may have noticed, fixtures are the stars of the test method, as they derive naturally from the test cases we engineer using any of the techniques we have discussed.</p>
+
+  <p class="body"><a id="pgfId-1021574"></a>When testing more complex components, you may need to build several different fixtures: one for each partition you want to exercise. These fixtures can then become complex. And to make the situation worse, while tests are different from each other, their fixtures may intersect. Given this possible intersection among the different fixtures, as well as the difficulty with building complex entities and fixtures, you may decide to declare a large fixture that works for many different tests. Each test would then use a small part of this large fixture.</p>
+
+  <p class="body"><a id="pgfId-1021580"></a>While this approach may work, and the tests may correctly implement the test cases, they quickly become hard to maintain. Once a test fails, you will find yourself with a large fixture that may not be completely relevant for that particular failing test. You then must manually filter out parts of the fixture that are not exercised by the failing test. That is an unnecessary cost.</p>
+
+  <p class="body"><a id="pgfId-1021586"></a>Making sure the fixture of a test is as specific and cohesive as possible helps you comprehend the essence of a test (which is, again, highly relevant when the test starts to fail). Build patterns (focusing on building test data) can help you avoid generic fixtures. More specifically, the Test Data Builder pattern we discussed is often used in the test code of enterprise applications. Such applications often deal with creating complex sets of interrelated business entities, which can easily lead developers to write general fixtures. <a id="marker-1021588"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_19"><a id="pgfId-1021595"></a>10.2.5 Sensitive assertions</h3>
+
+  <p class="body"><a id="pgfId-1021615"></a><a id="marker-1021606"></a>Good assertions are fundamental in test cases. A bad assertion may result in a test not failing when it should. However, a bad assertion may also cause a test <i class="fm-italics">to fail when it should not</i>. Engineering a good assertion statement is challenging—even more so when components produce fragile outputs (outputs that change often). Test code should be as resilient as possible to the implementation details of the component under test. Assertions also should not be oversensitive to internal changes.</p>
+
+  <p class="body"><a id="pgfId-1024608"></a>In the tool we use to assess students’ submissions (<a class="url" href="https://github.com/cse1110/andy">https://github.com/cse1110/andy</a>), we have a class responsible for transforming the assessment results into a message (string) that we show in our cloud-based IDE. The following listing shows the output for one of our exercises.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1024682"></a>Listing 10.8 An example of the output of our tool</p>
+  <pre class="programlisting"><a id="pgfId-1024631"></a>--- Compilation                                                <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1024727"></a>Success
+<a id="pgfId-1024738"></a> 
+<a id="pgfId-1024733"></a>--- JUnit execution                                            <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1024750"></a>7/7 passed
+<a id="pgfId-1024761"></a> 
+<a id="pgfId-1024756"></a>--- JaCoCo coverage                                            <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1024773"></a>Line coverage: 13/13
+<a id="pgfId-1024779"></a>Instruction coverage: 46/46
+<a id="pgfId-1024785"></a>Branch coverage: 12/12 
+<a id="pgfId-1032434"></a> 
+<a id="pgfId-1024801"></a>--- Mutation testing                                           <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1024807"></a>10/10 killed
+<a id="pgfId-1024818"></a> 
+<a id="pgfId-1024813"></a>--- Code checks                                                <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1024830"></a>No code checks to be assessed
+<a id="pgfId-1024841"></a> 
+<a id="pgfId-1024836"></a>--- Meta tests                                                 <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1024853"></a>13/13 passed
+<a id="pgfId-1024859"></a>Meta test: always finds clumps (weight: 1) PASSED
+<a id="pgfId-1024865"></a>Meta test: always returns zero (weight: 1) PASSED
+<a id="pgfId-1024871"></a>Meta test: checks in pairs (weight: 1) PASSED
+<a id="pgfId-1024877"></a>Meta test: does not support more than two per clump (weight: 1) PASSED
+<a id="pgfId-1024883"></a>Meta test: does not support multiple clumps (weight: 1) PASSED
+<a id="pgfId-1024889"></a>Meta test: no empty check (weight: 1) PASSED
+<a id="pgfId-1024895"></a>Meta test: no null check (weight: 1) PASSED
+<a id="pgfId-1024901"></a>Meta test: only checks first two elements (weight: 1) PASSED
+<a id="pgfId-1024907"></a>Meta test: only checks last two elements (weight: 1) PASSED
+<a id="pgfId-1024913"></a>Meta test: skips elements after clump (weight: 1) PASSED
+<a id="pgfId-1024919"></a>Meta test: skips first element (weight: 1) PASSED
+<a id="pgfId-1024925"></a>Meta test: skips last element (weight: 1) PASSED
+<a id="pgfId-1024931"></a>Meta test: wrong result for one element (weight: 1) PASSED     <span class="fm-combinumeral">❼</span>
+<a id="pgfId-1032437"></a> 
+<a id="pgfId-1024947"></a>--- Assessment
+<a id="pgfId-1024953"></a>Branch coverage: 12/12 (overall weight=0.10)
+<a id="pgfId-1024959"></a>Mutation coverage: 10/10 (overall weight=0.10)
+<a id="pgfId-1024965"></a>Code checks: 0/0 (overall weight=0.00)
+<a id="pgfId-1024971"></a>Meta tests: 13/13 (overall weight=0.80)
+<a id="pgfId-1024982"></a> 
+<a id="pgfId-1024977"></a>Final grade: 100/100</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1034235"></a><span class="fm-combinumeral">❶</span> The result of the compilation</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1034256"></a><span class="fm-combinumeral">❷</span> How many tests passed</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1034273"></a><span class="fm-combinumeral">❸</span> Coverage information</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1034290"></a><span class="fm-combinumeral">❹</span> Mutation testing information</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1034307"></a><span class="fm-combinumeral">❺</span> Static code checks (in this case, none were executed)</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1034324"></a><span class="fm-combinumeral">❻</span> The student’s final grade</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1034341"></a><span class="fm-combinumeral">❼</span> The student’s final grade</p>
+
+  <p class="body"><a id="pgfId-1025104"></a>If we write tests without thinking too much, we end up writing lots of assertions that check whether some string is in the output. And given that we will write many test cases for many different outputs, our test suite will end up with lots of statements like “assert output contains Final grade: 100/100”.</p>
+
+  <p class="body"><a id="pgfId-1025110"></a>Note how sensitive this assertion is. If we change the message slightly, the tests will all break. Making assertions that are less sensitive to small changes is usually a good idea.</p>
+
+  <p class="body"><a id="pgfId-1025116"></a>In this situation, we have no other option than to assert that the string matches what we have. To sort this out, we decided to create our own set of assertions for each part of the message we need to assert. These assertions enable us to decouple our test code from the strings themselves. And if the message changes in the future, all we will need to do is change our assertion.</p>
+
+  <p class="body"><a id="pgfId-1025144"></a>In listing 10.9, the <code class="fm-code-in-text">reportCompilationError</code> test method <a id="marker-1025133"></a>ensures that we show the proper message to the student when they submit a solution that does not compile. We create a <code class="fm-code-in-text">Result</code> object (representing the <a id="marker-1025149"></a>final assessment of the student solution) with a compilation error. We then call the method under test and get back the generated string message.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1025210"></a>Listing 10.9 A test that uses our own assertions</p>
+  <pre class="programlisting"><a id="pgfId-1025159"></a>@Test
+<a id="pgfId-1025249"></a>void reportCompilationError() {
+<a id="pgfId-1025260"></a> 
+<a id="pgfId-1025255"></a>  Result result = new ResultTestDataBuilder()
+<a id="pgfId-1025266"></a>    .withCompilationFail(
+<a id="pgfId-1025272"></a>      new CompilationErrorInfo(
+<a id="pgfId-1025278"></a>        <span class="fm-code-continuation-arrow">➥</span> "Library.java", 10, "some compilation error"),
+<a id="pgfId-1025295"></a>      new CompilationErrorInfo(
+<a id="pgfId-1025301"></a>        <span class="fm-code-continuation-arrow">➥</span> "Library.java", 11, "some other compilation error")
+<a id="pgfId-1025318"></a>  ).build();                                 <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1025335"></a> 
+<a id="pgfId-1025330"></a>  writer.write(ctx, result);                 <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1025347"></a>  String output = generatedResult();
+<a id="pgfId-1025358"></a> 
+<a id="pgfId-1025353"></a>  assertThat(output)                         <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1025370"></a>    .has(noFinalGrade())
+<a id="pgfId-1025376"></a>    .has(not(compilationSuccess()))
+<a id="pgfId-1025382"></a>    .has(compilationFailure())
+<a id="pgfId-1025388"></a>    .has(compilationErrorOnLine(10))
+<a id="pgfId-1025394"></a>    .has(compilationErrorOnLine(11))
+<a id="pgfId-1025400"></a>    .has(compilationErrorType("some compilation error"))
+<a id="pgfId-1025406"></a>    .has(compilationErrorType("some other compilation error"));
+<a id="pgfId-1025412"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1034006"></a><span class="fm-combinumeral">❶</span> Creates a Result in which we tell the student that there is a compilation error in their solution</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1034027"></a><span class="fm-combinumeral">❷</span> Calls the method under test and gets the generated message</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1034044"></a><span class="fm-combinumeral">❸</span> Asserts that the message is as we expect. Note, however, our set of assertions: noFinalGrade, compilationSuccess, and so on. They decouple our test from the concrete string.</p>
+
+  <p class="body"><a id="pgfId-1025528"></a>The trick happens in the assertions. Note the many assertions we created: <code class="fm-code-in-text">noFinalGrade()</code> ensures that the final grade is not displayed, <code class="fm-code-in-text">compilationErrorOnLine(10)</code> ensures that we tell the student there is a compilation error on line 10, and so on. To create these assertions, we use AssertJ’s extension capabilities. All we need to do is create a method that returns AssertJ’s <code class="fm-code-in-text">Condition&lt;?&gt;</code> class. The generic <a id="marker-1025501"></a>type should be the same as the type of the object on which we are performing the assertion. In this case, the <code class="fm-code-in-text">output</code> variable <a id="marker-1025517"></a>is a string, so we need to create a <code class="fm-code-in-text">Condition&lt;String&gt;</code>.</p>
+
+  <p class="body"><a id="pgfId-1025563"></a>The implementation of the <code class="fm-code-in-text">compilationErrorOnLine</code> assertion is shown in listing 10.10. If a compilation error happens, we print <code class="fm-code-in-text">"-</code> <code class="fm-code-in-text">line</code> <code class="fm-code-in-text">&lt;number&gt;:</code> <code class="fm-code-in-text">&lt;error</code> <code class="fm-code-in-text">message&gt;"</code>. This assertion then looks for <code class="fm-code-in-text">"-</code> <code class="fm-code-in-text">line</code> <code class="fm-code-in-text">&lt;number&gt;"</code> in the string.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1025623"></a>Listing 10.10 <code class="fm-code-in-text">compilationErrorOnLine</code> assertion</p>
+  <pre class="programlisting"><a id="pgfId-1025572"></a>public static Condition&lt;String&gt; compilationErrorOnLine(int lineNumber) {  <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1025677"></a>  return new Condition&lt;&gt;() {
+<a id="pgfId-1025683"></a>    @Override
+<a id="pgfId-1025689"></a>    public boolean matches(String value) {
+<a id="pgfId-1025695"></a>      return value.contains("- line " + lineNumber);                      <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1025707"></a>    }
+<a id="pgfId-1025713"></a>  };
+<a id="pgfId-1025719"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1033901"></a><span class="fm-combinumeral">❶</span> Makes the method static, so we can statically import it in the test class</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1033902"></a><span class="fm-combinumeral">❷</span> Checks whether value contains the string we are looking for</p>
+
+  <p class="body"><a id="pgfId-1025761"></a>Back to the big picture: make sure your assertions are not too sensitive, or your tests may break for no good reason. <a id="marker-1025763"></a><a id="marker-1025766"></a></p>
+
+  <h2 class="fm-head" id="heading_id_20"><a id="pgfId-1025772"></a>Exercises</h2>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1025782"></a>10.1 Jeanette hears that two tests are behaving strangely. Both of them pass when executed in isolation, but they fail when executed together.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1025788"></a>Which one of the following is <i class="fm-italics1">not</i> the cause of this problem?</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1025803"></a>A) The tests depend on the same external resources.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1025817"></a>B) The execution order of the tests matters.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1025827"></a>C) Both tests are very slow.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1025837"></a>D) They do not perform a cleanup operation after execution.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1025847"></a>10.2 Look at the following test code. What is the most likely test code smell that this piece of code presents?</p>
+  <pre class="programlistinge"><a id="pgfId-1025853"></a>@Test
+<a id="pgfId-1025867"></a>void test1() {
+<a id="pgfId-1025873"></a>  // web service that communicates with the bank
+<a id="pgfId-1025879"></a>  BankWebService bank = new BankWebService();
+<a id="pgfId-1025890"></a> 
+<a id="pgfId-1025885"></a>  User user = new User("d.bergkamp", "nl123");
+<a id="pgfId-1025896"></a>  bank.authenticate(user);
+<a id="pgfId-1025902"></a>  Thread.sleep(5000); // sleep for 5 seconds
+<a id="pgfId-1025913"></a> 
+<a id="pgfId-1025908"></a>  double balance = bank.getBalance();
+<a id="pgfId-1025919"></a>  Thread.sleep(2000);
+<a id="pgfId-1025925"></a>  Payment bill = new Payment();
+<a id="pgfId-1025936"></a>  bill.setOrigin(user);
+<a id="pgfId-1025942"></a>  bill.setValue(150.0);
+<a id="pgfId-1025948"></a>  bill.setDescription("Energy bill");
+<a id="pgfId-1025954"></a>  bill.setCode("YHG45LT");
+<a id="pgfId-1025965"></a> 
+<a id="pgfId-1025960"></a>  bank.pay(bill);
+<a id="pgfId-1025971"></a>  Thread.sleep(5000);
+<a id="pgfId-1025982"></a> 
+<a id="pgfId-1025977"></a>  double newBalance = bank.getBalance();
+<a id="pgfId-1025988"></a>  Thread.sleep(2000);
+<a id="pgfId-1025999"></a> 
+<a id="pgfId-1025994"></a>  // new balance should be previous balance - 150
+<a id="pgfId-1026005"></a>  Assertions.assertEquals(newBalance, balance - 150);
+<a id="pgfId-1026011"></a>}</pre>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1026017"></a>A) Flaky test</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1026031"></a>B) Test code duplication</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1026041"></a>C) Obscure test</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1026051"></a>D) Long method</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1026061"></a>10.3 RepoDriller is a project that extracts information from Git repositories. Its integration tests use a lot of real Git repositories (that are created solely for the test), each with a different characteristic: one repository contains a merge commit, another contains a revert operation, and so on.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1026067"></a>Its tests look like this:</p>
+  <pre class="programlistinge"><a id="pgfId-1026073"></a>@Test
+<a id="pgfId-1026087"></a>public void test01() {
+<a id="pgfId-1026098"></a> 
+<a id="pgfId-1026093"></a>  // arrange: specific repo
+<a id="pgfId-1026104"></a>  String path = "test-repos/git-4";
+<a id="pgfId-1026115"></a> 
+<a id="pgfId-1026110"></a>  // act
+<a id="pgfId-1026121"></a>  TestVisitor visitor = new TestVisitor();
+<a id="pgfId-1026127"></a>  new RepositoryMining()
+<a id="pgfId-1026133"></a>    .in(GitRepository.singleProject(path))
+<a id="pgfId-1026139"></a>    .through(Commits.all())
+<a id="pgfId-1026145"></a>    .process(visitor)
+<a id="pgfId-1026151"></a>    .mine();
+<a id="pgfId-1026162"></a> 
+<a id="pgfId-1026157"></a>  // assert
+<a id="pgfId-1026168"></a>  Assert.assertEquals(3, visitor.getVisitedHashes().size());
+<a id="pgfId-1026174"></a>  Assert.assertTrue(visitor.getVisitedHashes().get(2).equals("b8c2"));
+<a id="pgfId-1026180"></a>  Assert.assertTrue(visitor.getVisitedHashes().get(1).equals("375d"));
+<a id="pgfId-1026186"></a>  Assert.assertTrue(visitor.getVisitedHashes().get(0).equals("a1b6"));
+<a id="pgfId-1026192"></a>}</pre>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1026198"></a>Which test smell <i class="fm-italics1">might</i> this piece of code suffer from?</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1026213"></a>A) Condition logic in the test</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1026227"></a>B) General fixture</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1026237"></a>C) Flaky test</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1026247"></a>D) Mystery guest</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1026273"></a>10.4 In the following code, we show an actual test from Apache Commons Lang, a very popular open source Java library. This test focuses on the static <code class="fm-code-in-text">random()</code> method, which is responsible for generating random characters. An interesting detail in this test is the comment <code class="fm-code-in-text">Will</code> <code class="fm-code-in-text">fail</code> <code class="fm-code-in-text">randomly</code> <code class="fm-code-in-text">about</code> <code class="fm-code-in-text">1</code> <code class="fm-code-in-text">in</code> <code class="fm-code-in-text">1000</code> <code class="fm-code-in-text">times</code>.</p>
+  <pre class="programlistinge"><a id="pgfId-1026282"></a>/**
+<a id="pgfId-1026296"></a> * Test homogeneity of random strings generated --
+<a id="pgfId-1026302"></a> * i.e., test that characters show up with expected frequencies
+<a id="pgfId-1026308"></a> * in generated strings.  Will fail randomly about 1 in 1000 times.
+<a id="pgfId-1026314"></a> * Repeated failures indicate a problem.
+<a id="pgfId-1026320"></a> */
+<a id="pgfId-1026326"></a>@Test
+<a id="pgfId-1026332"></a>public void testRandomStringUtilsHomog() {
+<a id="pgfId-1026338"></a>  final String set = "abc";
+<a id="pgfId-1026344"></a>  final char[] chars = set.toCharArray();
+<a id="pgfId-1026350"></a>  String gen = "";
+<a id="pgfId-1026356"></a>  final int[] counts = {0, 0, 0};
+<a id="pgfId-1026362"></a>  final int[] expected = {200, 200, 200};
+<a id="pgfId-1026368"></a>  for (int i = 0; i &lt; 100; i++) {
+<a id="pgfId-1026374"></a>    gen = RandomStringUtils.random(6,chars);
+<a id="pgfId-1026380"></a>    for (int j = 0; j &lt; 6; j++) {
+<a id="pgfId-1026386"></a>      switch (gen.charAt(j)) {
+<a id="pgfId-1026392"></a>        case 'a': {counts[0]++; break;}
+<a id="pgfId-1026398"></a>        case 'b': {counts[1]++; break;}
+<a id="pgfId-1026404"></a>        case 'c': {counts[2]++; break;}
+<a id="pgfId-1026410"></a>        default: {fail("generated character not in set");}
+<a id="pgfId-1026416"></a>      }
+<a id="pgfId-1026422"></a>    }
+<a id="pgfId-1026428"></a>  }
+<a id="pgfId-1026434"></a>  // Perform chi-square test with df = 3-1 = 2, testing at .001 level
+<a id="pgfId-1026440"></a>  assertTrue("test homogeneity -- will fail about 1 in 1000 times",
+<a id="pgfId-1026446"></a>    chiSquare(expected,counts) &lt; 13.82);
+<a id="pgfId-1026452"></a>}</pre>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1026458"></a>Which one of the following statements is incorrect about the test?</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1026464"></a>A) The test is flaky because of the randomness that exists in generating characters.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1031603"></a>B) The test checks for invalidly generated characters and also checks that characters are picked in the same proportion.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1031604"></a>C) The method being static has nothing to do with its flakiness.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1026498"></a>D) To avoid flakiness, a developer should have mocked the <code class="fm-code-in-text">random()</code> function.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1026517"></a>10.5 A developer observes that two tests pass when executed in isolation but fail when executed together.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1026523"></a>Which of the following is the least likely fix for this problem (also known as Test Run War)?</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1026529"></a>A) Make each test runner a specific sandbox.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1026543"></a>B) Use fresh fixtures in every test.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1026553"></a>C) Remove and isolate duplicated test code.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1026563"></a>D) Clean up the state during teardown.</p>
+
+  <h2 class="fm-head" id="heading_id_21"><a id="pgfId-1026573"></a>Summary</h2>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1026583"></a>Writing good test code is as challenging as writing good production code. We should ensure that our test code is easy to maintain and evolve.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1026597"></a>We desire many things in a test method. Tests should be fast, cohesive, and repeatable; they should fail for a reason and contain strong assertions; they should be easy to read, write, and evolve; and they should be loosely coupled with the production code.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1026607"></a>Many things can hinder the maintainability of test methods: too much duplication, too many bad assertions, bad handling of complex (external) resources, too many general fixtures, too many sensitive assertions, and flakiness. You should avoid these.</p>
+    </li>
+  </ul>
+</div>
+</div>
+</body>
+</html>

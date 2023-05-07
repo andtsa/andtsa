@@ -1,0 +1,1617 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xml:lang="en"
+      lang="en"
+      xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:epub="http://www.idpf.org/2007/ops">
+<head>
+<title>Effective Software Testing</title>
+<link rel="stylesheet" type="text/css" href="../../override_v1.css"/>
+<link rel="stylesheet" type="text/css" href="../../stylesheet.css"/><link rel="stylesheet" type="text/css" href="../../page_styles.css"/>
+</head>
+<body>
+<div id="book-content">
+<div id="sbo-rt-content" class="calibre"><h1 class="tochead" id="heading_id_2"><a id="pgfId-998407"></a><a id="pgfId-1024036"></a>3 Structural testing and code coverage</h1>
+
+  <p class="co-summary-head"><a id="pgfId-1011754"></a>This chapter covers</p>
+
+  <ul class="calibre12">
+    <li class="co-summary-bullet"><a class="calibre13" id="pgfId-1011760"></a>Creating test cases based on the code structure</li>
+
+    <li class="co-summary-bullet"><a class="calibre13" id="pgfId-1011774"></a>Combining structural testing and specification-based testing</li>
+
+    <li class="co-summary-bullet"><a class="calibre13" id="pgfId-1011784"></a>Using code coverage properly</li>
+
+    <li class="co-summary-bullet"><a class="calibre13" id="pgfId-1011794"></a>Why some developers (wrongly) dislike code coverage</li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1011804"></a>In the previous chapter, we discussed using software requirements as the main element to guide the testing. Once specification-based testing is done, the next step is to <i class="fm-italics">augment the test suite with the help of the source code</i>. There are several reasons to do so.</p>
+
+  <p class="body"><a id="pgfId-1011819"></a>First, you may have forgotten a partition or two when analyzing the requirements, and you may notice that while looking at the source code. Second, when implementing code, you take advantage of language constructs, algorithms, and data structures that are not explicit in the documentation. Implementation-specific details should also be exercised to increase the likelihood of ensuring the program’s full correctness.</p>
+
+  <p class="body"><a id="pgfId-1011841"></a>In this chapter, we learn how to systematically reflect on the source code, see what is being exercised by the test suite we derived with the help of the specification, and what remains to be tested. Using the structure of the source code to guide testing is also known as <i class="fm-italics">structural testing</i>. Understanding structural testing techniques means understanding the <i class="fm-italics">coverage criteria</i>. The remainder of this chapter explores using code coverage information to gain more confidence that the program works as expected<a id="marker-1033732"></a>.</p>
+
+  <h2 class="fm-head" id="heading_id_3"><a id="pgfId-1011856"></a>3.1 Code coverage, the right way</h2>
+
+  <p class="body"><a id="pgfId-1011866"></a><a id="marker-1027568"></a>Consider the following requirement for a small program that counts the number of words in a string that end with either “r” or “s” (inspired by a CodingBat problem, <a class="url" href="https://codingbat.com/prob/p199171">https://codingbat.com/prob/p199171</a>):</p>
+
+  <p class="fm-callout"><a id="pgfId-1011944"></a>Given a sentence, the program should count the number of words that end with either “s” or “r”. A word ends when a non-letter appears. The program returns the number of words.</p>
+
+  <p class="body"><a id="pgfId-1011950"></a>A developer implements this requirement as shown in the following listing.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1012007"></a>Listing 3.1 Implementing the <code class="fm-code-in-text">CountWords</code> program</p>
+  <pre class="programlisting"><a id="pgfId-1011956"></a>public class CountWords {
+<a id="pgfId-1012059"></a>  public int count(String str) {
+<a id="pgfId-1012065"></a>    int words = 0;
+<a id="pgfId-1012071"></a>    char last = ' ';
+<a id="pgfId-1012082"></a> 
+<a id="pgfId-1012077"></a>    for (int i = 0; i &lt; str.length(); i++) {   <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1012099"></a> 
+<a id="pgfId-1012094"></a>      if (!isLetter(str.charAt(i)) &amp;&amp;          <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1012111"></a>       (last == 's' || last == 'r')) {
+<a id="pgfId-1012117"></a>          words++;
+<a id="pgfId-1012123"></a>      }
+<a id="pgfId-1012134"></a> 
+<a id="pgfId-1012129"></a>      last = str.charAt(i);                    <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1012146"></a>    }
+<a id="pgfId-1012157"></a> 
+<a id="pgfId-1012152"></a>    if (last == 'r' || last == 's') {          <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1012169"></a>      words++;
+<a id="pgfId-1012175"></a>    }
+<a id="pgfId-1012186"></a> 
+<a id="pgfId-1012181"></a>    return words;
+<a id="pgfId-1012192"></a>  }
+<a id="pgfId-1012198"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036863"></a><span class="fm-combinumeral">❶</span> Loops through each character in the string</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036884"></a><span class="fm-combinumeral">❷</span> If the current character is a non-letter and the previous character was “s” or “r”, we have a word!</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036901"></a><span class="fm-combinumeral">❸</span> Stores the current character as the “last” one</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036918"></a><span class="fm-combinumeral">❹</span> Counts one more word if the string ends in “r” or “s”</p>
+
+  <p class="body"><a id="pgfId-1012272"></a>Now, consider a developer who does not know much about specification-based testing techniques and writes the following two JUnit tests for the implementation.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1012329"></a>Listing 3.2 Initial (incomplete) tests for <code class="fm-code-in-text">CountWords</code></p>
+  <pre class="programlisting"><a id="pgfId-1012278"></a>@Test
+<a id="pgfId-1012376"></a>void twoWordsEndingWithS() {                            <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1012388"></a>  int words = new CountLetters().count("dogs cats");
+<a id="pgfId-1012394"></a>  assertThat(words).isEqualTo(2);
+<a id="pgfId-1012400"></a>}
+<a id="pgfId-1012411"></a> 
+<a id="pgfId-1012406"></a>@Test
+<a id="pgfId-1012417"></a>void noWordsAtAll() {                                   <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1012429"></a>  int words = new CountLetters().count("dog cat");
+<a id="pgfId-1012435"></a>  assertThat(words).isEqualTo(0);
+<a id="pgfId-1012441"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036735"></a><span class="fm-combinumeral">❶</span> Two words ending in “s” (dogs and cats): we expect the program to return 2.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036756"></a><span class="fm-combinumeral">❷</span> No words ending in “s” or “r” in the string: the program returns 0.</p>
+
+  <p class="body"><a id="pgfId-1012483"></a>This test suite is far from complete—for example, it does not exercise words ending in “r”. Structural testing shows its value in such situations: we can identify parts of the test code that our test suite does not exercise, determine why this is the case, and create new test cases.</p>
+
+  <p class="body"><a id="pgfId-1012489"></a>Identifying which parts of the code our tests exercise is straightforward today, thanks to the many production-ready code coverage tools on the market for all programming languages and environments. For example, figure 3.1 shows the report generated by JaCoCo (<a class="url" href="http://www.jacoco.org/jacoco">www.jacoco.org/jacoco</a>), a very popular code coverage tool for Java, after running the two tests in listing 3.2.</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/03-01.png" width="723" height="292"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1038380"></a>Figure 3.1 Code coverage achieved by the two tests in the <code class="fm-code-in-text">CountWords</code> implementation. The two <code class="fm-code-in-text">if</code> lines are only partially covered.</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1012524"></a>The background color of each line indicates its coverage (the colors appear as shades of gray in the printed book):</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012544"></a>A green background indicates that a line is completely covered by the test suite. In the figure, all lines with the exception of the two <code class="fm-code-in-text">if</code>s are green.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012567"></a>A yellow background means the line is partially covered by the test suite. For example, in the figure, the two <code class="fm-code-in-text">if</code> statement lines <a class="calibre13" id="marker-1012582"></a>are only partially covered.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012592"></a>A red background means the line is not covered. In the figure, there are no red lines, which means all lines are exercised by at least one test.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012602"></a>Lines with no background color (such as <code class="fm-code-in-text">}</code>) are lines the coverage tool does not see. Behind the scenes, coverage tools are instrumenting the compiled bytecode of the program. Things like closing brackets and method declaration lines are not really counted.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1012677"></a>JaCoCo also uses a diamond to identify a line that may branch the program, including the <code class="fm-code-in-text">for</code> and <code class="fm-code-in-text">if</code> statements in figure 3.1, as well as <code class="fm-code-in-text">while</code>, <code class="fm-code-in-text">for</code>, <code class="fm-code-in-text">do-while</code>, ternary <code class="fm-code-in-text">if</code>s, lambda expressions, and so on. Hovering your mouse over the diamond shows the details.</p>
+
+  <p class="body"><a id="pgfId-1012722"></a>As previously mentioned, the first <code class="fm-code-in-text">if</code> statement has a yellow background, indicating that although the line is covered, not all of its branches are. When I look at the details of the report, the tool says that one out of six combinations (three conditions in the <code class="fm-code-in-text">if</code> statement times two options, <code class="fm-code-in-text">true</code> and <code class="fm-code-in-text">false</code>) is not covered. See figure 3.2.</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/03-02.png" width="741" height="278"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1038453"></a>Figure 3.2 JaCoCo shows how many branches we are missing.</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1012741"></a>The current test suite does not fully exercise the <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">'r'</code> condition. This is useful information; thanks to structural testing, the tester can now figure out why this test case did not emerge before.</p>
+
+  <div class="fm-sidebar-block">
+    <p class="fm-sidebar-title"><a class="calibre13" id="pgfId-1012770"></a>Reasons to miss a test case</p>
+
+    <p class="fm-sidebar-text"><a id="pgfId-1012780"></a>Here are some pragmatic reasons a developer may miss a test case:</p>
+
+    <ul class="calibre12">
+      <li class="fm-sidebar-bullet">
+        <p class="list-s"><a id="pgfId-1012786"></a>The developer made a mistake. The specification was clear about the requirement.</p>
+      </li>
+
+      <li class="fm-sidebar-bullet">
+        <p class="list-s"><a id="pgfId-1038425"></a>The specification did not mention the case, and it is unclear whether the behavior is expected. The developer must decide whether to bring it to the requirements engineer. Is it a mistake in the implementation?</p>
+      </li>
+
+      <li class="fm-sidebar-bullet">
+        <p class="list-s"><a id="pgfId-1038417"></a>The specification did not mention the case, but the code has a reason to exist. For example, implementation details such as performance and persistence often force developers to write code that is not reflected in the (functional) requirement. The developer should add a new test to the test suite, which will exercise the implementation-specific behavior that may cause bugs.</p>
+      </li>
+    </ul>
+  </div>
+
+  <p class="body"><a id="pgfId-1012820"></a>Moving on with the example, we write a test case that exercises the “words that end in ‘r’” partition as follows.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1012877"></a>Listing 3.3 Testing for words that end in "r"</p>
+  <pre class="programlisting"><a id="pgfId-1012826"></a>@Test
+<a id="pgfId-1012916"></a>void wordsThatEndInR() {                          <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1012928"></a>  int words = new CountWords().count("car bar");
+<a id="pgfId-1012934"></a>  assertThat(words).isEqualTo(2);
+<a id="pgfId-1012940"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036659"></a><span class="fm-combinumeral">❶</span> Words that end in “r” should be counted.</p>
+
+  <p class="body"><a id="pgfId-1012966"></a>With the newly added test case in the test suite, we rerun the coverage tool. Figure 3.3 shows the new JaCoCo report. Every line is now fully covered: we have covered all the lines and conditions of the code under test. If parts of the code were still not covered, we would repeat the process: identify uncovered parts, understand why they are not covered, and write a test that exercises that piece of code. <a id="marker-1012968"></a></p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/03-03.png" width="727" height="286"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1038495"></a>Figure 3.3 Code coverage of the three tests for the <code class="fm-code-in-text">CountWords</code> implementation. The test suite now achieves full coverage of branches and conditions.</p>
+  </div>
+
+  <h2 class="fm-head" id="heading_id_4"><a id="pgfId-1012994"></a>3.2 Structural testing in a nutshell</h2>
+
+  <p class="body"><a id="pgfId-1013018"></a><a id="marker-1013019"></a>Based on what we just did, let me define a simple approach that any developer can follow (see figure 3.4):</p>
+
+  <ol class="calibre14">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1013027"></a>Perform <i class="fm-italics1">specification-based testing</i>, as discussed in the previous chapter.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1013050"></a><i class="fm-italics1">Read the implementation</i>, and understand the main coding decisions made by the developer.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1013067"></a>Run the devised test suite with a <i class="fm-italics1">code coverage tool</i>.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1013086"></a>For each piece of code that is <i class="fm-italics1">not</i> covered:</p>
+
+      <p class="fm-list-body-abc">a) <a id="pgfId-1013105"></a><i class="fm-italics">Understand</i> why that piece of code was not tested. Why didn’t you see this test case during specification-based testing? Consult with the requirements engineer if you need more clarity.</p>
+
+      <p class="fm-list-body-abc">b) <a id="pgfId-1013130"></a><i class="fm-italics">Decide</i> whether the piece of code deserves a test. Testing or not testing that piece of code is now a conscious decision on your part.</p>
+
+      <p class="fm-list-body-abc">c) <a id="pgfId-1013147"></a>If a test is needed, <i class="fm-italics">implement an automated test case</i> that covers the missing piece.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1013166"></a>Go back to the source code and <i class="fm-italics1">look for other interesting tests you can devise</i> based on the code. For each identified piece of the code, perform the substeps of step 4.</p>
+    </li>
+  </ol>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/03-04.png" width="587" height="332"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1038541"></a>Figure 3.4 Applying structural testing in a nutshell. Arrows indicate the iterative nature of the process. The diamond represents the moment where the developer decides whether to write the test case.</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1013185"></a>The most important thing about this approach is that <i class="fm-italics">structural testing complements the test suite previously devised via specification-based testing</i>. The code coverage tool is an automated way to identify parts that are not covered.</p>
+
+  <p class="body"><a id="pgfId-1013210"></a>Just like the approach I proposed in chapter 2, this one is meant to be iterative and not to restrain you to a single way of working. It is not uncommon to go back to the specification and devise additional interesting test cases.</p>
+
+  <p class="body"><a id="pgfId-1013230"></a>Before I show another running example of structural testing and discuss how to pragmatically use it in our daily lives, the next section introduces the coverage criteria we use with this approach. <a id="marker-1013232"></a></p>
+
+  <h2 class="fm-head" id="heading_id_5"><a id="pgfId-1013239"></a>3.3 Code coverage criteria</h2>
+
+  <p class="body"><a id="pgfId-1013269"></a><a id="marker-1013250"></a>Whenever we identify a line of code that is not covered, we have to decide how thorough (or rigorous) we want to be when covering that line. Let’s revisit an <code class="fm-code-in-text">if</code> statement from the <code class="fm-code-in-text">CountWords</code> program.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1013368"></a>Listing 3.4 An <code class="fm-code-in-text">if</code> expression from the <code class="fm-code-in-text">CountWords</code> program</p>
+  <pre class="programlisting"><a id="pgfId-1013278"></a>if (!Character.isLetter(str.charAt(i)) &amp;&amp;
+<a id="pgfId-1013393"></a> (last == 's' || last == 'r'))</pre>
+
+  <p class="body"><a id="pgfId-1013465"></a>A developer may decide to only <i class="fm-italics">cover the line</i> —in other words, if a test passes through that <code class="fm-code-in-text">if</code> line, the developer will consider it covered. A single test case can do this. A slightly more thorough developer may cover the <code class="fm-code-in-text">if</code> being evaluated to <code class="fm-code-in-text">true</code> and <code class="fm-code-in-text">false</code>; doing so requires two test cases. A third developer may explore each condition in the <code class="fm-code-in-text">if</code> statement. This particular <code class="fm-code-in-text">if</code> has three conditions requiring at least two tests each, for a total of six tests. Finally, a very thorough tester may decide to cover every possible execution path of this statement. Given that it has three different conditions, doing so requires 2 × 2 × 2 = 8 test cases.</p>
+
+  <p class="body"><a id="pgfId-1013474"></a>Let’s formalize this discussion. Note that you’ve already seen some of these terms.</p>
+
+  <h3 class="fm-head1" id="heading_id_6"><a id="pgfId-1013480"></a>3.3.1 Line coverage</h3>
+
+  <p class="body"><a id="pgfId-1013503"></a><a id="marker-1013491"></a><a id="marker-1013493"></a>A developer who aims to achieve line coverage wants at least one test case that covers the line under test. It does not matter if that line contains a complex <code class="fm-code-in-text">if</code> statement full of conditions. If a test touches that line in any way, the developer can count the line as covered. <a id="marker-1013508"></a><a id="marker-1013511"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_7"><a id="pgfId-1013517"></a>3.3.2 Branch coverage</h3>
+
+  <p class="body"><a id="pgfId-1013600"></a><a id="marker-1013528"></a><a id="marker-1013530"></a>Branch coverage takes into consideration the fact that branching instructions (<code class="fm-code-in-text">if</code>s, <code class="fm-code-in-text">for</code>s, <code class="fm-code-in-text">while</code>s, and so on) make the program behave in different ways, depending how the instruction is evaluated. For a simple <code class="fm-code-in-text">if(a</code> <code class="fm-code-in-text">&amp;&amp;</code> <code class="fm-code-in-text">b)</code> statement, having a test case T1 that makes the <code class="fm-code-in-text">if</code> statement <code class="fm-code-in-text">true</code> and another test case T2 that makes the statement <code class="fm-code-in-text">false</code> is enough to consider the branch covered.</p>
+
+  <p class="body"><a id="pgfId-1013654"></a>Figure 3.5 illustrates <a id="marker-1013611"></a><a id="marker-1013614"></a>a control-flow graph (CFG) of the <code class="fm-code-in-text">CountWords</code> program. You can see that for each <code class="fm-code-in-text">if</code> instruction, two edges come out of the node: one representing where the flow goes if the statement is evaluated to <code class="fm-code-in-text">true</code> and another representing where the program goes if the statement is evaluated to <code class="fm-code-in-text">false</code>. Covering all the edges in the graph means achieving 100% branch coverage. <a id="marker-1013659"></a><a id="marker-1013662"></a></p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/03-05.png" width="652" height="586"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1038583"></a>Figure 3.5 A control-flow graph of the <code class="fm-code-in-text">CountWords</code> program</p>
+  </div>
+
+  <h3 class="fm-head1" id="heading_id_8"><a id="pgfId-1013687"></a>3.3.3 Condition + branch coverage</h3>
+
+  <p class="body"><a id="pgfId-1013814"></a><a id="marker-1013712"></a><a id="marker-1013714"></a>Condition + branch coverage considers not only possible branches but also each condition of each branch statement. For example, the first <code class="fm-code-in-text">if</code> statement in the <code class="fm-code-in-text">CountWords</code> program contains three conditions: <code class="fm-code-in-text">!Character.isLetter(str.charAt(i))</code>, <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">'s'</code>, and <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">'r'</code>. Therefore, a developer aiming for condition + branch coverage should create a test suite that exercises each of those individual conditions being evaluated to <code class="fm-code-in-text">true</code> and <code class="fm-code-in-text">false</code> at least once <i class="fm-italics">and</i> the entire branch statement being <code class="fm-code-in-text">true</code> and <code class="fm-code-in-text">false</code> at least once.</p>
+
+  <p class="body"><a id="pgfId-1013909"></a>Note that blindly looking only at the conditions (and ignoring how they are combined) may result in test suites that do not cover everything. Imagine a simple <code class="fm-code-in-text">if(A</code> <code class="fm-code-in-text">||</code> <code class="fm-code-in-text">B)</code>. A test suite composed of two tests (T1 that makes A <code class="fm-code-in-text">true</code> and B <code class="fm-code-in-text">false</code> and T2 that makes A <code class="fm-code-in-text">false</code> and B <code class="fm-code-in-text">true</code>) covers the two conditions, as each condition is exercised as <code class="fm-code-in-text">true</code> and <code class="fm-code-in-text">false</code>. However, the test suite does not fully cover the branch, as in both tests, the evaluation of the entire <code class="fm-code-in-text">if</code> statement is always <code class="fm-code-in-text">true</code>. This is why we use condition + branch coverage, and not only (basic) condition coverage.</p>
+
+  <p class="body"><a id="pgfId-1013918"></a>In the extended CFG in figure 3.6, branch nodes contain only a single condition. The complicated <code class="fm-code-in-text">if</code> is broken into three nodes. <a id="marker-1013929"></a><a id="marker-1013932"></a></p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/03-06.png" width="648" height="554"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1038632"></a>Figure 3.6 The extended control-flow graph of the <code class="fm-code-in-text">CountWords</code> program. Each condition is in its own node. Covering all the edges in the graph means achieving 100% condition + branch coverage.</p>
+  </div>
+
+  <h3 class="fm-head1" id="heading_id_9"><a id="pgfId-1013957"></a>3.3.4 Path coverage</h3>
+
+  <p class="body"><a id="pgfId-1014034"></a><a id="marker-1013982"></a><a id="marker-1013984"></a>A developer aiming for path coverage covers <i class="fm-italics">all</i> the possible paths of execution of the program. While ideally this is the strongest criterion, it is often impossible or too expensive to achieve. In a single program with three conditions, where each condition could be independently evaluated to <code class="fm-code-in-text">true</code> or <code class="fm-code-in-text">false</code>, we would have 23 = 8 paths to cover. In a program with 10 conditions, the total number of combinations would be 210 = 1024. In other words, we would need to devise more than a thousand tests!</p>
+
+  <p class="body"><a id="pgfId-1014043"></a>Path coverage also gets more complicated for programs with loops. In a program with an unbounded loop, the loop might iterate hundreds of times. A rigorous tester aiming for path coverage would have to try the program with the loop executing one time, two times, three times, and so on. <a id="marker-1014045"></a><a id="marker-1014048"></a><a id="marker-1014050"></a></p>
+
+  <h2 class="fm-head" id="heading_id_10"><a id="pgfId-1014056"></a>3.4 Complex conditions and the MC/DC coverage criterion</h2>
+
+  <p class="body"><a id="pgfId-1014079"></a><a id="marker-1014067"></a><a id="marker-1014069"></a>Devising test suites that maximize the number of bugs they can identify while minimizing the effort/cost of building the test suite is part of any tester’s job. The question is, what can we do about complex, lengthy <code class="fm-code-in-text">if</code> statements? Modified condition/decision coverage (MC/DC) is a good answer.</p>
+
+  <p class="body"><a id="pgfId-1014104"></a>The MC/DC criterion looks at combinations of conditions, as path coverage does. However, instead of testing <i class="fm-italics">all</i> possible combinations, we identify the <i class="fm-italics">important</i> combinations that need to be tested. MC/DC exercises each of these conditions so that it can, independently of the other conditions, affect the outcome of the entire decision. Every possible condition of each parameter must influence the outcome at least once. (For details, read Kelly Hayhurst’s 2001 paper.)</p>
+
+  <h3 class="fm-head1" id="heading_id_11"><a id="pgfId-1014113"></a>3.4.1 An abstract example</h3>
+
+  <p class="body"><a id="pgfId-1014166"></a><a id="marker-1014124"></a><a id="marker-1014126"></a>Let’s take a simple abstract example: <code class="fm-code-in-text">if(A</code> <code class="fm-code-in-text">&amp;&amp;</code> <code class="fm-code-in-text">(B</code> <code class="fm-code-in-text">||</code> <code class="fm-code-in-text">C))</code>, where <code class="fm-code-in-text">A</code>, <code class="fm-code-in-text">B</code>, and <code class="fm-code-in-text">C</code> all evaluate to booleans. MC/DC dictates the following:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1014175"></a>For condition <code class="fm-code-in-text">A</code>:</p>
+
+      <ul class="calibre15">
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1014198"></a>There must be one test case where <code class="fm-code-in-text">A</code> <code class="fm-code-in-text">=</code> <code class="fm-code-in-text">true</code> (say, T1).</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1014225"></a>There must be one test case where <code class="fm-code-in-text">A</code> <code class="fm-code-in-text">=</code> <code class="fm-code-in-text">false</code> (say, T2).</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1014274"></a>T1 and T2 (which we call <i class="fm-italics1">independence pairs</i>) must have different outcomes (for example, T1 makes the entire decision evaluate to <code class="fm-code-in-text">true</code>, and T2 makes the entire decision evaluate to <code class="fm-code-in-text">false</code>).</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1014343"></a>Variables <code class="fm-code-in-text">B</code> and <code class="fm-code-in-text">C</code> in T1 must be equivalent (either both evaluate to <code class="fm-code-in-text">true</code> or both evaluate to <code class="fm-code-in-text">false</code>) to <code class="fm-code-in-text">B</code> and <code class="fm-code-in-text">C</code> in T2. In other words, <code class="fm-code-in-text">B</code> and <code class="fm-code-in-text">C</code> must have the same truth values in T1 and T2.</li>
+      </ul>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1014352"></a>For condition <code class="fm-code-in-text">B</code>:</p>
+
+      <ul class="calibre15">
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1014371"></a>There must be one test case where <code class="fm-code-in-text">B</code> <code class="fm-code-in-text">=</code> <code class="fm-code-in-text">true</code> (say, T3).</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1014398"></a>There must be one test case where <code class="fm-code-in-text">B</code> <code class="fm-code-in-text">=</code> <code class="fm-code-in-text">false</code> (say, T4).</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1014417"></a>T3 and T4 must have different outcomes.</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1014467"></a>Variables <code class="fm-code-in-text">A</code> and <code class="fm-code-in-text">C</code> in T3 must be equivalent to <code class="fm-code-in-text">A</code> and <code class="fm-code-in-text">C</code> in T4.</li>
+      </ul>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1014476"></a>For condition <code class="fm-code-in-text">C</code>:</p>
+
+      <ul class="calibre15">
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1014495"></a>There must be one test case where <code class="fm-code-in-text">C</code> <code class="fm-code-in-text">=</code> <code class="fm-code-in-text">true</code> (say, T5).</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1014522"></a>There must be one test case where <code class="fm-code-in-text">C</code> <code class="fm-code-in-text">=</code> <code class="fm-code-in-text">false</code> (say, T6).</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1014541"></a>T5 and T6 have different outcomes.</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1014591"></a>Variables <code class="fm-code-in-text">A</code> and <code class="fm-code-in-text">B</code> in T5 must be equivalent to <code class="fm-code-in-text">A</code> and <code class="fm-code-in-text">B</code> in T6.</li>
+      </ul>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1014626"></a>If conditions have only binary outcomes (that is, <code class="fm-code-in-text">true</code> or <code class="fm-code-in-text">false</code>), the number of tests required to achieve 100% MC/DC coverage is N + 1, where N is the number of conditions in the decision (as shown by Chilenski [2001]). Note that N + 1 is smaller than the total number of possible combinations (2N). So, to devise a test suite that achieves 100% MC/DC, we must create N + 1 test cases that, when combined, exercise all the combinations independently from the others. <a id="marker-1014631"></a><a id="marker-1014634"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_12"><a id="pgfId-1014640"></a>3.4.2 Creating a test suite that achieves MC/DC</h3>
+
+  <p class="body"><a id="pgfId-1014683"></a><a id="marker-1014651"></a><a id="marker-1014653"></a>The question is how to (mechanically) select such test cases. Let’s continue using the same <code class="fm-code-in-text">if</code> statement from the <code class="fm-code-in-text">CountWords</code> program (from listing 3.4). The statement takes three booleans as input: (1) whether the current character is a letter and whether this letter is (2) “s” or (3) “r”. Generically, this is the same as the <code class="fm-code-in-text">A</code> <code class="fm-code-in-text">&amp;&amp;</code> <code class="fm-code-in-text">(B</code> <code class="fm-code-in-text">||</code> <code class="fm-code-in-text">C)</code> example we just discussed.</p>
+
+  <p class="body"><a id="pgfId-1014692"></a>To test this program, we first use a truth table to see all the combinations and their outcomes. In this case, we have three decisions, and 23 = 8. Therefore, we have tests T1 to T8, as listed in table 3.1.</p>
+
+  <p class="fm-table-caption"><a id="pgfId-1028447"></a>Table 3.1 Truth table for the <code class="fm-code-in-text">if</code> expression from the <code class="fm-code-in-text">CountWords</code> program</p>
+
+  <table border="1" class="contenttable" width="100%">
+    <tbody class="calibre16">
+      <tr class="calibre17">
+        <th class="fm-contenttable1" colspan="1" rowspan="1">
+          <p class="fm-table-head"><a id="pgfId-1014838"></a>Test case</p>
+        </th>
+
+        <th class="fm-contenttable1" colspan="1" rowspan="1">
+          <p class="fm-table-head"><a id="pgfId-1014840"></a><code class="fm-code-in-text">isLetter</code></p>
+        </th>
+
+        <th class="fm-contenttable1" colspan="1" rowspan="1">
+          <p class="fm-table-head"><a id="pgfId-1014842"></a><code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">s</code></p>
+        </th>
+
+        <th class="fm-contenttable1" colspan="1" rowspan="1">
+          <p class="fm-table-head"><a id="pgfId-1014844"></a><code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">r</code></p>
+        </th>
+
+        <th class="fm-contenttable1" colspan="1" rowspan="1">
+          <p class="fm-table-head"><a id="pgfId-1014846"></a><code class="fm-code-in-text">decision</code></p>
+        </th>
+      </tr>
+
+      <tr class="calibre17">
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1014758"></a>T1</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1014760"></a>true</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1014802"></a>true</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1014805"></a>true</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1014808"></a>true</p>
+        </td>
+      </tr>
+
+      <tr class="calibre17">
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1014939"></a>T2</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1014942"></a>true</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1014945"></a>true</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1014948"></a>false</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1014951"></a>true</p>
+        </td>
+      </tr>
+
+      <tr class="calibre17">
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1014980"></a>T3</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1014983"></a>true</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1014986"></a>false</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1014989"></a>true</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1014992"></a>true</p>
+        </td>
+      </tr>
+
+      <tr class="calibre17">
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1015021"></a>T4</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1015024"></a>true</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1015027"></a>false</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1015030"></a>false</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1015033"></a>false</p>
+        </td>
+      </tr>
+
+      <tr class="calibre17">
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1015062"></a>T5</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1015065"></a>false</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1015068"></a>true</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1015071"></a>true</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1015074"></a>false</p>
+        </td>
+      </tr>
+
+      <tr class="calibre17">
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1015103"></a>T6</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1015106"></a>false</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1015109"></a>true</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1015112"></a>false</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1015115"></a>false</p>
+        </td>
+      </tr>
+
+      <tr class="calibre17">
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1015144"></a>T7</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1015147"></a>false</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1015150"></a>false</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1015153"></a>true</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1015156"></a>false</p>
+        </td>
+      </tr>
+
+      <tr class="calibre17">
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1015185"></a>T8</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1015188"></a>false</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1015191"></a>false</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1015194"></a>false</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1015197"></a>false</p>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p class="body"><a id="pgfId-1015228"></a>Our goal is to apply the MC/DC criterion to these test cases and select N + 1 tests, which in this case means 3 + 1 = 4. To determine which four tests satisfy MC/DC, we need to go condition by condition, beginning by selecting the pairs of combinations (or tests) for the <code class="fm-code-in-text">isLetter</code> part of the condition:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1015417"></a>For T1, <code class="fm-code-in-text">isLetter</code>, <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">s</code>, and <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">r</code> are all <code class="fm-code-in-text">true</code>, and <code class="fm-code-in-text">decision</code> (that is, the outcome of the entire boolean expression) is also <code class="fm-code-in-text">true</code>. We now look for another test in the table where the value of <code class="fm-code-in-text">isLetter</code> is the opposite of the value in T1 but the other values (<code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">s</code> and <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">r</code>) are the same. This means look for a test where <code class="fm-code-in-text">isLetter</code> is <code class="fm-code-in-text">false</code>, <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">s</code> is <code class="fm-code-in-text">true</code>, <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">r</code> is <code class="fm-code-in-text">true</code>, and <code class="fm-code-in-text">decision</code> is <code class="fm-code-in-text">false</code>. This combination appears in T5.</p>
+
+      <p class="fm-list-body"><a class="calibre13" id="pgfId-1015478"></a>Thus, we have found a pair of tests, T1 and T5 (an independence pair), where <code class="fm-code-in-text">isLetter</code> is the only parameter that is different and the outcome (<code class="fm-code-in-text">decision</code>) changes. In other words, for this pair of tests, <code class="fm-code-in-text">isLetter</code> <i class="fm-italics1">independently</i> influences the outcome (<code class="fm-code-in-text">decision</code>). Let’s keep the pair <code class="fm-code-in-text">{T1,</code> <code class="fm-code-in-text">T5}</code> in our list of test cases.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1015607"></a>We could stop here and move to the next variable. But finding all independence pairs for <code class="fm-code-in-text">isLetter</code> may help us reduce the final number of test cases, as you will see. So let’s continue and look at the next test. In T2, <code class="fm-code-in-text">isLetter</code> is <code class="fm-code-in-text">true</code>, <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">s</code> is <code class="fm-code-in-text">true</code>, <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">r</code> is <code class="fm-code-in-text">false</code>, and <code class="fm-code-in-text">decision</code> is <code class="fm-code-in-text">true</code>. We repeat the process and search for a test where <code class="fm-code-in-text">isLetter</code> is the opposite of the value in T2 but <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">s</code> and <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">r</code> remain the same. We find this combination in T6.</p>
+
+      <p class="fm-list-body"><a class="calibre13" id="pgfId-1015632"></a>We have found another pair of tests, T2 and T6, where <code class="fm-code-in-text">isLetter</code> is the only parameter that is different and the outcome (<code class="fm-code-in-text">decision</code>) also changes, which we also add to our list of test cases.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1015781"></a>We repeat the process for T3 (<code class="fm-code-in-text">isLetter</code> is <code class="fm-code-in-text">true</code>, <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">s</code> is <code class="fm-code-in-text">false</code>, <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">r</code> is <code class="fm-code-in-text">true</code>) and find that the <code class="fm-code-in-text">isLetter</code> parameter in T7 (<code class="fm-code-in-text">isLetter</code> is <code class="fm-code-in-text">false</code>, <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">s</code> is <code class="fm-code-in-text">false</code>, <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">r</code> is <code class="fm-code-in-text">true</code>) is the opposite of the value in T3 and changes the outcome (<code class="fm-code-in-text">decision</code>).</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1015960"></a>The pair for T4 (<code class="fm-code-in-text">isLetter</code> is <code class="fm-code-in-text">true</code>, <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">s</code> is <code class="fm-code-in-text">false</code>, <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">r</code> is <code class="fm-code-in-text">false</code>) is T8 (<code class="fm-code-in-text">isLetter</code> is <code class="fm-code-in-text">false</code>, <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">s</code> is <code class="fm-code-in-text">false</code>, <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">r</code> is <code class="fm-code-in-text">false</code>). The outcome of both tests is the same (<code class="fm-code-in-text">decision</code> is <code class="fm-code-in-text">false</code>), which means the pair <code class="fm-code-in-text">{T4,</code> <code class="fm-code-in-text">T8}</code> does <i class="fm-italics1">not</i> show how <code class="fm-code-in-text">isLetter</code> can independently affect the overall outcome.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1016027"></a>We do not find another new or suitable pair when repeating the process for T5, T6, T7, and T8, so we move on from the <code class="fm-code-in-text">isLetter</code> parameter to <a id="marker-1015980"></a>the <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">s</code> parameter. We repeat the same process, but now we search for the opposite value of parameter <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">s</code>, while <code class="fm-code-in-text">isLetter</code> and <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">r</code> stay the same:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016190"></a>For T1 (<code class="fm-code-in-text">isLetter</code> is <code class="fm-code-in-text">true</code>, <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">s</code> is <code class="fm-code-in-text">true</code>, <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">r</code> is <code class="fm-code-in-text">true</code>), we search for a test where <code class="fm-code-in-text">isLetter</code> is <code class="fm-code-in-text">true</code>, <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">s</code> is <code class="fm-code-in-text">false</code>, <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">r</code> is <code class="fm-code-in-text">true</code>). This appears to be the case in T3. However, the outcome is the same for both test cases. Therefore, <code class="fm-code-in-text">{T1,</code> <code class="fm-code-in-text">T3}</code> does <i class="fm-italics1">not</i> show how the <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">s</code> parameter independently affects the outcome.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016219"></a>After repeating all the steps for the other tests, we find that only <code class="fm-code-in-text">{T2,</code> <code class="fm-code-in-text">T4}</code> have different values for the <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">s</code> parameter where the outcome also changes.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1016254"></a>Finally, we move to the <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">r</code> parameter. As with the <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">s</code> parameter, one pair of combinations works: <code class="fm-code-in-text">{T3,</code> <code class="fm-code-in-text">T4}</code>. I highly recommend carrying out the entire process yourself to get a feel for how it works.</p>
+
+  <p class="body"><a id="pgfId-1016263"></a>We now have all the pairs for each parameter:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016311"></a><code class="fm-code-in-text">isLetter</code>: <code class="fm-code-in-text">{1,</code> <code class="fm-code-in-text">5}</code>, <code class="fm-code-in-text">{2,</code> <code class="fm-code-in-text">6}</code>, <code class="fm-code-in-text">{3,</code> <code class="fm-code-in-text">7}</code></p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016335"></a><code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">s</code>: <code class="fm-code-in-text">{2,</code> <code class="fm-code-in-text">4}</code></p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016359"></a><code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">r</code>: <code class="fm-code-in-text">{3,</code> <code class="fm-code-in-text">4}</code></p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1016421"></a>Having a single independence pair per variable (<code class="fm-code-in-text">isLetter</code>, <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">s</code>, and <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">r</code>) is enough. We want to minimize the total number of tests, and we know we can achieve this with N + 1 tests. We do not have any choices with conditions <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">s</code> and <code class="fm-code-in-text">last</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">r</code>, as we found only one pair of tests for each parameter. This means we need tests T2, T3, and T4. Finally, we need to find the appropriate pair of tests for <code class="fm-code-in-text">isLetter</code>. Note that any of the test pairs (T1-T5, T2-T6, or T3-T7) would work. However, we want to reduce the total number of tests in the test suite (and again, we know we only need four in this case).</p>
+
+  <p class="body"><a id="pgfId-1016430"></a>If we were to pick T1 or T5, we would have to include the other as well, as they are opposites. Therefore, they are unnecessarily increasing the number of tests. To ensure that our test suite contains at most four test cases, we can add either T6 or T7, as their opposites (T2 and T3) are already included in our test cases. I picked T6 randomly. (You can have more than one set of tests that achieves 100% MC/DC, and all solutions are equally acceptable.)</p>
+
+  <p class="body"><a id="pgfId-1016436"></a>Therefore, the tests we need for 100% MC/DC coverage are <code class="fm-code-in-text">{T2,</code> <code class="fm-code-in-text">T3,</code> <code class="fm-code-in-text">T4,</code> <code class="fm-code-in-text">T6}</code>. These are the only four tests we need—certainly cheaper than the eight tests we would need for path coverage. Now that we know which tests we need to implement, we can automate them.</p>
+
+  <p class="fm-callout"><a id="pgfId-1016451"></a><span class="fm-callout-head">Note</span> I have a video on YouTube that explains MC/DC visually: <a class="url" href="http://www.youtube.com/watch?v=HzmnCVaICQ4">www.youtube.com/watch?v=HzmnCVaICQ4</a>. <a id="marker-1034359"></a><a id="marker-1034360"></a><a id="marker-1034361"></a><a id="marker-1034362"></a></p>
+
+  <h2 class="fm-head" id="heading_id_13"><a id="pgfId-1016476"></a>3.5 Handling loops and similar constructs</h2>
+
+  <p class="body"><a id="pgfId-1016506"></a><a id="marker-1016487"></a>You may wonder what to do in the case of loops, such as <code class="fm-code-in-text">for</code> and <code class="fm-code-in-text">while</code>. The code block inside the loop may be executed different numbers of times, making testing more complicated.</p>
+
+  <p class="body"><a id="pgfId-1016547"></a>Think of a <code class="fm-code-in-text">while(true)</code> loop, which can <a id="marker-1016526"></a>be non-terminating. To be rigorous, we would have to test the program with the loop block executed one time, two times, three times, and so on. Or imagine a <code class="fm-code-in-text">for(i</code> <code class="fm-code-in-text">=</code> <code class="fm-code-in-text">0;</code> <code class="fm-code-in-text">i</code> <code class="fm-code-in-text">&lt;</code> <code class="fm-code-in-text">10;</code> <code class="fm-code-in-text">i++)</code> loop with a <code class="fm-code-in-text">break</code> inside the body. We would have to test what happened if the loop body executed up to 10 times. How can we handle a long-lasting loop (that runs for many iterations) or an unbounded loop (that is executed an unknown number of times)?</p>
+
+  <p class="body"><a id="pgfId-1016556"></a>Given that exhaustive testing is impossible, testers often rely on the <i class="fm-italics">loop boundary adequacy criterion</i> to decide <a id="marker-1016567"></a>when to stop testing a loop. A test suite satisfies this criterion if and only if for every loop</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016577"></a>There is a test case that exercises the loop zero times.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016591"></a>There is a test case that exercises the loop once.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016601"></a>There is a test case that exercises the loop multiple times.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1016611"></a>Pragmatically speaking, my experience shows that the main challenge comes when devising the test case for the loop being executed multiple times. Should the test case force the loop to iterate 2, 5, or 10 times? This decision requires a good understanding of the program and its requirement. With optimal understanding of the specs, you should be able to devise good tests for the loop. Do not be afraid to create two or more tests for the “multiple times” case. Do whatever you need to do to ensure that the loop works as expected. <a id="marker-1016613"></a></p>
+
+  <h2 class="fm-head" id="heading_id_14"><a id="pgfId-1016620"></a>3.6 Criteria subsumption, and choosing a criterion</h2>
+
+  <p class="body"><a id="pgfId-1016640"></a><a id="marker-1016631"></a>You may have noticed that some of the criteria we have discussed are more rigorous than others. For example, a single test is enough to achieve 100% line coverage, but two tests are needed for 100% branch coverage. Some strategies <i class="fm-italics">subsume</i> other strategies. Formally, a strategy X subsumes strategy Y if all elements that Y exercises are also exercised by X. Figure 3.7 illustrates the relationships among the coverage criteria.</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/03-07.png" width="587" height="323"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1038681"></a>Figure 3.7 The different coverage criteria and their subsumption relations</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1016659"></a>Branch coverage subsumes line coverage, which means 100% branch coverage always implies 100% line coverage. However, 100% line coverage does not imply 100% branch coverage. Moreover, 100% condition + branch coverage always implies 100% branch coverage and 100% line coverage. Following this train of thought, we see that path coverage subsumes all other criteria. This is logical as path coverage covers all possible paths of the program. Next, we see that MC/DC is stronger than condition + branch coverage, as MC/DC ensures the independence of each condition. And condition + branch coverage subsumes both branch and condition coverage independently. Finally, all other criteria, except basic condition coverage, subsume line coverage, which is the weakest criterion in the figure.</p>
+
+  <p class="body"><a id="pgfId-1016679"></a>You now understand the trade-offs of choosing one criterion over another. A weaker criterion may be cheaper and faster to achieve but leave many parts of the code uncovered. On the other hand, a stronger criterion may cover the code more rigorously at a higher cost. It is up to you, the developer, to decide which criterion to use.</p>
+
+  <p class="fm-callout"><a id="pgfId-1016685"></a><span class="fm-callout-head">Note</span> Basic condition coverage does not necessarily subsume line coverage, for the same reason we always use condition + branch coverage together. We can achieve 100% basic condition coverage in a simple <code class="fm-code-in-text">if(A</code> <code class="fm-code-in-text">||</code> <code class="fm-code-in-text">B)</code> by having two tests, T1={true, false} and T2={false, true}. But both tests make the decision block <code class="fm-code-in-text">true</code>, so the <code class="fm-code-in-text">false</code> branch and its lines are not exercised. <a id="marker-1016726"></a></p>
+
+  <h2 class="fm-head" id="heading_id_15"><a id="pgfId-1016733"></a>3.7 Specification-based and structural testing: A running example</h2>
+
+  <p class="body"><a id="pgfId-1016753"></a><a id="marker-1028729"></a>Let’s try specification-based testing and structural testing together on a real-world example: the <code class="fm-code-in-text">leftPad()</code> function from <a id="marker-1028731"></a>Apache Commons Lang (<a class="url" href="http://mng.bz/zQ2g">http://mng.bz/zQ2g</a>):</p>
+
+  <p class="fm-callout"><a id="pgfId-1016779"></a>Left-pad a string with a specified string. Pad to a size of <code class="fm-code-in-text">size</code>.</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-bullet-callout">
+      <p class="list-s"><a id="pgfId-1016816"></a><code class="fm-code-in-text">str</code>—The string to pad out; may be <code class="fm-code-in-text">null</code>.</p>
+    </li>
+
+    <li class="fm-list-bullet-callout">
+      <p class="list-s"><a id="pgfId-1016825"></a><code class="fm-code-in-text">size</code>—The size to pad to.</p>
+    </li>
+
+    <li class="fm-list-bullet-callout">
+      <p class="list-s"><a id="pgfId-1016842"></a><code class="fm-code-in-text">padStr</code>—The string to pad with. Null or empty is treated as a single space.</p>
+    </li>
+  </ul>
+
+  <p class="fm-callout"><a id="pgfId-1016859"></a>The method returns a left-padded string, the original string if no padding is necessary, or <code class="fm-code-in-text">null</code> if a null string is input.</p>
+
+  <p class="body"><a id="pgfId-1016874"></a>For example, if we give <code class="fm-code-in-text">"abc"</code> as the string input, a dash <code class="fm-code-in-text">"-"</code> as the pad string, and 5 as the size, the program will output <code class="fm-code-in-text">"--abc"</code>.</p>
+
+  <p class="body"><a id="pgfId-1016889"></a>A developer on your team comes up with the implementation in listing 3.5. For now, suppose you are testing code written by others, so you need to build an understanding of the code before you can test it properly. Specification-based testing and structural testing are applied the same way, regardless of whether you wrote the code. In later chapters, we discuss test-driven development and how you can use tests to guide you through implementation.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1016946"></a>Listing 3.5 <code class="fm-code-in-text">leftPad</code> implementation from the Apache Commons</p>
+  <pre class="programlisting"><a id="pgfId-1016895"></a>public static String leftPad(final String str, final int size,
+<a id="pgfId-1016994"></a>  String padStr) {
+<a id="pgfId-1017005"></a> 
+<a id="pgfId-1017000"></a>  if (str == null) {                                 <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1017017"></a>    return null;
+<a id="pgfId-1017023"></a>  }
+<a id="pgfId-1017034"></a> 
+<a id="pgfId-1017029"></a>  if (padStr==null || padStr.isEmpty()) {            <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1017046"></a>    padStr = SPACE;
+<a id="pgfId-1017052"></a>  }
+<a id="pgfId-1017063"></a> 
+<a id="pgfId-1017058"></a>  final int padLen = padStr.length();
+<a id="pgfId-1017069"></a>  final int strLen = str.length();
+<a id="pgfId-1017075"></a>  final int pads = size - strLen;
+<a id="pgfId-1017086"></a> 
+<a id="pgfId-1017081"></a>  if (pads &lt;= 0) {                                   <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1017098"></a>    // returns original String when possible
+<a id="pgfId-1017104"></a>    return str;
+<a id="pgfId-1017110"></a>  }
+<a id="pgfId-1017121"></a> 
+<a id="pgfId-1017116"></a>  if (pads == padLen) {                              <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1017133"></a>    return padStr.concat(str);
+<a id="pgfId-1017139"></a>  } else if (pads &lt; padLen) {                        <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1017151"></a>    return padStr.substring(0, pads).concat(str);
+<a id="pgfId-1017157"></a>  } else {                                           <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1017169"></a>    final char[] padding = new char[pads];
+<a id="pgfId-1017175"></a>    final char[] padChars = padStr.toCharArray();
+<a id="pgfId-1017186"></a> 
+<a id="pgfId-1017181"></a>    for (int i = 0; i &lt; pads; i++) {
+<a id="pgfId-1017192"></a>      padding[i] = padChars[i % padLen];
+<a id="pgfId-1017198"></a>    }
+<a id="pgfId-1017209"></a> 
+<a id="pgfId-1017204"></a>    return new String(padding).concat(str);
+<a id="pgfId-1017215"></a>  }
+<a id="pgfId-1017221"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036225"></a><span class="fm-combinumeral">❶</span> If the string to pad is null, we return null right away.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036246"></a><span class="fm-combinumeral">❷</span> If the pad string is null or empty, we make it a space.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036263"></a><span class="fm-combinumeral">❸</span> There is no need to pad this string.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036280"></a><span class="fm-combinumeral">❹</span> If the number of characters to pad matches the size of the pad string, we concatenate it.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036297"></a><span class="fm-combinumeral">❺</span> If we cannot fit the entire pad string, we add only the part that fits.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036314"></a><span class="fm-combinumeral">❻</span> We have to add the pad string more than once. We go character by character until the string is fully padded.</p>
+
+  <p class="body"><a id="pgfId-1017327"></a>Now it is time for some systematic testing. As we know, the first step is to apply specification-based testing. Let’s follow the process discussed in chapter 2 (I suggest you try to do it yourself and compare your solution to mine):</p>
+
+  <ol class="calibre14">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1017377"></a>We read the requirements. We understand that the program adds a given character/string to the beginning (left) of the string, up to a specific size. The program has three input parameters: <code class="fm-code-in-text">str</code>, representing the original string to be padded; <code class="fm-code-in-text">size</code>, representing the desired size of the returned string; and <code class="fm-code-in-text">padStr</code>, representing the string used to pad. The program returns a <code class="fm-code-in-text">String</code>. The program has specific behavior if any of the inputs is null. (If we had implemented the feature ourselves, we would probably skip this step, as we would already have a complete understanding of the requirements.)</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1017386"></a>Based on all the observations in step 1, we derive the following list of partitions:</p>
+
+      <ul class="calibre15">
+        <li class="fm-list-numbered">
+          <a class="calibre13" id="pgfId-1017396"></a><code class="fm-code-in-text">str</code> parameter
+
+          <ul class="calibre18">
+            <li class="fm-list-bullet"><a class="calibre13" id="pgfId-1017421"></a>Null</li>
+
+            <li class="fm-list-bullet"><a class="calibre13" id="pgfId-1017439"></a>Empty string</li>
+
+            <li class="fm-list-bullet"><a class="calibre13" id="pgfId-1017449"></a>Non-empty string</li>
+          </ul>
+        </li>
+
+        <li class="fm-list-numbered">
+          <a class="calibre13" id="pgfId-1017459"></a><code class="fm-code-in-text">size</code> parameter
+
+          <ul class="calibre18">
+            <li class="fm-list-bullet"><a class="calibre13" id="pgfId-1017476"></a>Negative number</li>
+
+            <li class="fm-list-bullet"><a class="calibre13" id="pgfId-1017494"></a>Positive number</li>
+          </ul>
+        </li>
+
+        <li class="fm-list-numbered">
+          <a class="calibre13" id="pgfId-1017504"></a><code class="fm-code-in-text">padStr</code> parameter
+
+          <ul class="calibre18">
+            <li class="fm-list-bullet"><a class="calibre13" id="pgfId-1017521"></a>Null</li>
+
+            <li class="fm-list-bullet"><a class="calibre13" id="pgfId-1017539"></a>Empty</li>
+
+            <li class="fm-list-bullet"><a class="calibre13" id="pgfId-1017549"></a>Non-empty</li>
+          </ul>
+        </li>
+
+        <li class="fm-list-numbered">
+          <a class="calibre13" id="pgfId-1017559"></a><code class="fm-code-in-text">str,</code> <code class="fm-code-in-text">size</code> parameters
+
+          <ul class="calibre18">
+            <li class="fm-list-bullet"><a class="calibre13" id="pgfId-1017602"></a><code class="fm-code-in-text">size</code> &lt; len(<code class="fm-code-in-text">str</code>)</li>
+
+            <li class="fm-list-bullet"><a class="calibre13" id="pgfId-1017629"></a><code class="fm-code-in-text">size</code> &gt; len(<code class="fm-code-in-text">str</code>)</li>
+          </ul>
+        </li>
+      </ul>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1017638"></a>There are several boundaries:</p>
+
+      <ul class="calibre15">
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1017648"></a><code class="fm-code-in-text">size</code> being precisely 0</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1017673"></a><code class="fm-code-in-text">str</code> having length 1</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1017690"></a><code class="fm-code-in-text">padStr</code> having length 1</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1017725"></a><code class="fm-code-in-text">size</code> being precisely the length of <code class="fm-code-in-text">str</code></li>
+      </ul>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1017751"></a>We can devise single tests for exceptional cases such as null, empty, and negative size. We also have a boundary related to <code class="fm-code-in-text">padStr</code>: we can exercise <code class="fm-code-in-text">padStr</code> with a single character only once and have all other tests use a pad with a single character (otherwise, the number of combinations would be too large). We obtain the following tests:</p>
+
+      <ul class="calibre15">
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1017760"></a>T1: <code class="fm-code-in-text">str</code> is null.</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1017787"></a>T2: <code class="fm-code-in-text">str</code> is empty.</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1017806"></a>T3: negative <code class="fm-code-in-text">size</code>.</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1017825"></a>T4: <code class="fm-code-in-text">padStr</code> is null.</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1017844"></a>T5: <code class="fm-code-in-text">padStr</code> is empty.</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1017863"></a>T6: <code class="fm-code-in-text">padStr</code> has a single character.</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1017902"></a>T7: <code class="fm-code-in-text">size</code> is equal to the length of <code class="fm-code-in-text">str</code>.</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1017911"></a>T8: <code class="fm-code-in-text">size</code> is equal to 0.</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1017950"></a>T9: <code class="fm-code-in-text">size</code> is smaller than the length of <code class="fm-code-in-text">str</code>.</li>
+      </ul>
+    </li>
+  </ol>
+
+  <p class="body"><a id="pgfId-1017959"></a>Now we automate the tests. I used a parameterized test, but it is fine if you prefer nine traditional JUnit tests.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1018016"></a>Listing 3.6 Tests for <code class="fm-code-in-text">LeftPad</code> after specification-based testing</p>
+  <pre class="programlisting"><a id="pgfId-1017965"></a>public class LeftPadTest {
+<a id="pgfId-1018073"></a> 
+<a id="pgfId-1018068"></a>  @ParameterizedTest
+<a id="pgfId-1018079"></a>  @MethodSource("generator")
+<a id="pgfId-1018085"></a>  void test(String originalStr, int size, String padString,
+<a id="pgfId-1018091"></a>   String expectedStr) {                                    <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1018103"></a>    assertThat(leftPad(originalStr, size, padString))
+<a id="pgfId-1018109"></a>        .isEqualTo(expectedStr);
+<a id="pgfId-1018115"></a>  }
+<a id="pgfId-1018126"></a> 
+<a id="pgfId-1018121"></a>  static Stream&lt;Arguments&gt; generator() {                    <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1018138"></a>    return Stream.of(
+<a id="pgfId-1018144"></a>      of(null, 10, "-", null),                              <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1018156"></a>      of("", 5, "-", "-----"),                              <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1018168"></a>      of("abc", -1, "-", "abc"),                            <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1018180"></a>      of("abc", 5, null, "  abc"),                          <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1018192"></a>      of("abc", 5, "", " abc"),                             <span class="fm-combinumeral">❼</span>
+<a id="pgfId-1018204"></a>      of("abc", 5, "-", "--abc"),                           <span class="fm-combinumeral">❽</span>
+<a id="pgfId-1018216"></a>      of("abc", 3, "-", "abc"),                             <span class="fm-combinumeral">❾</span>
+<a id="pgfId-1018228"></a>      of("abc", 0, "-", "abc"),                             <span class="fm-combinumeral">❿</span>
+<a id="pgfId-1018240"></a>      of("abc", 2, "-", "abc")                              <span class="fm-combinumeral">⓫</span>
+<a id="pgfId-1018252"></a>    );
+<a id="pgfId-1018258"></a>  }
+<a id="pgfId-1018264"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1035429"></a><span class="fm-combinumeral">❶</span> The parameterized test, similar to the ones we have written before</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1035450"></a><span class="fm-combinumeral">❷</span> The nine tests we created are provided by the method source.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1035467"></a><span class="fm-combinumeral">❸</span> T1</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1035484"></a><span class="fm-combinumeral">❹</span> T2</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1035501"></a><span class="fm-combinumeral">❺</span> T3</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1035518"></a><span class="fm-combinumeral">❻</span> T4</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1035535"></a><span class="fm-combinumeral">❼</span> T5</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1035552"></a><span class="fm-combinumeral">❽</span> T6</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1035569"></a><span class="fm-combinumeral">❾</span> T7</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1035586"></a><span class="fm-combinumeral">❿</span> T8</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1035603"></a><span class="fm-combinumeral">⓫</span> T9</p>
+
+  <p class="body"><a id="pgfId-1018466"></a>It is time to augment the test suite through structural testing. Let’s use a code coverage tool to tell us what we have already covered (see figure 3.8). The report shows that we are missing some branches: the <code class="fm-code-in-text">if</code> <code class="fm-code-in-text">(pads</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">padLen)</code> and <code class="fm-code-in-text">else</code> <code class="fm-code-in-text">if</code> <code class="fm-code-in-text">(pads</code> <code class="fm-code-in-text">&lt;</code> <code class="fm-code-in-text">padLen)</code> expressions.</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/03-08.png" width="744" height="479"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1038723"></a>Figure 3.8 Code coverage achieved by the specification-based tests for the <code class="fm-code-in-text">leftPad</code> method. The two <code class="fm-code-in-text">return</code> lines near the arrow are not covered; the <code class="fm-code-in-text">if</code> and <code class="fm-code-in-text">else if</code>, also near the arrow, are only partially covered. The remaining lines are fully covered.</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1018554"></a>This is useful information. Why didn’t we cover these lines? What did we miss? As a developer, you should triangulate what you see in the source with the specification and your mental model of the program. In this case, we conclude that we did not exercise <code class="fm-code-in-text">padStr</code> being smaller, greater, or equal to the remaining space in <code class="fm-code-in-text">str</code>. What a tricky boundary! This is why structural testing is essential: it helps identify partitions and boundaries we may have missed.</p>
+
+  <p class="body"><a id="pgfId-1018563"></a>With that information in mind, we derive three more test cases:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1018593"></a>T10: the length of <code class="fm-code-in-text">padStr</code> is equal to the remaining spaces in <code class="fm-code-in-text">str</code>.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1018622"></a>T11: the length of <code class="fm-code-in-text">padStr</code> is greater than the remaining spaces in <code class="fm-code-in-text">str</code>.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1018651"></a>T12: the length of <code class="fm-code-in-text">padStr</code> is smaller than the remaining spaces in <code class="fm-code-in-text">str</code> (this test may be similar to T6).</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1018660"></a>We add these three extra test cases to our parameterized test, as shown in listing 3.7. When we run the coverage tool again, we get a report similar to the one in figure 3.9. We now cover all the branches.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1018717"></a>Listing 3.7 Three new test cases for <code class="fm-code-in-text">leftPad</code></p>
+  <pre class="programlisting"><a id="pgfId-1018666"></a>static Stream&lt;Arguments&gt; generator() {
+<a id="pgfId-1018764"></a>  return Stream.of(
+<a id="pgfId-1018770"></a>    // ... others here
+<a id="pgfId-1018776"></a>    of("abc", 5, "--", "--abc"), // T10
+<a id="pgfId-1018782"></a>    of("abc", 5, "---", "--abc"), // T11
+<a id="pgfId-1018788"></a>    of("abc", 5, "-", "--abc") // T12
+<a id="pgfId-1018794"></a>  );
+<a id="pgfId-1018800"></a>}</pre>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/03-09.png" width="771" height="479"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1038784"></a>Figure 3.9 Code coverage of the <code class="fm-code-in-text">leftPad</code> method after specification-based and structural tests. We now achieve 100% branch coverage.</p>
+  </div>
+
+  <p class="fm-callout"><a id="pgfId-1018825"></a><span class="fm-callout-head">Note</span> Interestingly, if you look at the entire class, JaCoCo does not give 100% coverage, but only 96%. The report highlights the first line of the file: the declaration of the class, <code class="fm-code-in-text">public</code> <code class="fm-code-in-text">class</code> <code class="fm-code-in-text">LeftPadUtils</code> <code class="fm-code-in-text">{</code>. The <code class="fm-code-in-text">leftPad</code> method is <a id="marker-1038765"></a>static, so none of our tests instantiate this class. Given that we know the context, we can ignore the fact that this line is not covered. This is a good example of why only looking at the numbers makes no sense. We discuss this further, later in the chapter.</p>
+
+  <p class="body"><a id="pgfId-1018896"></a>With all the branches covered, we now look for other interesting cases to test. The implementation contains interesting decisions that we may decide to test. In particular, we observe an <code class="fm-code-in-text">if</code> <code class="fm-code-in-text">(pads</code> <code class="fm-code-in-text">&lt;=</code> <code class="fm-code-in-text">0)</code> block with the code comment “returns original String when possible”. As a tester, you may decide to test this specific behavior: “If the string is not padded, the program should return the same <code class="fm-code-in-text">String</code> instance.” That can be written as a JUnit test as follows.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1018956"></a>Listing 3.8 Another extra test for <code class="fm-code-in-text">leftPad</code></p>
+  <pre class="programlisting"><a id="pgfId-1018905"></a>@Test
+<a id="pgfId-1019003"></a>void sameInstance() {
+<a id="pgfId-1019009"></a>  String str = "sometext";
+<a id="pgfId-1019015"></a>  assertThat(leftPad(str, 5, "-")).isSameAs(str);
+<a id="pgfId-1019021"></a>}</pre>
+
+  <p class="body"><a id="pgfId-1019027"></a>We are now much more confident that our test suite covers all the critical behavior of the program. Structural testing and code coverage helped us identify parts of the code that we did not test (or partitions we missed) during our specification-based testing—and that is what structural testing is all about. <a id="marker-1019029"></a></p>
+
+  <h2 class="fm-head" id="heading_id_16"><a id="pgfId-1019036"></a>3.8 Boundary testing and structural testing</h2>
+
+  <p class="body"><a id="pgfId-1019055"></a><a id="marker-1019047"></a><a id="marker-1019049"></a><a id="marker-1019051"></a>The most challenging part of specification-based testing is identifying boundaries. They are tricky to find, given the way we write specifications. Luckily, they are much easier to find in source code, given how precise code has to be. All the boundary testing ideas we discussed in the previous chapter apply here.</p>
+
+  <p class="body"><a id="pgfId-1019076"></a>The idea of identifying and testing on and off points fits nicely in structural testing. For example, we can analyze the <code class="fm-code-in-text">if</code> statements in the <code class="fm-code-in-text">leftPad</code> program:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019127"></a><code class="fm-code-in-text">if</code> <code class="fm-code-in-text">(pads</code> <code class="fm-code-in-text">&lt;=</code> <code class="fm-code-in-text">0)</code>—The on point is 0 and evaluates the expression to <code class="fm-code-in-text">true</code>. The off point is the nearest point to the on point that makes the expression evaluate to <code class="fm-code-in-text">false</code>. In this case, given that <code class="fm-code-in-text">pads</code> is an integer, the nearest point is 1.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019184"></a><code class="fm-code-in-text">if</code> <code class="fm-code-in-text">(pads</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">padLen)</code>—The on point is <code class="fm-code-in-text">padLen</code>. Given the equality and that <code class="fm-code-in-text">padLen</code> is an integer, we have two off points: one that happens when <code class="fm-code-in-text">pads</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">padLen</code> <code class="fm-code-in-text">-</code> <code class="fm-code-in-text">1</code> and another that happens when <code class="fm-code-in-text">pads</code> <code class="fm-code-in-text">=</code> <code class="fm-code-in-text">padLen</code> <code class="fm-code-in-text">+</code> <code class="fm-code-in-text">1</code>.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019231"></a><code class="fm-code-in-text">if</code> <code class="fm-code-in-text">(pads</code> <code class="fm-code-in-text">&lt;</code> <code class="fm-code-in-text">padLen)</code>—The on point is again <code class="fm-code-in-text">padLen</code>. The on point evaluates the expression to <code class="fm-code-in-text">false</code>. The off point is, therefore, <code class="fm-code-in-text">pads</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">padLen</code> <code class="fm-code-in-text">-</code> <code class="fm-code-in-text">1</code>.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1019240"></a>As a tester, you may want to use this information to see whether you can augment your test suite.</p>
+
+  <p class="body"><a id="pgfId-1019246"></a>We discussed the loop boundary criterion earlier, which helps us try different possible boundaries. If a loop has a less conventional, more complicated expression, consider applying on and off analysis there as well. <a id="marker-1019248"></a><a id="marker-1019251"></a></p>
+
+  <h2 class="fm-head" id="heading_id_17"><a id="pgfId-1019257"></a>3.9 Structural testing alone often is not enough</h2>
+
+  <p class="body"><a id="pgfId-1019267"></a><a id="marker-1019268"></a>If code is the source of all truth, why can’t we just do structural testing? This is a very interesting question. Test suites derived only with structural testing can be reasonably effective, but they may not be strong enough. Let’s look at an example (see the “counting clumps” problem, inspired by a CodingBat assignment: <a class="url" href="https://codingbat.com/prob/p193817">https://codingbat.com/prob/p193817</a>):</p>
+
+  <p class="fm-callout"><a id="pgfId-1019583"></a>The program should count the number of clumps in an array. A clump is a sequence of the same element with a length of at least 2.</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-bullet-callout">
+      <p class="list-s"><a id="pgfId-1019589"></a><code class="fm-code-in-text">nums</code>—The array for which to count the clumps. The array must be non-null and length &gt; 0; the program returns 0 if any pre-condition is violated.</p>
+    </li>
+  </ul>
+
+  <p class="fm-callout"><a id="pgfId-1019610"></a>The program returns the number of clumps in the array.</p>
+
+  <p class="body"><a id="pgfId-1019616"></a>The following listing shows an implementation.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1019673"></a>Listing 3.9 Implementing the code clumps requirement</p>
+  <pre class="programlisting"><a id="pgfId-1019622"></a>public static int countClumps(int[] nums) {
+<a id="pgfId-1019712"></a>  if (nums == null || nums.length == 0) {    <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1019724"></a>    return 0;
+<a id="pgfId-1019730"></a>  }
+<a id="pgfId-1019736"></a>  int count = 0;
+<a id="pgfId-1019742"></a>  int prev = nums[0];
+<a id="pgfId-1019748"></a>  boolean inClump = false;
+<a id="pgfId-1019754"></a>  for (int i = 1; i &lt; nums.length; i++) {
+<a id="pgfId-1019760"></a>    if (nums[i] == prev &amp;&amp; !inClump) {       <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1019772"></a>      inClump = true;
+<a id="pgfId-1019778"></a>      count += 1;
+<a id="pgfId-1019784"></a>    }
+<a id="pgfId-1019790"></a>    if (nums[i] != prev) {                   <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1019802"></a>      prev = nums[i];
+<a id="pgfId-1019808"></a>      inClump = false;
+<a id="pgfId-1019814"></a>    }
+<a id="pgfId-1019820"></a>  }
+<a id="pgfId-1019826"></a>  return count;
+<a id="pgfId-1019832"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1035258"></a><span class="fm-combinumeral">❶</span> If null or empty (pre-condition), return 0 right away.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1035279"></a><span class="fm-combinumeral">❷</span> If the current number is the same as the previous number, we have identified a clump.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1035296"></a><span class="fm-combinumeral">❸</span> If the current number differs from the previous one, we are not in a clump.</p>
+
+  <p class="body"><a id="pgfId-1019890"></a>Suppose we decide not to look at the requirements. We want to achieve, say, 100% branch coverage. Three tests are enough to do that (T1–T3). Maybe we also want to do some extra boundary testing and decide to exercise the loop, iterating a single time (T4):</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019896"></a>T1: an empty array</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019910"></a>T2: a null array</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019920"></a>T3: an array with a single clump of three elements in the middle (for example, <code class="fm-code-in-text">[1,2,2,2,1]</code>)</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019939"></a>T4: an array with a single element</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1019949"></a>To check that for yourself, write down these three tests as (JUnit) automated test cases and run your favorite code coverage tool as in the following.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1020006"></a>Listing 3.10 100% branch coverage for the clump-counting problem</p>
+  <pre class="programlisting"><a id="pgfId-1019955"></a>@ParameterizedTest
+<a id="pgfId-1020045"></a>@MethodSource("generator")
+<a id="pgfId-1020051"></a>void testClumps(int[] nums, int expectedNoOfClumps) {
+<a id="pgfId-1020057"></a>  assertThat(Clumps.countClumps(nums))
+<a id="pgfId-1020063"></a>      .isEqualTo(expectedNoOfClumps);
+<a id="pgfId-1020069"></a>}
+<a id="pgfId-1020080"></a> 
+<a id="pgfId-1020075"></a>static Stream&lt;Arguments&gt; generator() {     <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1020092"></a>  return Stream.of(
+<a id="pgfId-1020098"></a>    of(new int[]{}, 0), // empty
+<a id="pgfId-1020104"></a>    of(null, 0), // null
+<a id="pgfId-1020110"></a>    of(new int[]{1,2,2,2,1}, 1), // one clump
+<a id="pgfId-1020116"></a>    of(new int[]{1}, 0) // one element
+<a id="pgfId-1020122"></a>  );
+<a id="pgfId-1020128"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1035190"></a><span class="fm-combinumeral">❶</span> The four test cases we defined</p>
+
+  <p class="body"><a id="pgfId-1020154"></a>This test suite is reasonable and exercises the main behavior of the program, but note how weak it is. It achieves 100% branch coverage, but it misses many interesting test cases. Even without performing systematic specification testing, in a program that counts clumps, it is natural to try the program with multiple clumps instead of just one. We could try it with the last clump happening at the last item of the array or with an array that has a clump starting in the first position. Such specific cases cannot be captured by pure structural testing guided mainly by coverage. This is yet another reason not to rely blindly on coverage. Structural testing shows its value when combined with knowledge of the specification. <a id="marker-1020156"></a></p>
+
+  <h2 class="fm-head" id="heading_id_18"><a id="pgfId-1020163"></a>3.10 Structural testing in the real world</h2>
+
+  <p class="body"><a id="pgfId-1020173"></a>Now that you have a clear picture of structural testing, the coverage criteria you can use for guidance, and how to use structural testing in combination with specification-based testing, let me discuss a few interesting points.</p>
+
+  <h3 class="fm-head1" id="heading_id_19"><a id="pgfId-1020179"></a>3.10.1 Why do some people hate code coverage?</h3>
+
+  <p class="body"><a id="pgfId-1020189"></a><a id="marker-1020190"></a>I find it interesting that some people rage against code coverage. A prevalent opinion is, “If I write a test case with no assertions, I achieve 100% coverage, but I am not testing anything!” This is true. If your tests have no assertions, they do not test anything, but the production code is exercised. However, I consider that a flawed argument. It assumes the very worst (unrealistic) scenario possible. If you are writing test suites with no assertions, you have bigger problems to take care of before you can enjoy the benefits of structural testing.</p>
+
+  <p class="body"><a id="pgfId-1020198"></a>Between the lines, people use such an argument to explain that you should not look at the coverage number blindly, because it can mislead you. That I fully agree with. Here, the misconception is how people see code coverage. If code coverage is only a number you should achieve, you may end up writing less useful test cases and gaming the metric (something that Bouwers, Visser, and Van Deursen have argued in 2012).</p>
+
+  <p class="body"><a id="pgfId-1020204"></a>I hope this chapter has clarified how structural testing and code coverage should be used: to augment specification-based testing, quickly identify parts of the code that are not currently exercised by the test suite, and identify partitions you missed when doing specification-based testing. Achieving a high coverage number may be a consequence of you doing that, but the purpose is different. If you leave a line uncovered, it is because you thought about it and decided not to cover it.</p>
+
+  <p class="fm-head2"><a id="pgfId-1020210"></a>Empirical evidence in favor of code coverage</p>
+
+  <p class="body"><a id="pgfId-1020220"></a><a id="marker-1020221"></a>Understanding whether structural coverage helps and whether high coverage numbers lead to better-tested software has been the goal of many empirical software engineering researchers. Interestingly, while researchers have not yet found a magical coverage number that we should aim for, some evidence points toward the benefits of structural testing. I quote four of these studies:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1020229"></a><i class="fm-italics1">Hutchins et al. (1994)</i> —“Within the limited domain of our experiments, test sets achieving coverage levels over 90% usually showed significantly better fault detection than randomly chosen test sets of the same size. In addition, significant improvements in the effectiveness of coverage-based tests usually occurred as coverage increased from 90% to 100%. However, the results also indicate that 100% code coverage alone is not a reliable indicator of the effectiveness of a test set.”</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1020250"></a><i class="fm-italics1">Namin and Andrews (2009)</i> —“Our experiments indicate that coverage is sometimes correlated with effectiveness when test suite size is controlled for, and that using both size and coverage yields a more accurate prediction of effectiveness than test suite size alone. This, in turn, suggests that both size and coverage are important to test suite effectiveness.”</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1020267"></a><i class="fm-italics1">Inozemtseva and Holmes (2014)</i> —“We found that there is a low to moderate correlation between coverage and effectiveness when the number of test cases in the suite is controlled for. In addition, we found that stronger forms of coverage do not provide greater insight into the effectiveness of the suite. Our results suggest that coverage, while useful for identifying under-tested parts of a program, should not be used as a quality target because it is not a good indicator of test suite effectiveness.”</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1020284"></a><i class="fm-italics1">Gopinath et al. (2020)</i> —“This paper finds a correlation between lightweight, widely available coverage criteria (statement, block, branch, and path coverage) and mutation kills for hundreds of Java programs (...). For both original and generated suites, statement coverage is the best predictor for mutation kills, and in fact does a relatively good job of predicting suite quality.”</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1020301"></a>Although developing sound experiments to show whether coverage helps is difficult, and we are not quite there yet (see Chen et al.’s 2020 paper for a good statistical explanation of why it is hard), the current results make sense to me. Even with the small code examples we have been exploring, we can see a relationship between covering all the partitions via specification-based testing and covering the entire source code. The opposite is also true: if you cover a significant part of the source code, you also cover most of the partitions. Therefore, high coverage implies more partitions being tested.</p>
+
+  <p class="body"><a id="pgfId-1020307"></a>The empirical results also show that coverage alone is not always a strong indicator of how good a test suite is. We also noticed that in the test cases we derived for the <code class="fm-code-in-text">CountWords</code> problem at the beginning of this chapter. We purposefully did bad specification-based testing and then augmented the test suite with structural testing. We ended up with three test cases that achieve 100% condition + branch coverage. But is the test suite strong enough? I don’t think so. I can think of many extra test cases that would touch the same lines and branches again but would nonetheless make the test suite much more effective against possible bugs.</p>
+
+  <p class="body"><a id="pgfId-1020338"></a>On the other hand, although 100% coverage does not necessarily mean the system is properly tested, having very low coverage <i class="fm-italics">does</i> mean your system is <i class="fm-italics">not</i> properly tested. Having a system with, say, 10% coverage means there is much to be done as far as testing.</p>
+
+  <p class="body"><a id="pgfId-1020347"></a>I suggest reading Google’s code coverage best practices (Arguelles, Ivankovic, and Bender, 2020). Their perceptions are in line with everything we have discussed here. <a id="marker-1020349"></a><a id="marker-1020352"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_20"><a id="pgfId-1020358"></a>3.10.2 What does it mean to achieve 100% coverage?</h3>
+
+  <p class="body"><a id="pgfId-1020375"></a><a id="marker-1020369"></a><a id="marker-1020371"></a>I have purposefully skipped talking much about achieving 100% line coverage or branch coverage or other coverage. I do not believe that achieving a number should be the goal. Nevertheless, given how prevalent those numbers are in practice, it is important to understand them. First, let’s talk about the metrics themselves.</p>
+
+  <p class="fm-callout"><a id="pgfId-1020380"></a><span class="fm-callout-head">Note</span> Formulas vary among the tools on the market. Check your tool’s manual to better understand the precise numbers you get.</p>
+
+  <p class="body"><a id="pgfId-1020396"></a>If the entire test suite covers all the lines in the program (or in the class or method under test), that suite achieves <i class="fm-italics">100% line coverage</i>. A simple formula to calculate the line coverage of a given program or method is to divide the number of lines covered by the total number of lines:</p>
+
+  <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/03-09-unnumb-1.png" width="450" height="50"/></p>
+
+  <p class="body"><a id="pgfId-1020411"></a>You can calculate this number at the method level, class level, package level, system level, or whatever level you are interested in.</p>
+
+  <p class="body"><a id="pgfId-1020435"></a>Similar to line coverage, a formula to calculate the achieved <i class="fm-italics">branch coverage</i> of a program or method is the number of branches covered divided by the total number of branches:</p>
+
+  <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/03-09-unnumb-2.png" width="506" height="51"/></p>
+
+  <p class="body"><a id="pgfId-1020494"></a>In a simple program such as <code class="fm-code-in-text">if(x)</code> <code class="fm-code-in-text">{</code> <code class="fm-code-in-text">do</code> <code class="fm-code-in-text">A</code> <code class="fm-code-in-text">}</code> <code class="fm-code-in-text">else</code> <code class="fm-code-in-text">{</code> <code class="fm-code-in-text">do</code> <code class="fm-code-in-text">B</code> <code class="fm-code-in-text">}</code>, the total number of branches is two (the single <code class="fm-code-in-text">if</code> statement branches the program in two ways). Therefore, if one test in your test suite covers, say <code class="fm-code-in-text">x</code> <code class="fm-code-in-text">=</code> <code class="fm-code-in-text">true</code>, your test suite achieves 1/2 × 100% = 50% branch coverage. Note that due to criteria subsumption, which we discussed earlier, if you cover all the branches of the program, you also cover all the lines.</p>
+
+  <p class="body"><a id="pgfId-1020503"></a>Finally, a formula to calculate the <i class="fm-italics">condition + branch coverage</i> of a given <a id="marker-1020514"></a>program or method is the sum of all branches and conditions covered, divided by the total number of branches and conditions:</p>
+
+  <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/03-09-unnumb-3.png" width="675" height="49"/></p>
+
+  <p class="body"><a id="pgfId-1020678"></a>In a simple program such as <code class="fm-code-in-text">if(x</code> <code class="fm-code-in-text">||</code> <code class="fm-code-in-text">y)</code> <code class="fm-code-in-text">{</code> <code class="fm-code-in-text">do</code> <code class="fm-code-in-text">A</code> <code class="fm-code-in-text">}</code> <code class="fm-code-in-text">else</code> <code class="fm-code-in-text">{</code> <code class="fm-code-in-text">do</code> <code class="fm-code-in-text">B</code> <code class="fm-code-in-text">}</code>, the total number of branches is two (the single <code class="fm-code-in-text">if</code> statement branches the program in two ways) and the total number of conditions is four (two conditions for <code class="fm-code-in-text">x</code> and two conditions for <code class="fm-code-in-text">y</code>). Therefore, if you have two tests in your test suite—T1: <code class="fm-code-in-text">(true,</code> <code class="fm-code-in-text">true)</code> and T2: <code class="fm-code-in-text">(false,</code> <code class="fm-code-in-text">true)</code>—the test suite achieves (1 + 3)/(2 + 4) × 100% = 66.6% condition + branch coverage. The test suite covers only one branch of the program (the <code class="fm-code-in-text">true</code> branch, as both T1 and T2 make the <code class="fm-code-in-text">if</code> expression evaluate to <code class="fm-code-in-text">true</code>), and three of the four conditions (<code class="fm-code-in-text">x</code> is exercised as <code class="fm-code-in-text">true</code> and <code class="fm-code-in-text">false</code>, but <code class="fm-code-in-text">y</code> is only exercised as <code class="fm-code-in-text">true</code>).</p>
+
+  <p class="body"><a id="pgfId-1020687"></a>Figure 3.10 shows a simple illustration of line coverage, branch coverage, and condition + branch coverage. When someone says, “My test suite achieves 80% condition + branch coverage,” you now understand that 80% of the branches and conditions are covered by at least one test case. And when someone says, “My test suite achieves 100% line coverage,” you know that 100% of the lines are covered by at least one test case. <a id="marker-1038815"></a></p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/03-10.png" width="686" height="300"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1038837"></a>Figure 3.10 Two control-flow graphs of simple programs and how the different coverage criteria are calculated</p>
+  </div>
+
+  <h3 class="fm-head1" id="heading_id_21"><a id="pgfId-1020706"></a>3.10.3 What coverage criterion to use</h3>
+
+  <p class="body"><a id="pgfId-1020730"></a><a id="marker-1020731"></a>This is a popular question among practitioners and researchers. If we settle for a less-rigorous criterion, such as line coverage instead of branch coverage, we might miss something. Plus this question brings the focus back to the metric, which we do not want.</p>
+
+  <p class="body"><a id="pgfId-1020762"></a>Which criterion to use depends on the context: what you are testing at that moment and how rigorous you want the testing to be. Structural testing is meant to complement specification-based testing. When you dive into the source code and look for uncovered parts, you may decide to use branch coverage for <a id="marker-1020741"></a>a specific <code class="fm-code-in-text">if</code> expression but MC/DC for another <code class="fm-code-in-text">if</code> expression. This makes the approach less systematic (and, therefore, more prone to errors and different developers using different criteria), but it is the most pragmatic approach I know. You may want to perform some risk assessment to determine how important it is to be thorough.</p>
+
+  <p class="body"><a id="pgfId-1020771"></a>My rule of thumb is branch coverage: I always try to at least reach all the branches of the program. Whenever I see a more complicated expression, I evaluate the need for condition + branch coverage. If I see an even more complex expression, I consider MC/DC. <a id="marker-1020773"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_22"><a id="pgfId-1020780"></a>3.10.4 MC/DC when expressions are too complex and cannot be simplified</h3>
+
+  <p class="body"><a id="pgfId-1020810"></a><a id="marker-1020791"></a>MC/DC is increasingly valuable as expressions become more complicated. Listing 3.11 shows an example of a complex expression that I extracted from Chilenski’s 2001 paper. It is an anonymized version of a condition found in a level A flight simulation program and contains an impressive 76 conditions. Achieving path coverage in such a complex expression is impossible (2<sup class="calibre19">76</sup> = 7.5 × 10<sup class="calibre19">22</sup> test cases), so smart approaches such as MC/DC come in handy.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1020870"></a>Listing 3.11 Complex expression from flight simulation software</p>
+  <pre class="programlisting"><a id="pgfId-1020819"></a>Bv or (Ev != El) or Bv2 or Bv3 or Bv4 or Bv5 or Bv6 or Bv7 or Bv8 or Bv9 or
+<a id="pgfId-1020909"></a>Bv10 or Bv11 or Bv12 or Bv13 or Bv14 or Bv15 or Bv16 or Bv17 or Bv18 or
+<a id="pgfId-1020915"></a>Bv19 or Bv20 or Bv21 or Bv22 or Bv23 or Bv24 or Bv25 or Bv26 or Bv27 or
+<a id="pgfId-1020921"></a>Bv28 or Bv29 or Bv30 or Bv31 or Bv32 or Bv33 or Bv34 or Bv35 or Bv36 or
+<a id="pgfId-1020927"></a>Bv37 or Bv38 or Bv39 or Bv40 or Bv41 or Bv42 or Bv43 or Bv44 or Bv45 or
+<a id="pgfId-1020933"></a>Bv46 or Bv47 or Bv48 or Bv49 or Bv50 or Bv51 or (Ev2 = El2) or
+<a id="pgfId-1020939"></a>((Ev3 = El2) and (Sav != Sac)) or Bv52 or Bv53 or Bv54 or Bv55 or Bv56
+<a id="pgfId-1020945"></a>or Bv57 or Bv58 or Bv59 or Bv60 or Bv61 or Bv62 or Bv63 or Bv64 or Bv65
+<a id="pgfId-1020951"></a>or Ev4 != El3 or Ev5 = El4 or Ev6 = El4 or Ev7 = El4 or Ev8 = El4 or
+<a id="pgfId-1020957"></a>Ev9 = El4 or Ev10 = El4</pre>
+
+  <p class="body"><a id="pgfId-1020963"></a>Pragmatically speaking, testing such a complex expression, with or without MC/DC, is a challenge, and you should avoid doing so when possible. Sometimes you can break an expression into smaller bits that you can then test. But in cases where breaking complex expressions is not possible, MC/DC shines.</p>
+
+  <div class="fm-sidebar-block">
+    <p class="fm-sidebar-title"><a class="calibre13" id="pgfId-1020969"></a>MC/DC in SQLite</p>
+
+    <p class="fm-sidebar-text"><a id="pgfId-1020979"></a>A nice story of the benefits of MC/DC was told by Richard Hipp, the creator and primary developer of SQLite, the most popular embedded database. In the Corecursive #066 podcast, Richard says, “I had this idea, I’m going to write tests to bring SQLite up to the quality of 100% MC/DC, and that took a year of 60-hour weeks. That was hard, hard work. I was putting in 12-hour days every single day. I was getting so tired of this because with this sort of thing, it’s the old joke of, you get 95% of the functionality with the first 95% of your budget, and the last 5% on the second 95% of your budget. It’s kind of the same thing. It’s pretty easy to get up to 90 or 95% test coverage. Getting that last 5% is really, really hard, and it took about a year for me to get there, but once we got to that point, we stopped getting bug reports from Android.” What a powerful success story of MC/DC.</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1021017"></a>For completeness, here are some final remarks about MC/DC. First, in the example in section 3.1, we apply <i class="fm-italics">unique-cause MC/DC criteria</i>: we identify <a id="marker-1034719"></a>an independence pair (T1, T2) where only a single condition and the final outcome change between T1 and T2. That may not be possible in all cases. For example, consider <code class="fm-code-in-text">(A</code> <code class="fm-code-in-text">&amp;&amp;</code> <code class="fm-code-in-text">B)</code> <code class="fm-code-in-text">||</code> <code class="fm-code-in-text">(A</code> <code class="fm-code-in-text">&amp;&amp;</code> <code class="fm-code-in-text">C)</code>. Ideally, we would demonstrate the independence of the first A, B, the second A, and C. But it is impossible to change the first A and not change the second A. Thus, we cannot demonstrate the independence of each A in the expression. In such cases, we allow A to vary, but we fix all other variables (this is called <i class="fm-italics">masked MC/DC</i>).</p>
+
+  <p class="body"><a id="pgfId-1021042"></a>Second, note that it may not be possible to achieve MC/DC in some expressions, such as <code class="fm-code-in-text">(A</code> <code class="fm-code-in-text">and</code> <code class="fm-code-in-text">B)</code> <code class="fm-code-in-text">or</code> <code class="fm-code-in-text">(A</code> <code class="fm-code-in-text">and</code> <code class="fm-code-in-text">not</code> <code class="fm-code-in-text">B)</code>. While the independence pairs (TT, FT) would show the independence of A, there are no pairs that show the independence of B. In such cases, revisit the expression, as it may have been poorly designed. In this example, the expression could be reformulated to simply <code class="fm-code-in-text">A</code>.</p>
+
+  <p class="body"><a id="pgfId-1021051"></a>Finally, mathematically speaking, N + 1 is the theoretical lower bound for the number of tests you may need when applying MC/DC. In other words, you may need more than N + 1 test cases to achieve MC/DC in some expressions. However, the empirical study by Chilenski (2001) shows that the majority of expressions in practice require N + 1 tests. This has been my observation, too: N + 1 is most of the times the number of required test cases. <a id="marker-1021053"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_23"><a id="pgfId-1021060"></a>3.10.5 Other coverage criteria</h3>
+
+  <p class="body"><a id="pgfId-1021080"></a><a id="marker-1021071"></a>Throughout this chapter, we have used the program’s control flow as a way to derive different tests. Another way of approaching structural testing is to look at the <i class="fm-italics">data flow</i>: examining how <a id="marker-1021085"></a>the data flows to different parts of the program.</p>
+
+  <p class="body"><a id="pgfId-1021095"></a>For example, imagine that a variable is defined, then modified one, two, or three times in other parts of the program, and then used again later. You may want to ensure that you exercise all the possible ways this variable is touched. Trying to summarize data-flow coverage in one sentence is unfair, and a lot of energy has been spent coming up with criteria, but this should give you some intuition about it.</p>
+
+  <p class="body"><a id="pgfId-1021101"></a>I do not discuss data-flow coverage in this book, but I suggest you read more about it. Pezzè and Young (2008) give a nice explanation. <a id="marker-1021103"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_24"><a id="pgfId-1021110"></a>3.10.6 What should not be covered?</h3>
+
+  <p class="body"><a id="pgfId-1021150"></a><a id="marker-1021121"></a>We have talked a lot about what to test and cover. Let’s quickly discuss what <i class="fm-italics">not</i> to cover. Achieving 100% coverage may be impossible or not even desirable. For example, the code snippet in listing 3.12 returns the full path of a specific directory. The code may throw a <code class="fm-code-in-text">URISyntaxException</code>, which we catch and wrap around a <code class="fm-code-in-text">RuntimeException</code>. (For the Java experts, we are converting a checked exception to an unchecked exception.)</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1021210"></a>Listing 3.12 A method that does not deserve full coverage</p>
+  <pre class="programlisting"><a id="pgfId-1021159"></a>public static String resourceFolder(String path) {
+<a id="pgfId-1021249"></a>  try {
+<a id="pgfId-1021255"></a>    return Paths.get(ResourceUtils.class
+<a id="pgfId-1021261"></a>      .getResource("/").toURI()).toString() + path;
+<a id="pgfId-1021267"></a>  } catch (URISyntaxException e) {
+<a id="pgfId-1021273"></a>    throw new RuntimeException(e);
+<a id="pgfId-1021279"></a>  }
+<a id="pgfId-1021285"></a>}</pre>
+
+  <p class="body"><a id="pgfId-1021371"></a>To achieve 100% line coverage, we would need to exercise the <code class="fm-code-in-text">catch</code> block. For that <a id="marker-1021302"></a>to happen, we would have to somehow force the <code class="fm-code-in-text">toURI</code> method to <a id="marker-1021318"></a>throw the exception. We could use mocks (discussed later in this book), but I cannot see any advantage in doing that. It is more important to test what would happen to the rest of the system if <code class="fm-code-in-text">resourceFolder</code> threw a <code class="fm-code-in-text">RuntimeException</code>. That is much easier to do, as we have more control over the <code class="fm-code-in-text">resourceFolder</code> method than <a id="marker-1021354"></a>the<a id="marker-1021360"></a> Java <code class="fm-code-in-text">toURI()</code> method. Therefore, this piece of code it is not worth covering and shows why blindly aiming for 100% coverage makes no sense.</p>
+
+  <p class="body"><a id="pgfId-1021403"></a>In Java, in particular, I tend not to write dedicated tests <a id="marker-1021382"></a>for <code class="fm-code-in-text">equals</code> and <code class="fm-code-in-text">hashCode</code> methods or <a id="marker-1021408"></a>straightforward getters and setters. These are tested implicitly by the tests that exercise the other methods that use them.</p>
+
+  <p class="body"><a id="pgfId-1021418"></a>To close this discussion, I want to reinforce that, for me, <i class="fm-italics">all code should be covered until proven otherwise.</i> I start from the idea that I should have 100% coverage. Then, if I see that a piece of code does not need to be covered, I make an exception. But be careful—experience shows that bugs tend to appear in areas you do not cover well. <a id="marker-1021429"></a></p>
+
+  <h2 class="fm-head" id="heading_id_25"><a id="pgfId-1021436"></a>3.11 Mutation testing</h2>
+
+  <p class="body"><a id="pgfId-1021453"></a><a id="marker-1021447"></a><a id="marker-1021449"></a>All the coverage criteria discussed in this chapter consider how much of the production code is exercised by a test. What they all miss is whether the assertions that these tests make are good and strong enough to capture bugs. If we introduce a bug in the code, even in a line covered by a test, will the test break?</p>
+
+  <p class="body"><a id="pgfId-1021458"></a>As mentioned earlier, coverage alone is not enough to determine whether a test suite is good. We have been thinking about how far our test suite goes to evaluate the strength of our test suite. Now let’s think of the test suite’s <i class="fm-italics">fault detection capability</i>. How many bugs can it reveal?</p>
+
+  <p class="body"><a id="pgfId-1021473"></a>This is the idea behind <i class="fm-italics">mutation testing</i>. In a nutshell, we purposefully insert a bug in the existing code and check whether the test suite breaks. If it does, that’s a point for the test suite. If it does not (all tests are green even with the bug in the code), we have found something to improve in our test suite. We then repeat the process: we create another buggy version of the problem by changing something else in the code, and we check whether the test suite captures that bug.</p>
+
+  <p class="body"><a id="pgfId-1021514"></a>These buggy versions are <i class="fm-italics">mutants</i> of the original, supposedly correct, version of the program. If the test suite breaks when executed against a mutant, we say that the test suite <i class="fm-italics">kills</i> that mutant. If it does not break, we say that the mutant <i class="fm-italics">survives</i>. A test suite achieves 100% mutation coverage if it kills all possible mutants.</p>
+
+  <p class="body"><a id="pgfId-1021539"></a>Mutation testing makes two interesting assumptions. First, the <i class="fm-italics">competent programmer hypothesis</i> assumes that the program is written by a competent programmer and that the implemented version is either correct or differs from the correct program by a combination of simple errors. Second, the <i class="fm-italics">coupling effect</i> says that a complex bug is caused by a combination of many small bugs. Therefore, if your test suite can catch simple bugs, it will also catch the more complex ones.</p>
+
+  <p class="body"><a id="pgfId-1021548"></a>Pitest is the most popular open source tool for mutation testing in Java (<a class="url" href="https://pitest.org/quickstart/mutators">https://pitest.org/quickstart/mutators</a>). Here are a few examples of mutators from its manual:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1021587"></a><i class="fm-italics1">Conditionals boundary</i> —Relational operators such as <code class="fm-code-in-text">&lt;</code> and <code class="fm-code-in-text">&lt;=</code> are replaced by other relational operators.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1021624"></a><i class="fm-italics1">Increment</i> —It replaces <code class="fm-code-in-text">i++</code> with <code class="fm-code-in-text">i--</code> and vice versa.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1021661"></a><i class="fm-italics1">Invert negatives</i> —It negates variables: for example, <code class="fm-code-in-text">i</code> becomes <code class="fm-code-in-text">-i</code>.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1021670"></a><i class="fm-italics1">Math operators</i> —It replaces mathematical operators: for example, a plus becomes a minus.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1021705"></a><i class="fm-italics1">True returns</i> —It replaces entire boolean variables with <code class="fm-code-in-text">true</code>.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1021742"></a><i class="fm-italics1">Remove conditionals</i> —It replaces entire <code class="fm-code-in-text">if</code> statements with a simple <code class="fm-code-in-text">if(true)</code> <code class="fm-code-in-text">{...}</code>.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1021751"></a>Running Pitest is simple, as it comes with plugins for Maven and Gradle. For example, I ran it against the <code class="fm-code-in-text">LeftPad</code> implementation and tests we wrote earlier; figure 3.11 shows the resulting report. As in a code coverage report, a line’s background color indicates whether all the mutants were killed by the test suite.</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/03-11.png" width="717" height="485"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1038879"></a>Figure 3.11 Part of a report generated by Pitest. Lines 26, 31, 32, 36, 38, 39, 43, and 44 have surviving mutants.</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1021776"></a>The next step is to evaluate the surviving mutants. It is very important to analyze each surviving mutant, as some may not be useful.</p>
+
+  <p class="body"><a id="pgfId-1021838"></a>Remember that mutation testing tools do not know your code—they simply mutate it. This sometimes means they create mutants that are not useful. For example, in the line that contains <code class="fm-code-in-text">int</code> <code class="fm-code-in-text">pads</code> <code class="fm-code-in-text">=</code> <code class="fm-code-in-text">size</code> <code class="fm-code-in-text">-</code> <code class="fm-code-in-text">strLen</code>, Pitest mutated <a id="marker-1021807"></a>the <code class="fm-code-in-text">size</code> variable to <code class="fm-code-in-text">size++</code>. Our test suite does not catch this bug, but this is not a useful mutant: the <code class="fm-code-in-text">size</code> variable is not used after this line, so incrementing it has no effect on the program.</p>
+
+  <p class="body"><a id="pgfId-1021847"></a>You should view mutation testing in the same way as coverage tools: it can augment the test suite engineered based on the program’s requirements.</p>
+
+  <p class="body"><a id="pgfId-1021853"></a>Mutation testing faces various challenges in practice, including the cost. To use mutation testing, we must generate many mutants and execute the whole test suite with each one. This makes mutation testing quite expensive. Considerable research is dedicated to lowering the cost of mutation testing, such as reducing the number of mutants to try, detecting equivalent mutants (mutants that are identical to the original program in terms of behavior), and reducing the number of test cases or test case executions (see the work of Ferrari, Pizzoleto, and Offutt, 2018). As a community, we are taking steps toward a solution, but we are not there yet.</p>
+
+  <p class="body"><a id="pgfId-1021859"></a>Despite the cost, mutation testing is highly beneficial. In a very recent paper by Parsai and Demeyer (2020), the authors demonstrate that mutation coverage reveals additional weaknesses in the test suite compared to branch coverage and that it can do so with an acceptable performance overhead during project build. Even large companies like Google are investing in mutation testing in their systems, as reported by Petrovic´ and Ivankovic´ (2018).</p>
+
+  <p class="body"><a id="pgfId-1021865"></a>Researchers are also exploring mutation testing in areas other than Java backend code. Yandrapally and Mesbah (2021) propose mutations for the Document Object Model (DOM) in HTML<a id="marker-1021867"></a> pages to assess whether web tests (which we discuss in chapter 9) are strong enough. In addition, Tuya and colleagues (2006) proposed the use of mutation in SQL queries.</p>
+
+  <p class="body"><a id="pgfId-1021877"></a>I suggest that you try to apply mutation testing, especially in more sensitive parts of your system. While running mutation testing for the entire system can be expensive, running it for a smaller set of classes is feasible and may give you valuable insights about what else to test. <a id="marker-1021879"></a><a id="marker-1021882"></a></p>
+
+  <h2 class="fm-head" id="heading_id_26"><a id="pgfId-1021888"></a>Exercises</h2>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1021898"></a>3.1 Consider the following piece of code, which plays a game of Blackjack:</p>
+  <pre class="programlistinge"><a id="pgfId-1021904"></a>01. public int play(int left, int right) {
+<a id="pgfId-1021918"></a>02.    int ln = left;
+<a id="pgfId-1021924"></a>03.    int rn = right;
+<a id="pgfId-1021930"></a>04.    if (ln &gt; 21)
+<a id="pgfId-1021936"></a>05.        ln = 0;
+<a id="pgfId-1021942"></a>06.    if (rn &gt; 21)
+<a id="pgfId-1021948"></a>07.        rn = 0;
+<a id="pgfId-1021954"></a>08.    if (ln &gt; rn)
+<a id="pgfId-1021960"></a>09.        return ln;
+<a id="pgfId-1021966"></a>10.    else
+<a id="pgfId-1021972"></a>11.       return rn;
+<a id="pgfId-1021978"></a>12. }</pre>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1022000"></a>What is the line coverage of a test where <code class="fm-code-in-text">left=22</code> and <code class="fm-code-in-text">right=21</code>? In the calculation, disregard the lines with the function signature and the last curly bracket (lines 1 and 12).</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1022009"></a>A) 60%</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1022023"></a>B) 80%</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1022033"></a>C) 70%</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1022043"></a>D) 100%</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1022053"></a>3.2 Consider the following <code class="fm-code-in-text">remove</code> method:</p>
+  <pre class="programlistinge"><a id="pgfId-1022068"></a>public boolean remove(Object o) {
+<a id="pgfId-1022082"></a>  if (o == null) {
+<a id="pgfId-1022088"></a>    for (Node&lt;E&gt; x = first; x != null; x = x.next) {
+<a id="pgfId-1022094"></a>      if (x.item == null) {
+<a id="pgfId-1022100"></a>        unlink(x);
+<a id="pgfId-1022106"></a>        return true;
+<a id="pgfId-1022112"></a>      }
+<a id="pgfId-1022118"></a>    }
+<a id="pgfId-1022124"></a>  } else {
+<a id="pgfId-1022130"></a>    for (Node&lt;E&gt; x = first; x != null; x = x.next) {
+<a id="pgfId-1022136"></a>      if (o.equals(x.item)) {
+<a id="pgfId-1022142"></a>        unlink(x);
+<a id="pgfId-1022148"></a>        return true;
+<a id="pgfId-1022154"></a>      }
+<a id="pgfId-1022160"></a>    }
+<a id="pgfId-1022166"></a>  }
+<a id="pgfId-1022172"></a>  return false;
+<a id="pgfId-1022178"></a>}</pre>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1022184"></a>This is the implementation of the Java Platform, Standard Edition 8 Development Kit (JDK 8) <code class="fm-code-in-text">LinkedList</code> remove method.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1022199"></a>Create a test suite (a set of tests) that achieves 100% line coverage. Use as few tests as possible. Feel free to write them as JUnit tests or as a set of inputs and expected outputs.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1022205"></a>3.3 Following is Java’s implementation of the <code class="fm-code-in-text">LinkedList</code>’s <code class="fm-code-in-text">computeIfPresent()</code> method:</p>
+  <pre class="programlistinge"><a id="pgfId-1022226"></a>public V computeIfPresent(K key,
+<a id="pgfId-1022245"></a><span class="fm-code-continuation-arrow">➥</span> BiFunction&lt;? super K, ? super V, ? extends V&gt; rf) {
+<a id="pgfId-1022251"></a>  if (rf == null) {
+<a id="pgfId-1022257"></a>    throw new NullPointerException();
+<a id="pgfId-1022263"></a>  }
+<a id="pgfId-1022274"></a> 
+<a id="pgfId-1022269"></a>  Node&lt;K,V&gt; e;
+<a id="pgfId-1022280"></a>  V oldValue;
+<a id="pgfId-1022286"></a>  int hash = hash(key);
+<a id="pgfId-1022292"></a>  e = getNode(hash, key);
+<a id="pgfId-1022298"></a>  oldValue = e.value;
+<a id="pgfId-1022309"></a> 
+<a id="pgfId-1022304"></a>  if (e != null &amp;&amp; oldValue != null) {
+<a id="pgfId-1022320"></a> 
+<a id="pgfId-1022315"></a>    V v = rf.apply(key, oldValue);
+<a id="pgfId-1022331"></a> 
+<a id="pgfId-1022326"></a>    if (v != null) {
+<a id="pgfId-1022337"></a>      e.value = v;
+<a id="pgfId-1022343"></a>      afterNodeAccess(e);
+<a id="pgfId-1022349"></a>      return v;
+<a id="pgfId-1022355"></a>    } else {
+<a id="pgfId-1022361"></a>      removeNode(hash, key, null, false, true);
+<a id="pgfId-1022367"></a>    }
+<a id="pgfId-1022373"></a>  }
+<a id="pgfId-1022379"></a>  return null;
+<a id="pgfId-1022385"></a>}</pre>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1022391"></a>What is the minimum number of tests required to achieve 100% branch coverage?</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1022397"></a>A) 2</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1022411"></a>B) 3</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1022421"></a>C) 4</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1022431"></a>D) 6</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1022441"></a>3.4 Consider the expression <code class="fm-code-in-text">(A</code> <code class="fm-code-in-text">&amp;</code> <code class="fm-code-in-text">B)</code> <code class="fm-code-in-text">|</code> <code class="fm-code-in-text">C</code> with the following truth table:</p>
+
+  <table border="1" class="contenttable" width="100%">
+    <tbody class="calibre16">
+      <tr class="calibre17">
+        <th class="fm-contenttable1" colspan="1" rowspan="1">
+          <p class="fm-table-head"><a id="pgfId-1022547"></a>Test case</p>
+        </th>
+
+        <th class="fm-contenttable1" colspan="1" rowspan="1">
+          <p class="fm-table-head"><a id="pgfId-1022549"></a>A</p>
+        </th>
+
+        <th class="fm-contenttable1" colspan="1" rowspan="1">
+          <p class="fm-table-head"><a id="pgfId-1022551"></a>B</p>
+        </th>
+
+        <th class="fm-contenttable1" colspan="1" rowspan="1">
+          <p class="fm-table-head"><a id="pgfId-1022553"></a>C</p>
+        </th>
+
+        <th class="fm-contenttable1" colspan="1" rowspan="1">
+          <p class="fm-table-head"><a id="pgfId-1022555"></a>(A &amp; B) | C</p>
+        </th>
+      </tr>
+
+      <tr class="calibre17">
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022467"></a>1</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022469"></a>T</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022511"></a>T</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022514"></a>T</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022517"></a>T</p>
+        </td>
+      </tr>
+
+      <tr class="calibre17">
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022632"></a>2</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022635"></a>T</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022638"></a>T</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022641"></a>F</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022644"></a>T</p>
+        </td>
+      </tr>
+
+      <tr class="calibre17">
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022673"></a>3</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022676"></a>T</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022679"></a>F</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022682"></a>T</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022685"></a>T</p>
+        </td>
+      </tr>
+
+      <tr class="calibre17">
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022714"></a>4</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022717"></a>T</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022720"></a>F</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022723"></a>F</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022726"></a>F</p>
+        </td>
+      </tr>
+
+      <tr class="calibre17">
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022755"></a>5</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022758"></a>F</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022761"></a>T</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022764"></a>T</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022767"></a>T</p>
+        </td>
+      </tr>
+
+      <tr class="calibre17">
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022796"></a>6</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022799"></a>F</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022802"></a>T</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022805"></a>F</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022808"></a>F</p>
+        </td>
+      </tr>
+
+      <tr class="calibre17">
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022837"></a>7</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022840"></a>F</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022843"></a>F</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022846"></a>T</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022849"></a>T</p>
+        </td>
+      </tr>
+
+      <tr class="calibre17">
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022878"></a>8</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022881"></a>F</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022884"></a>F</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022887"></a>F</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1022890"></a>F</p>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1022456"></a>What test suite(s) achieve 100% MC/DC? The numbers correspond to the test case column in the truth table. Select all that apply.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1022927"></a>A) {2, 3, 4, 6}</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1022941"></a>B) {2, 4, 5, 6}</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1022951"></a>C) {1, 3, 4, 6}</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1022961"></a>D) {3, 4, 5, 8}</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1022971"></a>3.5 Draw the truth table for the expression <code class="fm-code-in-text">A</code> <code class="fm-code-in-text">&amp;&amp;</code> <code class="fm-code-in-text">(A</code> <code class="fm-code-in-text">||</code> <code class="fm-code-in-text">B)</code>.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1022986"></a>Is it possible to achieve MC/DC coverage for this expression? Why or why not? What would you tell the developer who wrote this expression?</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1022992"></a>3.6 Consider the following method:</p>
+  <pre class="programlistinge"><a id="pgfId-1022998"></a>public String sameEnds(String string) {
+<a id="pgfId-1023012"></a>  int length = string.length();
+<a id="pgfId-1023018"></a>  int half = length / 2;
+<a id="pgfId-1023029"></a> 
+<a id="pgfId-1023024"></a>  String left = "";
+<a id="pgfId-1023035"></a>  String right = "";
+<a id="pgfId-1023046"></a> 
+<a id="pgfId-1023041"></a>  int size = 0;
+<a id="pgfId-1023052"></a>  for (int i = 0; i &lt; half; i++) {
+<a id="pgfId-1023058"></a>    left = left + string.charAt(i);
+<a id="pgfId-1023064"></a>    right = string.charAt(length - 1 - i) + right;
+<a id="pgfId-1023075"></a> 
+<a id="pgfId-1023070"></a>    if (left.equals(right)) {
+<a id="pgfId-1023081"></a>      size = left.length();
+<a id="pgfId-1023087"></a>    }
+<a id="pgfId-1023093"></a>  }
+<a id="pgfId-1023104"></a> 
+<a id="pgfId-1023099"></a>  return string.substring(0, size);
+<a id="pgfId-1023110"></a>}</pre>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1023116"></a>Which of the following statements is <i class="fm-italics1">not</i> correct?</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023131"></a>A) It is possible to devise a single test case that achieves 100% line coverage and 100% decision coverage.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023145"></a>B) It is possible to devise a single test case that achieves 100% line coverage and 100% (basic) condition coverage.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023155"></a>C) It is possible to devise a single test case that achieves 100% line coverage and 100% decision + condition coverage.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023165"></a>D) It is possible to devise a single test case that achieves 100% line coverage and 100% path coverage.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1023175"></a>3.7 Which of the following statements concerning the subsumption relations between test adequacy criteria is true?</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023181"></a>A) MC/DC subsumes statement coverage.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023195"></a>B) Statement coverage subsumes branch coverage.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023205"></a>C) Branch coverage subsumes path coverage.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023215"></a>D) Basic condition coverage subsumes branch coverage.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1023225"></a>3.8 A test suite satisfies the loop boundary adequacy criterion if for every loop L:</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023231"></a>A) Test cases iterate L zero times, once, and more than once.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023245"></a>B) Test cases iterate L once and more than once.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023255"></a>C) Test cases iterate L zero times and one time.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023265"></a>D) Test cases iterate L zero times, once, more than once, and N, where N is the maximum number of iterations.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1023275"></a>3.9 Which of the following statements is <i class="fm-italics">correct</i> about the relationship between specification-based testing and structural testing?</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023290"></a>A) A testing process should prioritize structural testing because it’s cheaper yet highly effective (maybe even more effective than specification-based testing).</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023304"></a>B) Specification-based testing can only be effectively performed when we have proper models of the program under test. A simple user story is not enough.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023314"></a>C) Boundary analysis can only be done if testers have access to the source code, and thus it should be considered a structural testing technique.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023324"></a>D) None of the other answers is true.</p>
+
+  <h2 class="fm-head" id="heading_id_27"><a id="pgfId-1023334"></a>Summary</h2>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023344"></a>Structural testing uses the source code to augment the test suite engineered via specification-based testing.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023358"></a>The overall idea of structural testing is to analyze which parts of the code are not yet covered and reflect on whether they should be covered or not.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023368"></a>Some coverage criteria are less rigorous and therefore less expensive (for example, line coverage). Others are more rigorous but also more expensive (such as MC/DC coverage). As a developer, you have to decide which criteria to use.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023378"></a>Code coverage should not be used as a number to be achieved. Rather, coverage tools should be used to support developers in performing structural testing (that is, understanding what parts are not covered and why).</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023388"></a>Mutation testing ensures that our test suite is strong enough: in other words, that it can catch as many bugs as possible.</p>
+    </li>
+  </ul>
+</div>
+</div>
+</body>
+</html>

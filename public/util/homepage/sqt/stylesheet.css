@@ -1,0 +1,757 @@
+body {
+  margin: 32px;
+  font-size: 18px;
+}
+
+/* other stuff that we might not need */
+
+#sbo-rt-content .body {
+  color: black;
+  display: block;
+  font-family: "Verdana", "sans-serif";
+  font-size: 1em;
+  line-height: 1.4;
+  margin: 1em 0;
+}
+#sbo-rt-content .body1 {
+  color: black;
+  display: block;
+  font-family: "Verdana", "sans-serif";
+  font-size: 1em;
+  line-height: 1.4;
+  text-align: center;
+  margin: 1em 0;
+}
+#sbo-rt-content .calibre {
+  display: block;
+  font-size: 1em;
+  line-height: 1.4;
+  padding-left: 0;
+  padding-right: 0;
+  margin: 0 5pt;
+}
+#sbo-rt-content .calibre1 {
+  height: auto;
+  width: auto;
+}
+#sbo-rt-content .calibre2 {
+  height: auto;
+  line-height: 1.4;
+  width: auto;
+}
+#sbo-rt-content .calibre3 {
+  height: auto;
+  line-height: 1.4;
+  width: 40px;
+}
+#sbo-rt-content .calibre4 {
+  display: table-column-group;
+  line-height: 1.4;
+}
+#sbo-rt-content .calibre5 {
+  display: table-column;
+  line-height: 1.4;
+}
+#sbo-rt-content .calibre6 {
+  display: table-row-group;
+  line-height: 1.4;
+  vertical-align: middle;
+}
+#sbo-rt-content .calibre7 {
+  display: table-row;
+  line-height: 1.4;
+  vertical-align: inherit;
+}
+#sbo-rt-content .calibre8 {
+  display: table-cell;
+  line-height: 1.4;
+  text-align: inherit;
+  vertical-align: inherit;
+  padding: 1px;
+}
+#sbo-rt-content .calibre9 {
+  height: auto;
+  line-height: 1.4;
+  width: 50px;
+}
+#sbo-rt-content .calibre10 {
+  display: block;
+}
+#sbo-rt-content .calibre11 {
+  height: auto;
+  line-height: 1.4;
+  width: 140px;
+}
+#sbo-rt-content .calibre12 {
+  display: block;
+  line-height: 1.4;
+  list-style-type: disc;
+  margin-bottom: 1em;
+  margin-right: 0;
+  margin-top: 1em;
+}
+#sbo-rt-content .calibre13 {
+  line-height: 1.4;
+}
+#sbo-rt-content .calibre14 {
+  display: block;
+  line-height: 1.4;
+  list-style-type: decimal;
+  margin-bottom: 1em;
+  margin-right: 0;
+  margin-top: 1em;
+}
+#sbo-rt-content .calibre15 {
+  display: block;
+  line-height: 1.4;
+  list-style-type: circle;
+  margin-bottom: 0;
+  margin-right: 0;
+  margin-top: 0;
+}
+#sbo-rt-content .calibre16 {
+  display: table-row-group;
+  vertical-align: middle;
+}
+#sbo-rt-content .calibre17 {
+  display: table-row;
+  vertical-align: inherit;
+}
+#sbo-rt-content .calibre18 {
+  display: block;
+  line-height: 1.4;
+  list-style-type: square;
+  margin-bottom: 0;
+  margin-right: 0;
+  margin-top: 0;
+}
+#sbo-rt-content .calibre19 {
+  font-size: 0.75em;
+  line-height: 1.4;
+  vertical-align: super;
+}
+#sbo-rt-content .calibre20 {
+  display: block;
+  line-height: 1.4;
+  page-break-after: always;
+}
+#sbo-rt-content .calibre21 {
+  display: block;
+  page-break-after: always;
+}
+#sbo-rt-content .co-summary-bullet {
+  color: #005;
+  display: list-item;
+  font-family: "Franklin Gothic Medium", "sans-serif";
+  font-size: 1em;
+  line-height: 1.4;
+  page-break-inside: avoid;
+}
+#sbo-rt-content .co-summary-head {
+  color: #005;
+  display: block;
+  font-family: "Franklin Gothic Medium", "sans-serif";
+  font-size: 1.29167em;
+  font-weight: Bold;
+  line-height: 1.4;
+  page-break-after: avoid;
+  margin: 1.8em 0 0.6em;
+}
+#sbo-rt-content .contenttable {
+  border-collapse: collapse;
+  border-spacing: 2px;
+  display: table;
+  line-height: 1.4;
+  margin-bottom: 5px;
+  margin-top: 0;
+  page-break-inside: avoid;
+  text-indent: 0;
+  width: 100%;
+}
+#sbo-rt-content .copyright {
+  display: block;
+  font-family: "Verdana", "sans-serif";
+  font-size: 1em;
+  font-weight: bold;
+  line-height: 1.4;
+  text-align: center;
+  margin: 0.67em 0;
+}
+#sbo-rt-content .copyrighta {
+  color: black;
+  display: block;
+  font-family: "Garamond", "serif";
+  font-size: 1.83333em;
+  font-weight: bold;
+  line-height: 1.4;
+  text-align: center;
+  margin: 0;
+}
+#sbo-rt-content .copyrightb {
+  color: gray;
+  display: block;
+  font-family: "Garamond", "serif";
+  font-size: 1.29167em;
+  font-variant: small-caps;
+  font-weight: bold;
+  line-height: 1.4;
+  text-align: center;
+  margin: 0;
+}
+#sbo-rt-content .copyrightbody {
+  color: black;
+  display: block;
+  font-family: "Garamond", "serif";
+  font-size: 1.29167em;
+  line-height: 1.4;
+  text-align: center;
+  margin: 0;
+}
+#sbo-rt-content .copyrightbody1 {
+  color: black;
+  display: block;
+  font-family: "Garamond", "serif";
+  font-size: 0.75em;
+  line-height: 1.4;
+  text-align: center;
+  margin: 0;
+}
+#sbo-rt-content .copyrightc {
+  color: black;
+  display: block;
+  font-family: "Verdana", "sans-serif";
+  font-size: 1.29167em;
+  font-weight: bold;
+  line-height: 1.4;
+  text-align: center;
+  margin: 0;
+}
+#sbo-rt-content .copyrightc1 {
+  color: gray;
+  display: block;
+  font-family: "Verdana", "sans-serif";
+  font-size: 0.83333em;
+  font-variant: small-caps;
+  font-weight: bold;
+  line-height: 1.4;
+  text-align: center;
+  margin: 0;
+}
+#sbo-rt-content .copyrightfigures {
+  color: black;
+  display: block;
+  font-family: "Verdana", "sans-serif";
+  font-size: 1em;
+  line-height: 1.4;
+  text-align: center;
+  margin: 0;
+}
+#sbo-rt-content .copyrightfigures1 {
+  color: black;
+  display: block;
+  font-family: "Verdana", "sans-serif";
+  font-size: 1em;
+  line-height: 1.4;
+  text-align: right;
+  margin: 0;
+}
+#sbo-rt-content .figure {
+  display: block;
+  line-height: 1.4;
+  page-break-inside: avoid;
+}
+#sbo-rt-content .figure1 {
+  color: #00b050;
+  display: block;
+  font-family: "Verdana", "sans-serif";
+  font-size: 1.29167em;
+  line-height: 1.4;
+  page-break-after: avoid;
+  margin: 1.2em 0 0.8em;
+}
+#sbo-rt-content .figure2 {
+  color: #00b050;
+  display: block;
+  font-family: "Verdana", "sans-serif";
+  font-size: 1.29167em;
+  line-height: 1.4;
+  page-break-after: avoid;
+  margin: 1.2em 2.8em;
+}
+#sbo-rt-content .figurecaption {
+  color: #005;
+  display: block;
+  font-family: "Franklin Gothic Medium", "sans-serif";
+  font-size: 1em;
+  font-weight: bold;
+  line-height: 1.4;
+  margin: 1em 0;
+}
+#sbo-rt-content .fm-bold {
+  font-weight: Bold;
+}
+#sbo-rt-content .fm-callout {
+  color: black;
+  display: block;
+  font-family: "Franklin Gothic Medium", "sans-serif";
+  font-size: 0.83333em;
+  line-height: 1.4;
+  margin: 1em 0;
+}
+#sbo-rt-content .fm-callout-head {
+  color: #005;
+  font-family: "Franklin Gothic Medium", "sans-serif";
+  font-size: 1.2em;
+  font-weight: bold;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+#sbo-rt-content .fm-code-annotation {
+  display: block;
+  font-family: "Franklin Gothic Medium", "sans-serif";
+  font-size: 0.83333em;
+  line-height: 1.4;
+  text-indent: -1.4em;
+  margin: 0.3em 0 0 1.4em;
+}
+#sbo-rt-content .fm-code-continuation-arrow {
+  color: #b2b2b2;
+  font-family: "monospace";
+}
+#sbo-rt-content .fm-code-in-text {
+  font-family: monospace;
+  font-size: 1.1em;
+  line-height: 1.4;
+}
+#sbo-rt-content .fm-code-in-text1 {
+  font-family: monospace;
+  font-size: 1.29167em;
+  line-height: 1.4;
+}
+#sbo-rt-content .fm-code-listing-caption {
+  background-color: #005;
+  color: #eaeaea;
+  display: block;
+  font-family: "Franklin Gothic Medium", "sans-serif";
+  font-size: 1em;
+  font-weight: bold;
+  line-height: 1.4;
+  margin: 1em 0 0.6em;
+}
+#sbo-rt-content .fm-combinumeral {
+  color: #005;
+  font-family: "Cambria Math", "serif";
+  font-size: 1em;
+  line-height: 1.4;
+}
+#sbo-rt-content .fm-contenttable {
+  border-collapse: separate;
+  border-spacing: 2px;
+  display: table;
+  line-height: 1.4;
+  margin-bottom: 0;
+  margin-top: 0;
+  text-indent: 0;
+  vertical-align: top;
+  width: 100%;
+  border: currentColor none 0;
+}
+#sbo-rt-content .fm-contenttable1 {
+  background-color: #cccffe;
+  display: table-cell;
+  font-size: 1em;
+  font-weight: bold;
+  vertical-align: top;
+  border: black solid 2px;
+  padding: 2px 5px;
+  margin: 0;
+}
+#sbo-rt-content .fm-contenttable2 {
+  display: table-cell;
+  font-size: 1em;
+  text-align: left;
+  vertical-align: top;
+  border: black solid 2px;
+  padding: 2px 5px;
+  margin: 0;
+}
+#sbo-rt-content .fm-head {
+  color: #141464;
+  display: block;
+  font-family: "Franklin Gothic Medium", "sans-serif";
+  font-size: 1.66667em;
+  font-style: italic;
+  font-weight: bold;
+  line-height: 1.4;
+  page-break-after: avoid;
+  text-indent: -3em;
+  margin: 1.2em 0 0.2em 3em;
+}
+#sbo-rt-content .fm-head-1toc {
+  color: #141464;
+  display: block;
+  font-family: "Franklin Gothic Medium", "sans-serif";
+  font-size: 1em;
+  line-height: 1.4;
+  page-break-after: avoid;
+  text-indent: -2em;
+  margin: 0.3em 0 0 5em;
+}
+#sbo-rt-content .fm-head-2toc {
+  color: #141464;
+  display: block;
+  font-family: "Franklin Gothic Medium", "sans-serif";
+  font-size: 0.83333em;
+  line-height: 1.4;
+  page-break-after: avoid;
+  text-indent: -3em;
+  margin: 0.3em 0 0 9em;
+}
+#sbo-rt-content .fm-head1 {
+  color: #141464;
+  display: block;
+  font-family: "Franklin Gothic Medium", "sans-serif";
+  font-size: 1.29167em;
+  font-style: italic;
+  font-weight: bold;
+  line-height: 1.4;
+  page-break-after: avoid;
+  text-indent: -3em;
+  margin: 1em 0 0.2em 3em;
+}
+#sbo-rt-content .fm-head2 {
+  color: #141464;
+  display: block;
+  font-family: "Arial", "sans-serif";
+  font-size: 1.29167em;
+  font-variant: small-caps;
+  font-weight: bold;
+  line-height: 1.4;
+  page-break-after: avoid;
+  margin: 1em 0 0.2em;
+}
+#sbo-rt-content .fm-italics {
+  font-style: Italic;
+  text-transform: none;
+}
+#sbo-rt-content .fm-italics1 {
+  font-style: Italic;
+  line-height: 1.4;
+  text-transform: none;
+}
+#sbo-rt-content .fm-list-body {
+  display: block;
+  font-family: "Verdana", "sans-serif";
+  font-size: 1em;
+  line-height: 1.4;
+  margin: 1em 0;
+}
+#sbo-rt-content .fm-list-body-abc {
+  display: block;
+  font-family: "Verdana", "sans-serif";
+  font-size: 1em;
+  line-height: 1.4;
+  text-indent: -1.8em;
+  margin: 0 0 0 2.8em;
+}
+#sbo-rt-content .fm-list-bullet {
+  display: list-item;
+  line-height: 1.4;
+}
+#sbo-rt-content .fm-list-bullet-b {
+  display: list-item;
+  font-family: "Verdana", "sans-serif";
+  font-size: 1em;
+  line-height: 1.4;
+  page-break-inside: avoid;
+  margin: 0 0 0 2.8em;
+}
+#sbo-rt-content .fm-list-bullet-callout {
+  display: list-item;
+  font-family: "Franklin Gothic Medium", "sans-serif";
+  font-size: 0.83333em;
+  line-height: 1.4;
+  margin-bottom: 0.5em;
+  page-break-inside: avoid;
+}
+#sbo-rt-content .fm-list-bullet-callout1 {
+  display: list-item;
+  font-family: "Franklin Gothic Medium", "sans-serif";
+  font-size: 0.9em;
+  line-height: 1.4;
+  margin-bottom: 0.5em;
+  page-break-inside: avoid;
+}
+#sbo-rt-content .fm-list-exercise-a {
+  display: block;
+  font-family: "Verdana", "sans-serif";
+  font-size: 1em;
+  line-height: 1.4;
+  text-indent: -2em;
+  margin: 0.6em 0 0.6em 2.8em;
+}
+#sbo-rt-content .fm-list-exercise-b {
+  display: block;
+  font-family: "Verdana", "sans-serif";
+  font-size: 1em;
+  line-height: 1.4;
+  text-indent: -1.8em;
+  margin: 0 0 0 4.8em;
+}
+#sbo-rt-content .fm-list-exercise-body {
+  display: block;
+  font-family: "Verdana", "sans-serif";
+  font-size: 1em;
+  line-height: 1.4;
+  margin: 0.6em 0 0.6em 2.8em;
+}
+#sbo-rt-content .fm-list-numbered {
+  display: list-item;
+  font-family: "Verdana", "sans-serif";
+  font-size: 1em;
+  line-height: 1.4;
+  page-break-inside: avoid;
+}
+#sbo-rt-content .fm-reference {
+  display: block;
+  font-family: "Franklin Gothic Medium", "sans-serif";
+  font-size: 1em;
+  line-height: 1.4;
+  text-align: left;
+  text-indent: -2.8em;
+  margin: 0 0 0 2.8em;
+}
+#sbo-rt-content .fm-sidebar-block {
+  background-color: #eee;
+  display: block;
+  font-size: 1em;
+  line-height: 1.4;
+  z-index: 1;
+  border: currentColor none 0;
+  padding: 10px 20px;
+  margin: 1em 0;
+}
+#sbo-rt-content .fm-sidebar-bullet {
+  display: list-item;
+  font-family: "Franklin Gothic Medium", "sans-serif";
+  font-size: 0.83333em;
+  line-height: 1.4;
+  margin-bottom: 0.5em;
+}
+#sbo-rt-content .fm-sidebar-letter {
+  display: block;
+  font-family: "Franklin Gothic Medium", "sans-serif";
+  font-size: 1em;
+  line-height: 1.4;
+  text-indent: -1.4em;
+  margin: 0 0 0 1.4em;
+}
+#sbo-rt-content .fm-sidebar-text {
+  display: block;
+  font-family: "Franklin Gothic Medium", "sans-serif";
+  font-size: 0.83333em;
+  line-height: 1.4;
+  margin: 0;
+}
+#sbo-rt-content .fm-sidebar-title {
+  color: #005;
+  display: block;
+  font-family: Futura, sans-serif;
+  font-size: 1.29167em;
+  font-weight: bold;
+  line-height: 1.4;
+  text-align: left;
+  vertical-align: top;
+  z-index: 1;
+  border: currentColor none 0;
+  padding: 15px 1px -10px;
+  margin: 1em 0;
+}
+#sbo-rt-content .fm-table-body {
+  color: black;
+  display: block;
+  font-family: "Franklin Gothic Medium", "sans-serif";
+  font-size: 0.83333em;
+  line-height: 1.4;
+  margin: 0 30px 0 0;
+}
+#sbo-rt-content .fm-table-caption {
+  color: #141464;
+  display: block;
+  font-family: "Franklin Gothic Medium", "sans-serif";
+  font-size: 1em;
+  font-weight: bold;
+  line-height: 1.4;
+  page-break-after: avoid;
+  text-align: justify;
+  margin: 1.2em 0 0.6em;
+}
+#sbo-rt-content .fm-table-head {
+  color: #005;
+  display: block;
+  font-family: "Franklin Gothic Medium", "sans-serif";
+  font-size: 1em;
+  font-weight: bold;
+  line-height: 1.4;
+  page-break-after: avoid;
+  margin: 0.2em 0;
+}
+#sbo-rt-content .grouptitlesix {
+  color: #262626;
+  display: block;
+  font-family: "Franklin Gothic Medium", "sans-serif";
+  font-size: 0.83333em;
+  font-weight: Bold;
+  line-height: 1.4;
+  text-align: left;
+  text-indent: 0;
+  margin: 0.9em 0 0;
+}
+#sbo-rt-content .index {
+  color: #4863a0;
+  text-decoration: none;
+}
+#sbo-rt-content .index1 {
+  color: #4863a0;
+  line-height: 1.4;
+  text-decoration: none;
+}
+#sbo-rt-content .index2 {
+  color: #4863a0;
+  font-style: italic;
+  line-height: 1.4;
+  text-decoration: none;
+  text-transform: none;
+}
+#sbo-rt-content .level1ix {
+  display: block;
+  font-family: "Franklin Gothic Medium", "sans-serif";
+  font-size: 0.83333em;
+  line-height: 1.4;
+  text-align: left;
+  text-indent: -1.8em;
+  margin: 0 0 0 1.8em;
+}
+#sbo-rt-content .level2ix {
+  display: block;
+  font-family: "Franklin Gothic Medium", "sans-serif";
+  font-size: 0.83333em;
+  line-height: 1.4;
+  text-align: left;
+  text-indent: -0.9em;
+  margin: 0 0 0 1.8em;
+}
+#sbo-rt-content .level3ix {
+  display: block;
+  font-family: "Franklin Gothic Medium", "sans-serif";
+  font-size: 0.83333em;
+  line-height: 1.4;
+  text-align: left;
+  text-indent: -1.8em;
+  margin: 0 0 0 3em;
+}
+#sbo-rt-content .list {
+  display: block;
+  font-size: 1em;
+  line-height: 1.4;
+  page-break-inside: avoid;
+  margin: 5px 60px 5px 0;
+}
+#sbo-rt-content .list-s {
+  display: block;
+  font-family: "Franklin Gothic Medium", "sans-serif";
+  line-height: 1.4;
+  page-break-inside: avoid;
+  margin: 0 10px 0 0;
+}
+#sbo-rt-content .mc-small-caps {
+  font-family: "Arial", "sans-serif";
+  font-size: 1em;
+  font-variant: small-caps;
+  font-weight: Bold;
+}
+#sbo-rt-content .programlisting {
+  background-color: #f9f9f9;
+  display: block;
+  font-family: monospace;
+  font-size: 0.83333em;
+  line-height: 1.4;
+  text-indent: 0;
+  white-space: pre-wrap;
+  z-index: 1;
+  padding: 10px 5px;
+  margin: 1em 0;
+}
+#sbo-rt-content .programlistinge {
+  background-color: #f9f9f9;
+  display: block;
+  font-family: monospace;
+  font-size: 0.83333em;
+  line-height: 1.4;
+  text-indent: 0;
+  white-space: pre-wrap;
+  z-index: 1;
+  padding: 10px 5px;
+  margin: 0.6em 0 0.6em 3.8em;
+}
+#sbo-rt-content .segoe {
+  font-family: "Segoe UI Symbol", "sans-serif";
+}
+#sbo-rt-content .tablebodyc {
+  color: black;
+  display: block;
+  font-family: "Verdana", "sans-serif";
+  font-size: 0.83333em;
+  line-height: 1.4;
+  text-align: center;
+  margin: 0;
+}
+#sbo-rt-content .tablebodyc1 {
+  color: black;
+  display: block;
+  font-family: "Verdana", "sans-serif";
+  font-size: 0.83333em;
+  line-height: 1.4;
+  margin: 0;
+}
+#sbo-rt-content .tablebodyc2 {
+  color: black;
+  display: block;
+  font-family: "Verdana", "sans-serif";
+  font-size: 0.83333em;
+  line-height: 1.4;
+  text-align: right;
+  margin: 0;
+}
+#sbo-rt-content .tocchapters {
+  color: #005;
+  display: block;
+  font-family: "Franklin Gothic Medium", "sans-serif";
+  font-size: 1em;
+  font-style: italic;
+  font-weight: bold;
+  line-height: 1.4;
+  text-indent: -1.6em;
+  margin: 0.3em 0 0 2.4em;
+}
+#sbo-rt-content .tochead {
+  color: #005;
+  display: block;
+  font-family: "Franklin Gothic Medium", "sans-serif";
+  font-size: 1.66667em;
+  font-style: italic;
+  font-weight: bold;
+  line-height: 1.4;
+  page-break-after: avoid;
+  border-bottom: #005 solid 0.1em;
+  margin: 1.2em 0 0.3em;
+}
+#sbo-rt-content .url {
+  color: #4080bf;
+  text-decoration: none;
+}
+#sbo-rt-content .url1 {
+  color: #4080bf;
+  line-height: 1.4;
+  text-decoration: none;
+}

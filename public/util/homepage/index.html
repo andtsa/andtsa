@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en" id="htmlBackground">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="homepage.css">
+    <link rel="stylesheet" href="../../css/nav.css">
+    <title>New Search</title>
+</head>
+<body>
+
+    <div onclick="document.getElementById('toggle').classList.toggle('active');document.getElementById('overlay').classList.toggle('open');" class="button_container" id="toggle"><span class="top"></span><span class="middle"></span><span class="bottom"></span></div>
+    <div class="overlay" id="overlay">
+        <nav class="overlay-menu">
+            <ul>
+                <!-- <li><a href="/underconstruction/"></a></li> -->
+                <li><a href="#">Probability Theory & Statistics</a></li>
+                <li><a href="./sqt/">Software Quality & Testing</a></li>
+                <li><a href="./underconstruction/">Computer Networks</a></li>
+            </ul>
+        </nav>
+    </div>
+
+    <input type="text" id="searchbar">
+
+    <div id="quicklinks">
+        <a href="https://app.grasple.com/#/courses/8673" id="grasple">Grasple</a>
+        <a href="https://brightspace.tudelft.nl/d2l/home/6647" id="brightspace">Brightspace</a>
+        <a href="https://weblab.tudelft.nl/cse1405/2022-2023/assignment/107847/submission/55425/" id="cnw">CN Weblab</a>
+        <a href="https://weblab.tudelft.nl/cse1110/2022-2023/assignment/107865/submission/55423/view">SQT Weblab</a>
+        
+        
+    </div>
+
+    <iframe id="phind" src="https://phind.com" frameborder="0"></iframe>
+</body>
+<script src="homepage.js"></script>
+</html>

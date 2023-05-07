@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xml:lang="en"
+      lang="en"
+      xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:epub="http://www.idpf.org/2007/ops">
+<head>
+<title>Effective Software Testing</title>
+<link rel="stylesheet" type="text/css" href="../../override_v1.css"/>
+<link rel="stylesheet" type="text/css" href="../../stylesheet.css"/><link rel="stylesheet" type="text/css" href="../../page_styles.css"/>
+</head>
+<body>
+<div id="book-content">
+<div id="sbo-rt-content" class="calibre"><h1 class="tochead" id="heading_id_2"><a id="pgfId-998407"></a><a id="pgfId-1020375"></a>11 Wrapping up the book</h1>
+
+  <p class="co-summary-head"><a id="pgfId-1011754"></a>This chapter covers</p>
+
+  <ul class="calibre12">
+    <li class="co-summary-bullet"><a class="calibre13" id="pgfId-1011760"></a>Revisiting what was discussed in this book</li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1011774"></a>We are now at the end of this book. The book comprises a lot of my knowledge about practical software testing, and I hope you now understand the testing techniques that have supported me throughout the years. In this chapter, I will say some final words about how I see effective testing in practice and reinforce points that I feel should be uppermost in your mind.</p>
+
+  <h2 class="fm-head" id="heading_id_3"><a id="pgfId-1011780"></a>11.1 Although the model looks linear, iterations are fundamental</h2>
+
+  <p class="body"><a id="pgfId-1011801"></a><a id="marker-1011791"></a>Figure 11.1 (which you saw for the first time back in chapter 1) illustrates what I call <i class="fm-italics">effective software testing</i>. Although this figure and the order of the chapters in this book may give you a sense of linearity (that is, you first do specification-based testing and then move on to structural testing), this is not the case. You should not view the proposed flow as a sort of testing waterfall.</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/11-01.png" width="800" height="546"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1026656"></a>Figure 11.1 Flow of a developer who applies effective and systematic testing. The arrows indicate the iterative nature of the process; we may go back and forth between techniques as we learn more about the program under development and test.</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1011820"></a>Software development is an iterative process. You may start with specification-based testing, then go to structural testing, and then feel you need to go back to specification-based testing. Or you may begin with structural testing because the tests that emerged from your TDD sessions are good enough. There is nothing wrong with customizing the process to specific cases.</p>
+
+  <p class="body"><a id="pgfId-1011840"></a>As you become more experienced with testing, you will develop a feeling for the best order in which to apply the techniques. As long as you master them all and understand the goals and outputs of each, that will come naturally. <a id="marker-1011842"></a></p>
+
+  <h2 class="fm-head" id="heading_id_4"><a id="pgfId-1011849"></a>11.2 Bug-free software development: Reality or myth?</h2>
+
+  <p class="body"><a id="pgfId-1011859"></a><a id="marker-1011860"></a>The techniques explore the source code from many different perspectives. That may give you the impression that if you apply them all, no bugs will ever happen. Unfortunately, this is not the case.</p>
+
+  <p class="body"><a id="pgfId-1011868"></a>The more you test your code from different angles, the greater the chances of revealing bugs you did not see previously. But the software systems we work with today are very complex, and bugs may happen in corner cases that involve dozens of different components working together. Domain knowledge may help you see such cases. So, deeply understanding the business behind the software systems you test is fundamental in foreseeing complex interactions between systems that may lead to crashes or bugs.</p>
+
+  <p class="body"><a id="pgfId-1011874"></a>I am betting all my chips on <i class="fm-italics">intelligent testing</i>. I do not <a id="marker-1011885"></a>talk much about it in this book, although it appears in figure 11.1. Intelligent testing is all about having computers explore software systems for us. In this book, we automated the process of test execution. Test case engineering—that is, thinking of good tests—was a human activity. Intelligent testing systems propose test cases for us.</p>
+
+  <p class="body"><a id="pgfId-1011895"></a>The idea is no longer novel among academics. There are many interesting intelligent testing techniques, some of which are mature enough to be deployed into production. Facebook, for example, has deployed Sapienz, a tool that uses search-based algorithms that automatically explore mobile apps, looking for crashes. And Google deploys fuzz testing (generating unexpected inputs to programs to see if they crash) on a large scale to identify bugs in open source systems. And the beauty of the research is that these tools are not randomly generating input data: they are getting smarter and smarter.</p>
+
+  <p class="body"><a id="pgfId-1011901"></a>If you want to play with automated test case generation, try EvoSuite for Java (<a class="url" href="http://www.evosuite.org">www.evosuite.org</a>). EvoSuite receives a class as input and produces a set of JUnit tests that often achieve 100% branch coverage. It is awe-inspiring. I am hoping the big software development companies of this world will catch up with this idea and build more production-ready tools. <a id="marker-1011903"></a></p>
+
+  <h2 class="fm-head" id="heading_id_5"><a id="pgfId-1011910"></a>11.3 Involve your final user</h2>
+
+  <p class="body"><a id="pgfId-1011946"></a><a id="marker-1011921"></a>This book focuses on <i class="fm-italics">verification</i>. Verification ensures <a id="marker-1011935"></a>that the code works as we expect. Another angle to consider is <i class="fm-italics">validation</i>: whether the <a id="marker-1011951"></a>software does what the user wants or needs. Delivering software that brings the most value is as essential as delivering software that works. Be sure you have mechanisms to ensure that you are building the right software in your pipeline. <a id="marker-1011957"></a></p>
+
+  <h2 class="fm-head" id="heading_id_6"><a id="pgfId-1011964"></a>11.4 Unit testing is hard in practice</h2>
+
+  <p class="body"><a id="pgfId-1011974"></a><a id="marker-1011975"></a>I have a clear position regarding unit testing versus integration testing: you should do as much unit testing as possible and leave integration testing for the parts of the system that need it. For that to happen, you need code that is easily tested and designed with testability in mind. However, most readers of this book are not in such a situation. Software systems are rarely designed this way.</p>
+
+  <p class="body"><a id="pgfId-1011983"></a>When you write new pieces of code that you have more control over, be sure you code in a unit-testable way. This means integrating the new code with hard-to-test legacy code. I have a very simple suggestion that works in most cases. Imagine that you need to add new behavior to a legacy class. Instead of coding the behavior in this class, create a new class, put the new behavior in it, and unit-test it. Then, in the legacy class, instantiate the new class and call the method. This way, you avoid the hassle of writing a test for a class that is impossible to test. The following listing shows an example.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1012040"></a>Listing 11.1 Handling legacy code</p>
+  <pre class="programlisting"><a id="pgfId-1011989"></a>class LegacyClass {
+<a id="pgfId-1012084"></a> 
+<a id="pgfId-1012079"></a>  public void complexMethod() {
+<a id="pgfId-1012090"></a>    // ...
+<a id="pgfId-1012096"></a>    // lots of code here...
+<a id="pgfId-1012102"></a>    // ...
+<a id="pgfId-1012113"></a> 
+<a id="pgfId-1012108"></a>    new BeautifullyDesignedClass().cleanMethod();    <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1012130"></a> 
+<a id="pgfId-1012125"></a>    // ...
+<a id="pgfId-1012136"></a>    // lots of code here...
+<a id="pgfId-1012142"></a>    // ...
+<a id="pgfId-1012148"></a>  }
+<a id="pgfId-1012154"></a>}
+<a id="pgfId-1012165"></a> 
+<a id="pgfId-1012160"></a>class BeautifullyDesignedClass {
+<a id="pgfId-1012171"></a>  public void cleanMethod() {                        <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1012183"></a>    // ...
+<a id="pgfId-1012189"></a>    // lots of code here...
+<a id="pgfId-1012195"></a>    // ...
+<a id="pgfId-1012201"></a>  }
+<a id="pgfId-1012207"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1026419"></a><span class="fm-combinumeral">❶</span> In the legacy class, we call the behavior that is now in the new class.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1026420"></a><span class="fm-combinumeral">❷</span> This class is also complex, but it is testable.</p>
+
+  <p class="body"><a id="pgfId-1012249"></a>You may, of course, need to do things differently for your specific case, but the idea is the same. For more information on handling legacy systems, I suggest Feather’s book (2004). I also suggest reading about the anti-corruption layer idea proposed by Evans (2004). <a id="marker-1026486"></a></p>
+
+  <h2 class="fm-head" id="heading_id_7"><a id="pgfId-1012258"></a>11.5 Invest in monitoring</h2>
+
+  <p class="body"><a id="pgfId-1012268"></a><a id="marker-1012269"></a>You do your best to catch all the bugs before we deploy. But in practice, you know that is impossible. What can you do? Make sure that you detect the bugs as soon as they happen in production.</p>
+
+  <p class="body"><a id="pgfId-1012277"></a>Software monitoring is as important as testing. Be sure your team invests in decent monitoring systems. This is more complicated than you may think. First, developers need to know what to log. This may be a tricky decision, as you do not want to log too much (to avoid overloading your infrastructure), and you do not want to log too little (because you will not have enough information to debug the problem). Make sure your team has good guidelines for what should be logged, what log level to use, and so on. If you are curious, we wrote a paper showing that machine learning can recommend logs to developers (Cândido et al., 2021). We hope to have more concrete tooling in the future.</p>
+
+  <p class="body"><a id="pgfId-1012283"></a>It is also difficult for developers to identify anomalies when the system logs millions or even billions of log lines each month. Sometimes exceptions happen, and the software is resilient enough to know what to do with them. Developers log these exceptions anyway, but often the exceptions are not important. Therefore, investing in ways to identify exceptions that matter is a pragmatic challenge, and you and your team should invest in it. <a id="marker-1012285"></a></p>
+
+  <h2 class="fm-head" id="heading_id_8"><a id="pgfId-1012292"></a>11.6 What’s next?</h2>
+
+  <p class="body"><a id="pgfId-1012302"></a>There is still much to learn about software testing! This book did not have space to cover these important topics:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012342"></a><i class="fm-italics1">Non-functional testing</i> —If you have non-functional requirements such as performance, scalability, or security, you may want to write tests for them as well. A 2022 book by Gayathri Mohan, <i class="fm-italics1">Full Stack Testing</i> (<a class="url1" href="https://learning-oreilly-com.tudelft.idm.oclc.org/library/view/full-stack-testing/9781098108120">https://learning-oreilly-com.tudelft.idm.oclc.org/library/view/full-stack-testing/9781098108120</a>) has good coverage of these type of tests.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012426"></a><i class="fm-italics1">Testing for specific architectures and contexts</i> —As you saw in chapter 9, different technologies may require different testing patterns. If you are building an API, it is wise to write API tests for it. If you are building a VueJS application, it is wise to write VueJS tests. Manning has several interesting books on the topic, including <i class="fm-italics1">Testing Web APIs</i> by Mark Winteringham (<a class="url1" href="http://www.manning.com/books/testing-web-apis">www.manning.com/books/testing-web-apis</a>); <i class="fm-italics1">Exploring Testing Java Microservices</i>, with chapters selected by Alex Soto Bueno and Jason Porter (<a class="url1" href="http://www.manning.com/books/exploring-testing-java-microservices">www.manning.com/books/exploring-testing-java-microservices</a>), and <i class="fm-italics1">Testing Vue.js Applications</i> by Edd Yerburgh (<a class="url1" href="http://www.manning.com/books/testing-vue-js-applications">www.manning.com/books/testing-vue-js-applications</a>).</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012466"></a><i class="fm-italics1">Design for testability principles for your programming language</i> —I mostly discussed principles that make sense for object-oriented languages in general. If you are working with, for example, functional languages, the principles may be somewhat different. If we pick Clojure as an example, Phil Calçado has a nice blog post on his experiences with TDD in that language (<a class="url1" href="http://mng.bz/g40x">http://mng.bz/g40x</a>), and Manning’s book <i class="fm-italics1">Clojure in Action</i> (<a class="url1" href="http://www.manning.com/books/clojure-in-action-second-edition">www.manning.com/books/clojure-in-action-second-edition</a>) by Amit Rathore and Francis Avila has an entire chapter dedicated to TDD.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012493"></a><i class="fm-italics1">Static analysis tools</i> —Tools such as SonarQube (<a class="url1" href="http://www.sonarqube.org">www.sonarqube.org</a>) and SpotBugs (<a class="url1" href="https://spotbugs.github.io/">https://spotbugs.github.io/</a>) are interesting ways to look for quality issues in code bases. These tools mostly rely on static analysis and look for specific buggy code patterns. Their main advantage is that they are very fast and can be executed in continuous integration. I strongly suggest that you become familiar with these tools.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012511"></a><i class="fm-italics1">Software monitoring</i>—I said you should invest in monitoring, which means you also need to learn how to do proper monitoring. Techniques such as A/B testing, blue-green deployment, and others will help you ensure that bugs have a harder time getting to production even if they made it through your thorough testing process. The blog post “QA in Production” by Rouan Wilsenach is a good introduction to the subject (<a class="url1" href="https://martinfowler.com/articles/qa-in-production.html">https://martinfowler.com/articles/qa-in-production.html</a>).</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1013386"></a>Have fun testing!</p>
+</div>
+</div>
+</body>
+</html>

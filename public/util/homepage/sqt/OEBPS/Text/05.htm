@@ -1,0 +1,1132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xml:lang="en"
+      lang="en"
+      xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:epub="http://www.idpf.org/2007/ops">
+<head>
+<title>Effective Software Testing</title>
+<link rel="stylesheet" type="text/css" href="../../override_v1.css"/>
+<link rel="stylesheet" type="text/css" href="../../stylesheet.css"/><link rel="stylesheet" type="text/css" href="../../page_styles.css"/>
+</head>
+<body>
+<div id="book-content">
+<div id="sbo-rt-content" class="calibre"><h1 class="tochead" id="heading_id_2"><a id="pgfId-998407"></a><a id="pgfId-1030033"></a>5 Property-based testing</h1>
+
+  <p class="co-summary-head"><a id="pgfId-1011754"></a>This chapter covers</p>
+
+  <ul class="calibre12">
+    <li class="co-summary-bullet"><a class="calibre13" id="pgfId-1011760"></a>Writing property-based tests</li>
+
+    <li class="co-summary-bullet"><a class="calibre13" id="pgfId-1011774"></a>Understanding when to write property-based tests or example-based tests</li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1011806"></a>So far, we have been doing <i class="fm-italics">example-based testing</i>. We judiciously <a id="marker-1040598"></a>divide the input space of a program (into partitions), pick one concrete example from all the possible ones, and write the test case. What if we did not have to pick one concrete example out of many? What if we could express the <i class="fm-italics">property</i> we are trying to exercise and let the test framework choose several concrete examples for us? Our tests would be less dependent on a concrete example, and the test framework would be able to call the method under test multiple times with different input parameters—usually with zero effort from us.</p>
+
+  <p class="body"><a id="pgfId-1011815"></a>This is what <i class="fm-italics">property-based testing</i> is about. We do not pick a concrete example; rather, we define a property (or a set of properties) that the program should adhere to, and the test framework tries to find a counterexample that causes the program to break with these properties.</p>
+
+  <p class="body"><a id="pgfId-1011830"></a>I have learned that the best way to teach how to write property-based tests is with multiple examples. So, this chapter presents five different examples with varying levels of complexity. I want you to focus on my way of thinking and notice how much creativity is required to write such tests.</p>
+
+  <h2 class="fm-head" id="heading_id_3"><a id="pgfId-1011836"></a>5.1 Example 1: The passing grade program</h2>
+
+  <p class="body"><a id="pgfId-1011853"></a><a id="marker-1011847"></a><a id="marker-1011849"></a>Consider the following requirement, inspired by a similar problem in Kaner et al.’s book (2013):</p>
+
+  <p class="fm-callout"><a id="pgfId-1011868"></a>A student passes an exam if they get a grade &gt;= 5.0. Grades below that are a fail. Grades fall in the range [1.0, 10.0].</p>
+
+  <p class="body"><a id="pgfId-1011874"></a>A simple implementation for this program is shown in the following listing.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1011931"></a>Listing 5.1 Implementation of the <code class="fm-code-in-text">PassingGrade</code> program</p>
+  <pre class="programlisting"><a id="pgfId-1011880"></a>public class PassingGrade {
+<a id="pgfId-1011983"></a>  public boolean passed(float grade) {
+<a id="pgfId-1011989"></a>    if (grade &lt; 1.0 || grade &gt; 10.0)            <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1012001"></a>      throw new IllegalArgumentException();
+<a id="pgfId-1012007"></a>    return grade &gt;= 5.0;
+<a id="pgfId-1012013"></a>  }
+<a id="pgfId-1012019"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1052665"></a><span class="fm-combinumeral">❶</span> Note the pre-condition check here.</p>
+
+  <p class="body"><a id="pgfId-1012045"></a>If we were to apply specification-based testing to this program, we would probably devise partitions such as “passing grade,” “failing grade,” and “grades outside the range.” We would then devise a single test case per partition. With property-based testing, we want to formulate properties that the program should have. I see the following properties for this requirement:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012073"></a><code class="fm-code-in-text">fail</code>—For all numbers ranging from 1.0 (inclusive) to 5.0 (exclusive), the program should return <code class="fm-code-in-text">false</code>.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012100"></a><code class="fm-code-in-text">pass</code>—For all numbers ranging from 5.0 (inclusive) to 10.0 (inclusive), the program should return <code class="fm-code-in-text">true</code>.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012109"></a><code class="fm-code-in-text">invalid</code>—For all invalid grades (which we define as any number below 1.0 or greater than 10.0), the program must throw an exception.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1012139"></a>Can you see the difference between what we do in specification-based testing and what we aim to do in property-based testing? Let’s write a suite test by test, starting with <a id="marker-1012128"></a>the <code class="fm-code-in-text">fail</code> property. For that, we will use jqwik (<a class="url" href="https://jqwik.net">https://jqwik.net</a>), a popular property-based testing framework for Java.</p>
+
+  <p class="fm-callout"><a id="pgfId-1012149"></a><span class="fm-callout-head">Note</span> Property-based testing frameworks are available in many different languages, although their APIs vary significantly (unlike unit testing frameworks like JUnit, which all look similar). If you are applying this knowledge to another language, your task is to study the framework that is available in your programming language. The way to think and reason is the same across different languages.</p>
+
+  <p class="body"><a id="pgfId-1012165"></a>Before I show the concrete implementation, let me break down property-based testing step by step, using jqwik’s lingo:</p>
+
+  <ol class="calibre14">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012171"></a>For each property we want to express, we create a method and annotate it with <code class="fm-code-in-text">@Property</code>. These methods look like JUnit tests, but instead of containing a single example, they contain an overall property.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012264"></a>Properties use randomly generated data. Jqwik includes several generators for various types (including <code class="fm-code-in-text">String</code>s, <code class="fm-code-in-text">Integer</code>s, <code class="fm-code-in-text">List</code>s, <code class="fm-code-in-text">Date</code>s, and so on.). Jqwik allows you to define different sets of constraints and restrictions to these parameters: for example, to generate only positive <code class="fm-code-in-text">Integer</code>s or only <code class="fm-code-in-text">String</code>s with a length between 5 and 10 characters. The <code class="fm-code-in-text">property</code> method receives <a class="calibre13" id="marker-1012269"></a>all the required data for that test as parameters.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012279"></a>The <code class="fm-code-in-text">property</code> method calls the method under test and asserts that the method’s behavior is correct.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012298"></a>When the test runs, jqwik generates a large amount of random data (following the characteristics you defined) and calls the test for it, looking for an input that would break the property. If jqwik finds an input that makes your test fail, the tool reports this input back to the developer. The developer then has an example of an input that breaks their program.</p>
+    </li>
+  </ol>
+
+  <p class="body"><a id="pgfId-1012308"></a>The following listing shows the code for the <code class="fm-code-in-text">fail</code> property.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1012374"></a>Listing 5.2 A property-based test for the <code class="fm-code-in-text">fail</code> property</p>
+  <pre class="programlisting"><a id="pgfId-1012323"></a>public class PassingGradesPBTest {
+<a id="pgfId-1012431"></a> 
+<a id="pgfId-1012426"></a>  private final PassingGrade pg = new PassingGrade();
+<a id="pgfId-1012442"></a> 
+<a id="pgfId-1012437"></a>  @Property
+<a id="pgfId-1012448"></a>  void fail(                                                <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1012460"></a>   @ForAll                                                  <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1012472"></a>   @FloatRange(min = 1f, max = 5f, maxIncluded = false)     <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1012484"></a>   float grade) {                                           <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1012501"></a> 
+<a id="pgfId-1012496"></a>    assertThat(pg.passed(grade)).isFalse();
+<a id="pgfId-1012512"></a> 
+<a id="pgfId-1012507"></a>  }
+<a id="pgfId-1012518"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1052261"></a><span class="fm-combinumeral">❶</span> Defines the characteristics of the values we want to generate via annotations</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1052282"></a><span class="fm-combinumeral">❷</span> Any parameter to be generated by jqwik must be annotated with ForAll.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1052299"></a><span class="fm-combinumeral">❸</span> We want random floats in a [1.0, 5.0] interval (max value excluded), which we define in the FloatRange annotation.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1052316"></a><span class="fm-combinumeral">❹</span> The grade parameter will be generated according to the rules specified in the annotations.</p>
+
+  <p class="body"><a id="pgfId-1012696"></a>We annotate the test method with <code class="fm-code-in-text">@Property</code> instead of <code class="fm-code-in-text">@Test</code>. The test method receives a <code class="fm-code-in-text">grade</code> parameter that <a id="marker-1052395"></a>jqwik will set, following the rules we give it. We then annotate the <code class="fm-code-in-text">grade</code> parameter with two properties. First, we say that this property should hold for all (<code class="fm-code-in-text">@ForAll</code>) grades. This is jqwik’s terminology. If we left only <a id="marker-1052396"></a>the <code class="fm-code-in-text">@ForAll</code> annotation, jqwik would try any possible float as input. However, for this <code class="fm-code-in-text">fail</code> property, we want numbers varying from 1.0 to 5.0, which we specify using <a id="marker-1052397"></a>the <code class="fm-code-in-text">@FloatRange</code> annotation. The test then asserts that the program returns <code class="fm-code-in-text">false</code> for all the provided grades.</p>
+
+  <p class="body"><a id="pgfId-1012721"></a>When we run the test, jqwik randomly provides values for the <code class="fm-code-in-text">grade</code> parameter, following the ranges we specified. With its default configuration, jqwik randomly generates 1,000 different inputs for this method. If this is your first time with property-based testing, I suggest that you write some <code class="fm-code-in-text">print</code> statements in <a id="marker-1042917"></a>the body of the test method to see the values generated by the framework. Note how random they are and how much they vary.</p>
+
+  <p class="body"><a id="pgfId-1012736"></a>Correspondingly, we can test the <code class="fm-code-in-text">pass</code> property using <a id="marker-1012747"></a>a similar strategy, as shown next.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1012808"></a>Listing 5.3 A property-based test for the <code class="fm-code-in-text">pass</code> property</p>
+  <pre class="programlisting"><a id="pgfId-1012757"></a>@Property
+<a id="pgfId-1012860"></a>void pass(
+<a id="pgfId-1012866"></a>  @ForAll
+<a id="pgfId-1012872"></a>  @FloatRange(min = 5f, max = 10f, maxIncluded = true)    <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1012884"></a>  float grade) {
+<a id="pgfId-1012890"></a>  assertThat(pg.passed(grade)).isTrue();
+<a id="pgfId-1012896"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1052203"></a><span class="fm-combinumeral">❶</span> We want random floats in the range of [5.0, 10.0], max value included.</p>
+
+  <p class="body"><a id="pgfId-1012954"></a>Finally, to make jqwik generate numbers that are outside of the valid range of grades, we need to use a smarter generator (as <code class="fm-code-in-text">FloatRange</code> does not allow us to express things like “grade &lt; 1.0 or grade &gt; 10.0”). See the <code class="fm-code-in-text">invalidGrades()</code> provider method <a id="marker-1012943"></a>in the following listing: methods annotated with <code class="fm-code-in-text">@Provide</code> are used to express more complex inputs that need to be generated.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1013014"></a>Listing 5.4 A property-based test for the <code class="fm-code-in-text">invalidGrades</code> property</p>
+  <pre class="programlisting"><a id="pgfId-1012963"></a>@Property
+<a id="pgfId-1013066"></a>void invalid(
+<a id="pgfId-1013072"></a> @ForAll("invalidGrades")                            <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1013084"></a> float grade) {
+<a id="pgfId-1013095"></a> 
+<a id="pgfId-1013090"></a>  assertThatThrownBy(() -&gt; {
+<a id="pgfId-1013101"></a>    pg.passed(grade);
+<a id="pgfId-1013107"></a>  }).isInstanceOf(IllegalArgumentException.class);   <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1013119"></a>}
+<a id="pgfId-1013130"></a> 
+<a id="pgfId-1013125"></a>@Provide                                             <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1013142"></a>private Arbitrary&lt;Float&gt; invalidGrades() {
+<a id="pgfId-1013148"></a>  return Arbitraries.oneOf(                          <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1013160"></a>      Arbitraries.floats().lessThan(1f),             <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1013172"></a>      Arbitraries.floats().greaterThan(10f)          <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1013184"></a>  );
+<a id="pgfId-1013190"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1051779"></a><span class="fm-combinumeral">❶</span> The @ForAll annotation receives the name of a Provider method that will generate the data.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1051800"></a><span class="fm-combinumeral">❷</span> Asserts that an exception is thrown for any value outside the boundary</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1051817"></a><span class="fm-combinumeral">❸</span> A provider method needs to be annotated with @Provide.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1051834"></a><span class="fm-combinumeral">❹</span> Makes the method randomly return ...</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1051851"></a><span class="fm-combinumeral">❺</span> ... a float that is less than 1.0 ...</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1051868"></a><span class="fm-combinumeral">❻</span> ... or greater than 10.0.</p>
+
+  <p class="body"><a id="pgfId-1013354"></a>The <code class="fm-code-in-text">@Property</code> test method is <a id="marker-1013307"></a>straightforward: for all grades generated, we assert that an exception is thrown. The challenge is generating random grades. We express this in <a id="marker-1013313"></a>the <code class="fm-code-in-text">invalidGrades</code> provider method, which should return either a grade smaller than 1 or a grade greater than 10. Also, note that the method returns an <code class="fm-code-in-text">Arbitrary</code>. An <code class="fm-code-in-text">Arbitrary</code> is how jqwik handles arbitrary values that need to be generated. If you need, say, arbitrary floats, your provider method should return an <code class="fm-code-in-text">Arbitrary&lt;Float&gt;</code>.</p>
+
+  <p class="body"><a id="pgfId-1013450"></a>To give the two options to jqwik, we use <a id="marker-1013365"></a>the <code class="fm-code-in-text">Arbitraries.oneOf()</code> method. The <code class="fm-code-in-text">Arbitraries</code> class contains <a id="marker-1013391"></a>dozens of methods that help build arbitrary data. The <code class="fm-code-in-text">oneOf()</code> method receives <a id="marker-1013407"></a>a list of arbitrary values it may return. Behind the scenes, this method ensures that the distribution of data points generated is fairly distributed: for example, it generates as many “smaller than 1” inputs as “greater than 10” inputs. Then, we use another helper, the <code class="fm-code-in-text">Arbitraries.floats()</code> method, to generate<a id="marker-1013423"></a> random floats. Finally, we use <a id="marker-1013429"></a>the <code class="fm-code-in-text">lessThan()</code> and <code class="fm-code-in-text">greaterThan()</code> methods to <a id="marker-1013455"></a>generate numbers less than 1 and greater than 10, respectively.</p>
+
+  <p class="fm-callout"><a id="pgfId-1013465"></a><span class="fm-callout-head">Note</span> I suggest exploring the methods that the <code class="fm-code-in-text">Arbitraries</code> class provides! Jqwik is a very extensive framework and contains lots of methods to help you build any property you need. I will not discuss every feature of the framework, as that would be an entire book by itself. Instead, I recommend that you dive into jqwik’s excellent user guide: <a class="url" href="https://jqwik.net/docs/current/user-guide.html">https://jqwik.net/docs/current/user-guide.html</a>.</p>
+
+  <p class="body"><a id="pgfId-1020025"></a>When we run the tests, all of them pass, since our implementation is correct. Now, let’s introduce a bug in the code to see the jqwik output. For example, let’s change <code class="fm-code-in-text">return</code> <code class="fm-code-in-text">grade</code> <code class="fm-code-in-text">&gt;=</code> <code class="fm-code-in-text">5.0</code> to <code class="fm-code-in-text">return</code> <code class="fm-code-in-text">grade</code> <code class="fm-code-in-text">&gt;</code> <code class="fm-code-in-text">5.0</code>, a simple off-by-one mistake. When we run our test suite again, the <code class="fm-code-in-text">pass</code> property test fails as expected! Jqwik also produces nice output to help us debug the problem.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1020085"></a>Listing 5.5 An example of a jqwik test failure</p>
+  <pre class="programlisting"><a id="pgfId-1020034"></a>|-------------------jqwik-------------------
+<a id="pgfId-1020124"></a>tries = 11                    | \# of calls to property
+<a id="pgfId-1020130"></a>checks = 11                   | \# of not rejected calls
+<a id="pgfId-1020136"></a>generation = RANDOMIZED       | parameters are randomly generated
+<a id="pgfId-1020142"></a>after-failure = PREVIOUS_SEED | use the previous seed
+<a id="pgfId-1020148"></a>when-fixed-seed = ALLOW       | fixing the random seed is allowed
+<a id="pgfId-1020154"></a>edge-cases\#mode = MIXIN      | edge cases are mixed in
+<a id="pgfId-1020160"></a>edge-cases\#total = 2         | \# of all combined edge cases
+<a id="pgfId-1020166"></a>edge-cases\#tried = 1         | \# of edge cases tried in current run
+<a id="pgfId-1020172"></a>seed = 7015333710778187630    | random seed to reproduce generated values
+<a id="pgfId-1020183"></a> 
+<a id="pgfId-1020178"></a>Sample
+<a id="pgfId-1020189"></a>------
+<a id="pgfId-1020195"></a>  arg0: 5.0</pre>
+
+  <p class="body"><a id="pgfId-1020201"></a>The output shows that jqwik found a counterexample in attempt number 11. Only 11 trials were enough to find the bug! Jqwik then shows a set of configuration parameters that may be useful when reproducing and debugging more complex cases. In particular, note the <code class="fm-code-in-text">seed</code> information: you can reuse that seed later to force jqwik to come up with the same sequence of inputs. Below the configuration, we see the sample that caused the bug: the value 5.0, as expected.</p>
+
+  <p class="fm-callout"><a id="pgfId-1020216"></a><span class="fm-callout-head">Note</span> If you are connecting the dots with previous chapters, you may be wondering about boundary testing. Jqwik is smart enough to also generate boundary values! If we ask jqwik to generate, say, floats smaller than 1.0, jqwik will generate 1.0 as a test. If we ask jqwik to generate any integer, jqwik will try the maximum and minimum possible integers as well as 0 and negative numbers. <a id="marker-1020228"></a><a id="marker-1020231"></a></p>
+
+  <h2 class="fm-head" id="heading_id_4"><a id="pgfId-1020237"></a>5.2 Example 2: Testing the unique method</h2>
+
+  <p class="body"><a id="pgfId-1020266"></a><a id="marker-1020248"></a><a id="marker-1020250"></a>The Apache Commons Lang offers <a id="marker-1020255"></a>the <code class="fm-code-in-text">unique</code> method (<a class="url" href="http://mng.bz/XWGM">http://mng.bz/XWGM</a>). Following is its adapted Javadoc:</p>
+
+  <p class="fm-callout"><a id="pgfId-1020286"></a>Returns an array consisting of the unique values in data. The return array is sorted in descending order. Empty arrays are allowed, but null arrays result in a <code class="fm-code-in-text">NullPointerException</code>. Infinities are allowed.</p>
+
+  <p class="fm-callout"><a id="pgfId-1020301"></a><i class="fm-italics">Parameters</i>:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-bullet-callout">
+      <p class="list-s"><a id="pgfId-1020307"></a><code class="fm-code-in-text">data</code>: Array to scan</p>
+    </li>
+  </ul>
+
+  <p class="fm-callout"><a id="pgfId-1020344"></a>The method returns a descending list of values included in the input array. It throws a <code class="fm-code-in-text">NullPointerException</code> if <code class="fm-code-in-text">data</code> is null.</p>
+
+  <p class="body"><a id="pgfId-1020353"></a>You can see its implementation next.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1020410"></a>Listing 5.6 Implementation of the <code class="fm-code-in-text">unique</code> method</p>
+  <pre class="programlisting"><a id="pgfId-1020359"></a>public static int[] unique(int[] data) {
+<a id="pgfId-1020462"></a>  TreeSet&lt;Integer&gt; values = new TreeSet&lt;Integer&gt;();   <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1020474"></a>  for (int i = 0; i &lt; data.length; i++) {
+<a id="pgfId-1020480"></a>     values.add(data[i]);
+<a id="pgfId-1020486"></a>  }
+<a id="pgfId-1020497"></a> 
+<a id="pgfId-1020492"></a>  final int count = values.size();
+<a id="pgfId-1020503"></a>  final int[] out = new int[count];                   <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1020520"></a> 
+<a id="pgfId-1020515"></a>  Iterator&lt;Integer&gt; iterator = values.iterator();
+<a id="pgfId-1020526"></a>  int i = 0;
+<a id="pgfId-1020532"></a>  while (iterator.hasNext()) {                        <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1020544"></a>     out[count - ++i] = iterator.next();
+<a id="pgfId-1020550"></a>  }
+<a id="pgfId-1020556"></a>  return out;
+<a id="pgfId-1020562"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1051585"></a><span class="fm-combinumeral">❶</span> Uses a treeset to filter out repeated elements</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1051606"></a><span class="fm-combinumeral">❷</span> Creates the new array using the size of the tree</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1051623"></a><span class="fm-combinumeral">❸</span> Visits the treeset and adds the elements to the new array</p>
+
+  <p class="body"><a id="pgfId-1020620"></a>Let’s go straight to property-based testing. Here, we focus on the main property of the method: given an array of integers, the method returns a new array containing only the unique values of the original array, sorted in descending order. This is the property we will embed in a jqwik test.</p>
+
+  <p class="body"><a id="pgfId-1020626"></a>Our test works as follows. First we create a random list of integers. To ensure that the list has repeated numbers, we create a list of size 100 and limit the range of integers to [0,20]. We then call the <code class="fm-code-in-text">unique</code> method and <a id="marker-1020637"></a>assert that the array contains all the elements of the original array, does not have duplicates, and is sorted in descending order. Let’s write that down in jqwik.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1020698"></a>Listing 5.7 Property-based test for the <code class="fm-code-in-text">unique</code> method</p>
+  <pre class="programlisting"><a id="pgfId-1020647"></a>public class MathArraysPBTest {
+<a id="pgfId-1020755"></a> 
+<a id="pgfId-1020750"></a>  @Property
+<a id="pgfId-1020761"></a>  void unique(
+<a id="pgfId-1020767"></a>   @ForAll
+<a id="pgfId-1020773"></a>   @Size(value = 100)                                          <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1020785"></a>   List&lt;@IntRange(min = 1, max = 20) Integer&gt;                  <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1020797"></a>   numbers) {
+<a id="pgfId-1020808"></a> 
+<a id="pgfId-1020803"></a>    int[] doubles = convertListToArray(numbers);
+<a id="pgfId-1020814"></a>    int[] result = MathArrays.unique(doubles);
+<a id="pgfId-1020825"></a> 
+<a id="pgfId-1020820"></a>    assertThat(result)
+<a id="pgfId-1020831"></a>        .contains(doubles)                                     <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1020843"></a>        .doesNotHaveDuplicates()                               <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1020855"></a>        .isSortedAccordingTo(reverseOrder());                  <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1020867"></a>  }
+<a id="pgfId-1020878"></a> 
+<a id="pgfId-1020873"></a>  private int[] convertListToArray(List&lt;Integer&gt; numbers) {    <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1020890"></a>    int[] array = numbers
+<a id="pgfId-1020896"></a>      .stream()
+<a id="pgfId-1020902"></a>      .mapToInt(x -&gt; x)
+<a id="pgfId-1020908"></a>      .toArray();
+<a id="pgfId-1020919"></a> 
+<a id="pgfId-1020914"></a>    return array;
+<a id="pgfId-1020925"></a>  }
+<a id="pgfId-1020931"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1051138"></a><span class="fm-combinumeral">❶</span> An array of size 100</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1051159"></a><span class="fm-combinumeral">❷</span> With values in [0, 20]. Given the size of the array (100), we know it will contain repeated elements.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1051176"></a><span class="fm-combinumeral">❸</span> Contains all the elements</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1051193"></a><span class="fm-combinumeral">❹</span> No duplicates</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1051450"></a><span class="fm-combinumeral">❺</span> In descending order</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1051210"></a><span class="fm-combinumeral">❻</span> Utility method that converts a list of integers to an array</p>
+
+  <p class="fm-callout"><a id="pgfId-1021037"></a><span class="fm-callout-head">Tip</span> Note how AssertJ simplifies our lives with its many ready-to-use assertions. Without it, the developer would have to write lots of extra code. When writing complex assertions, check the documentation to see whether something is available out of the box!</p>
+
+  <p class="fm-callout"><a id="pgfId-1021053"></a><span class="fm-callout-head">Note</span> One of my students noticed that even if we do not restrict the integer list to numbers in [0, 20], jqwik will produce lists with duplicated elements. In his exploration, he noticed that 11% of the produced arrays had a duplicated element. As a tester, you may want to consider whether 11% is a good rate. To measure this, my student used jqwik’s statistics feature (<a class="url" href="http://mng.bz/y4gE">http://mng.bz/y4gE</a>), which enables you to measure the distribution of the input values.</p>
+
+  <p class="body"><a id="pgfId-1021070"></a>Jqwik did not find any inputs that would break the program. So, our implementation seems to work. Let’s move to the next example. <a id="marker-1021072"></a><a id="marker-1021075"></a></p>
+
+  <h2 class="fm-head" id="heading_id_5"><a id="pgfId-1021081"></a>5.3 Example 3: Testing the indexOf method</h2>
+
+  <p class="body"><a id="pgfId-1021104"></a><a id="marker-1042967"></a><a id="marker-1042968"></a>The Apache Commons Lang has an interesting method called <code class="fm-code-in-text">indexOf()</code> (<a class="url" href="http://mng.bz/M24m">http://mng.bz/M24m</a>) with the following documentation, adapted from its Javadoc:</p>
+
+  <p class="fm-callout"><a id="pgfId-1021145"></a>Finds the index of the given value in the array starting at the given index. This method returns –1 for a null input array. A negative <code class="fm-code-in-text">startIndex</code> is treated as zero. A <code class="fm-code-in-text">startIndex</code> larger than the array length will return –1.</p>
+
+  <p class="fm-callout"><a id="pgfId-1021154"></a><i class="fm-italics">Input parameters</i>:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-bullet-callout">
+      <p class="list-s"><a id="pgfId-1021160"></a><code class="fm-code-in-text">array</code>: Array to search for the object. May be null.</p>
+    </li>
+
+    <li class="fm-list-bullet-callout">
+      <p class="list-s"><a id="pgfId-1021181"></a><code class="fm-code-in-text">valueToFind</code>: Value to find.</p>
+    </li>
+
+    <li class="fm-list-bullet-callout">
+      <p class="list-s"><a id="pgfId-1021198"></a><code class="fm-code-in-text">startIndex</code>: Index at which to start searching.</p>
+    </li>
+  </ul>
+
+  <p class="fm-callout"><a id="pgfId-1021215"></a>The method returns the index of the value within the array, or –1 if not found or null.</p>
+
+  <p class="body"><a id="pgfId-1021221"></a>Following is the implementation of this method.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1021278"></a>Listing 5.8 Implementation of the <code class="fm-code-in-text">indexOf</code> method</p>
+  <pre class="programlisting"><a id="pgfId-1021227"></a>class ArrayUtils {
+<a id="pgfId-1021330"></a>  public static int indexOf(final int[] array, final int valueToFind,
+<a id="pgfId-1021336"></a>    <span class="fm-code-continuation-arrow">➥</span> int startIndex) {
+<a id="pgfId-1021353"></a>    if (array == null) {             <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1021365"></a>      return -1;
+<a id="pgfId-1021371"></a>    }
+<a id="pgfId-1021382"></a> 
+<a id="pgfId-1021377"></a>    if (startIndex &lt; 0) {            <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1021394"></a>      startIndex = 0;
+<a id="pgfId-1021400"></a>    }
+<a id="pgfId-1021411"></a> 
+<a id="pgfId-1021406"></a>    for (int i = startIndex; i &lt; array.length; i++) {
+<a id="pgfId-1021417"></a>      if (valueToFind == array[i]) {
+<a id="pgfId-1021423"></a>        return i;                    <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1021435"></a>      }
+<a id="pgfId-1021441"></a>    }
+<a id="pgfId-1021447"></a>    return -1;                       <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1021459"></a>  }
+<a id="pgfId-1021465"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1050870"></a><span class="fm-combinumeral">❶</span> The method accepts a null array and returns -1 in such a case. Another option could be to throw an exception, but the developer decided to use a weaker pre-condition.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1050898"></a><span class="fm-combinumeral">❷</span> The same goes for startIndex: if the index is negative, the method assumes it is 0.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1050915"></a><span class="fm-combinumeral">❸</span> If the value is found, return the index.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1050932"></a><span class="fm-combinumeral">❹</span> If the value is not in the array, return -1.</p>
+
+  <p class="body"><a id="pgfId-1021539"></a>In this example, let’s first apply the techniques we already know. Start by exploring the input variables and how they interact with each other:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1021545"></a><code class="fm-code-in-text">array</code> of integers:</p>
+
+      <ul class="calibre15">
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1021566"></a>Null</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1021584"></a>Single element</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1021594"></a>Multiple elements</li>
+      </ul>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1021604"></a><code class="fm-code-in-text">valueToFind</code>:</p>
+
+      <ul class="calibre15">
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1021621"></a>Any integer</li>
+      </ul>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1021639"></a><code class="fm-code-in-text">startIndex</code>:</p>
+
+      <ul class="calibre15">
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1021656"></a>Negative number</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1021674"></a>0 [boundary]</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1021684"></a>Positive number</li>
+      </ul>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1021694"></a><code class="fm-code-in-text">(array,</code> <code class="fm-code-in-text">startIndex)</code>:</p>
+
+      <ul class="calibre15">
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1021737"></a><code class="fm-code-in-text">startIndex</code> in <code class="fm-code-in-text">array</code></li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1021761"></a><code class="fm-code-in-text">startIndex</code> outside the boundaries of <code class="fm-code-in-text">array</code></li>
+      </ul>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1021767"></a><code class="fm-code-in-text">(array,</code> <code class="fm-code-in-text">valueToFind)</code>:</p>
+
+      <ul class="calibre15">
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1021810"></a><code class="fm-code-in-text">valueToFind</code> not in <code class="fm-code-in-text">array</code></li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1021834"></a><code class="fm-code-in-text">valueToFind</code> in <code class="fm-code-in-text">array</code></li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1021858"></a><code class="fm-code-in-text">valueToFind</code> many times in <code class="fm-code-in-text">array</code></li>
+      </ul>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1021864"></a><code class="fm-code-in-text">(array,</code> <code class="fm-code-in-text">valueToFind,</code> <code class="fm-code-in-text">startIndex)</code>:</p>
+
+      <ul class="calibre15">
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1021917"></a><code class="fm-code-in-text">valueToFind</code> in <code class="fm-code-in-text">array</code>, but before <code class="fm-code-in-text">startIndex</code></li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1021951"></a><code class="fm-code-in-text">valueToFind</code> in <code class="fm-code-in-text">array</code>, but after <code class="fm-code-in-text">startIndex</code></li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1021985"></a><code class="fm-code-in-text">valueToFind</code> in <code class="fm-code-in-text">array</code>, precisely in <code class="fm-code-in-text">startIndex</code> [boundary]</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1022022"></a><code class="fm-code-in-text">valueToFind</code> in <code class="fm-code-in-text">array</code> multiple times after <code class="fm-code-in-text">startIndex</code></li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1022056"></a><code class="fm-code-in-text">valueToFind</code> in <code class="fm-code-in-text">array</code> multiple times, one before and another after <code class="fm-code-in-text">startIndex</code></li>
+      </ul>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1022062"></a>We now create the test cases by combining the different partitions:</p>
+
+  <ol class="calibre14">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1022068"></a><code class="fm-code-in-text">array</code> is null</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1022117"></a><code class="fm-code-in-text">array</code> with a single element, <code class="fm-code-in-text">valueToFind</code> in <code class="fm-code-in-text">array</code></p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1022151"></a><code class="fm-code-in-text">array</code> with a single element, <code class="fm-code-in-text">valueToFind</code> not in <code class="fm-code-in-text">array</code></p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1022175"></a><code class="fm-code-in-text">startIndex</code> negative, value in <code class="fm-code-in-text">array</code></p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1022199"></a><code class="fm-code-in-text">startIndex</code> outside the boundaries of <code class="fm-code-in-text">array</code></p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1022253"></a><code class="fm-code-in-text">array</code> with multiple elements, <code class="fm-code-in-text">valueToFind</code> in <code class="fm-code-in-text">array</code>, <code class="fm-code-in-text">startIndex</code> after <code class="fm-code-in-text">valueToFind</code></p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1022307"></a><code class="fm-code-in-text">array</code> with multiple elements, <code class="fm-code-in-text">valueToFind</code> in <code class="fm-code-in-text">array</code>, <code class="fm-code-in-text">startIndex</code> before <code class="fm-code-in-text">valueToFind</code></p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1022361"></a><code class="fm-code-in-text">array</code> with multiple elements, <code class="fm-code-in-text">valueToFind</code> in <code class="fm-code-in-text">array</code>, <code class="fm-code-in-text">startIndex</code> precisely at <code class="fm-code-in-text">valueToFind</code></p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1022415"></a><code class="fm-code-in-text">array</code> with multiple elements, <code class="fm-code-in-text">valueToFind</code> in <code class="fm-code-in-text">array</code> multiple times, <code class="fm-code-in-text">startIndex</code> before <code class="fm-code-in-text">valueToFind</code></p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1022459"></a><code class="fm-code-in-text">array</code> with multiple elements, <code class="fm-code-in-text">valueToFind</code> in <code class="fm-code-in-text">array</code> multiple times, one before <code class="fm-code-in-text">startIndex</code></p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1022493"></a><code class="fm-code-in-text">array</code> with multiple elements, <code class="fm-code-in-text">valueToFind</code> not in <code class="fm-code-in-text">array</code></p>
+    </li>
+  </ol>
+
+  <p class="body"><a id="pgfId-1022499"></a>In JUnit, the test suite looks like the following listing.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1022556"></a>Listing 5.9 First tests for the <code class="fm-code-in-text">indexOf()</code> method</p>
+  <pre class="programlisting"><a id="pgfId-1022505"></a>import static org.junit.jupiter.params.provider.Arguments.of;
+<a id="pgfId-1022613"></a> 
+<a id="pgfId-1022608"></a>public class ArrayUtilsTest {
+<a id="pgfId-1022619"></a>  @ParameterizedTest
+<a id="pgfId-1022630"></a>  @MethodSource("testCases")
+<a id="pgfId-1022636"></a>  void testIndexOf(int[] array, int valueToFind, int startIndex,
+<a id="pgfId-1022642"></a>    <span class="fm-code-continuation-arrow">➥</span> int expectedResult) {
+<a id="pgfId-1022659"></a>    int result = ArrayUtils.indexOf(array, valueToFind, startIndex);
+<a id="pgfId-1022665"></a>    assertThat(result).isEqualTo(expectedResult);
+<a id="pgfId-1022671"></a>  }
+<a id="pgfId-1022682"></a> 
+<a id="pgfId-1022677"></a>  static Stream&lt;Arguments&gt; testCases() {     <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1022694"></a>    int[] array = new int[] { 1, 2, 3, 4, 5, 4, 6, 7 };
+<a id="pgfId-1022705"></a> 
+<a id="pgfId-1022700"></a>    return Stream.of(
+<a id="pgfId-1022711"></a>      of(null, 1, 1, -1),                    <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1022728"></a> 
+<a id="pgfId-1022723"></a>      of(new int[] { 1 }, 1, 0, 0),          <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1022740"></a>      of(new int[] { 1 }, 2, 0, -1),         <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1022757"></a> 
+<a id="pgfId-1022752"></a>      of(array, 1, 10, -1),                  <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1022769"></a>      of(array, 2, -1, 1),                   <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1022781"></a>      of(array, 4, 6, -1),                   <span class="fm-combinumeral">❼</span>
+<a id="pgfId-1022793"></a>      of(array, 4, 1, 3),                    <span class="fm-combinumeral">❽</span>
+<a id="pgfId-1022805"></a>      of(array, 4, 3, 3),                    <span class="fm-combinumeral">❾</span>
+<a id="pgfId-1022817"></a>      of(array, 4, 1, 3),                    <span class="fm-combinumeral">❿</span>
+<a id="pgfId-1022829"></a>      of(array, 4, 4, 5),                    <span class="fm-combinumeral">⓫</span>
+<a id="pgfId-1022841"></a>      of(array, 8, 0, -1)                    <span class="fm-combinumeral">⓬</span>
+<a id="pgfId-1022853"></a>    );
+<a id="pgfId-1022859"></a>  }
+<a id="pgfId-1022865"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1050092"></a><span class="fm-combinumeral">❶</span> All the test cases we engineered are implemented here.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1050113"></a><span class="fm-combinumeral">❷</span> T1</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1050130"></a><span class="fm-combinumeral">❸</span> T2</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1050147"></a><span class="fm-combinumeral">❹</span> T3</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1050164"></a><span class="fm-combinumeral">❺</span> T4</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1050181"></a><span class="fm-combinumeral">❻</span> T5</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1050201"></a><span class="fm-combinumeral">❼</span> T6</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1050218"></a><span class="fm-combinumeral">❽</span> T7</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1050235"></a><span class="fm-combinumeral">❾</span> T8</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1050252"></a><span class="fm-combinumeral">❿</span> T9</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1050269"></a><span class="fm-combinumeral">⓫</span> T10</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1050286"></a><span class="fm-combinumeral">⓬</span> T11</p>
+
+  <p class="body"><a id="pgfId-1023067"></a>Listing 5.10 shows the test suite developed for the library method itself (<a class="url" href="http://mng.bz/aDAY">http://mng.bz/aDAY</a>). I added some comments, so you can see how their tests related to our tests. This test suite contains our test cases T1, T4, T5, T6, T7, T8, T10, and T11. Interestingly, it is not testing the behavior of the array with a single element or the case in which the element appears again after the first time it is found.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1023125"></a>Listing 5.10 Original test suite of the <code class="fm-code-in-text">indexOf()</code> method</p>
+  <pre class="programlisting"><a id="pgfId-1023074"></a>@Test
+<a id="pgfId-1023177"></a>public void testIndexOfIntWithStartIndex() {
+<a id="pgfId-1023183"></a>  int[] array = null;
+<a id="pgfId-1023189"></a>  assertEquals(-1, ArrayUtils.indexOf(array, 0, 2));       <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1023206"></a> 
+<a id="pgfId-1023201"></a>  array = new int[]{0, 1, 2, 3, 0};
+<a id="pgfId-1023212"></a>  assertEquals(4, ArrayUtils.indexOf(array, 0, 2));        <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1023229"></a> 
+<a id="pgfId-1023224"></a>  assertEquals(-1, ArrayUtils.indexOf(array, 1, 2));       <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1023246"></a> 
+<a id="pgfId-1023241"></a>  assertEquals(2, ArrayUtils.indexOf(array, 2, 2));        <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1023263"></a> 
+<a id="pgfId-1023258"></a>  assertEquals(3, ArrayUtils.indexOf(array, 3, 2));        <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1023280"></a> 
+<a id="pgfId-1023275"></a>  assertEquals(3, ArrayUtils.indexOf(array, 3, -1));       <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1023297"></a> 
+<a id="pgfId-1023292"></a>  assertEquals(-1, ArrayUtils.indexOf(array, 99, 0));      <span class="fm-combinumeral">❼</span>
+<a id="pgfId-1023309"></a>  assertEquals(-1, ArrayUtils.indexOf(array, 0, 6));       <span class="fm-combinumeral">❽</span>
+<a id="pgfId-1023326"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1049631"></a><span class="fm-combinumeral">❶</span> Similar to test case T1</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1049652"></a><span class="fm-combinumeral">❷</span> Similar to test case T10</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1049669"></a><span class="fm-combinumeral">❸</span> Similar to test case T6</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1049686"></a><span class="fm-combinumeral">❹</span> Similar to test case T8</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1049703"></a><span class="fm-combinumeral">❺</span> Similar to test case T7</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1049720"></a><span class="fm-combinumeral">❻</span> Similar to test case T4</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1049737"></a><span class="fm-combinumeral">❼</span> Similar to test case T11</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1049754"></a><span class="fm-combinumeral">❽</span> Similar to test case T5</p>
+
+  <p class="fm-callout"><a id="pgfId-1023464"></a><span class="fm-callout-head">Note</span> Parameterized tests seem to be less popular in open source systems. For methods with simple signatures, inputs, and outputs, like <code class="fm-code-in-text">indexOf</code>, we could argue that parameterized tests are overkill. When creating this example, I considered writing two different traditional JUnit test cases: one containing only the exceptional behavior and another containing the remaining test cases. In the end, organizing test cases is a matter of personal taste—talk to your team and see what approach they prefer. We talk more about test code quality and readability in chapter 10.</p>
+
+  <p class="body"><a id="pgfId-1023489"></a>Both test suites look good and are quite strong. But now, let’s express the main behavior of the method via property-based testing.</p>
+
+  <p class="body"><a id="pgfId-1023495"></a>The overall idea of the test is to insert a random value in a random position of a random array. The <code class="fm-code-in-text">indexOf()</code> method will look for this random value. Finally, the test will assert that the method returns an index that matches the random position where we inserted the element.</p>
+
+  <p class="body"><a id="pgfId-1023526"></a>The tricky part of writing such a test is ensuring that the random value we add in the array does not already exist in the random array. If the value is already there, this may break our test. Consider a randomly generated array containing <code class="fm-code-in-text">[1,</code> <code class="fm-code-in-text">2,</code> <code class="fm-code-in-text">3,</code> <code class="fm-code-in-text">4]</code>: if we insert a random element 4 (which already exists in the array) on index 1 of the array, we will get a different response depending on whether <code class="fm-code-in-text">startIndex</code> is 0 or 3. To avoid such confusion, we generate random values that do not exist in the randomly generated array. This is easily achievable in jqwik. The property-based test needs at least four parameters:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023535"></a><code class="fm-code-in-text">numbers</code>—A list of <a class="calibre13" id="marker-1023552"></a>random integers (we generate a list, as it is much easier to add an element at a random position in a list than in an array). This list will have a size of 100 and will contain values between –1000 and 1000.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023562"></a><code class="fm-code-in-text">value</code>—A random integer <a class="calibre13" id="marker-1023575"></a>that is the value to be inserted into the list. We generate values ranging from 1001 to 2000, ensuring that whatever value is generated will not exist in the list.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023585"></a><code class="fm-code-in-text">indexToAddElement</code>—A random integer <a class="calibre13" id="marker-1023598"></a>that represents a random index for where to add this element. The index ranges from 0 to 99 (the list has size 100).</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023608"></a><code class="fm-code-in-text">startIndex</code>—A random <a class="calibre13" id="marker-1023621"></a>integer that represents the index where we ask the method to start the search. This is also a random number ranging from 0 to 99.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1023667"></a>With all the random values ready, the method adds the random value at the random position and calls <code class="fm-code-in-text">indexOf</code> with the random array, the random value to search, and the random index at which to start the search. We then assert that the method returns <code class="fm-code-in-text">indexToAddElement</code> if <code class="fm-code-in-text">indexToAddElement</code> &gt;= <code class="fm-code-in-text">startIndex</code> (that is, the element was inserted after the start index) or –1 if the element was inserted before the start index. Figure 5.1 illustrates this process.</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/05-01.png" width="669" height="305"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1053321"></a>Figure 5.1 The data generation of the property-based test for the <code class="fm-code-in-text">indexOf</code> method</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1023695"></a>The concrete implementation of the jqwik test can be found in listing 5.11.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1023766"></a>Listing 5.11 Property-based test for the <code class="fm-code-in-text">indexOf()</code> method</p>
+  <pre class="programlisting"><a id="pgfId-1023715"></a>@Property
+<a id="pgfId-1023818"></a>void indexOf(
+<a id="pgfId-1023824"></a>  @ForAll
+<a id="pgfId-1023830"></a>  @Size(value = 100) List&lt;@IntRange(min = -1000, max = 1000)
+<a id="pgfId-1023836"></a>  <span class="fm-code-continuation-arrow">➥</span> Integer&gt; numbers,                                            <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1023859"></a>  @ForAll
+<a id="pgfId-1023865"></a>  @IntRange(min = 1001, max = 2000) int value,                    <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1023877"></a>  @ForAll
+<a id="pgfId-1023883"></a>  @IntRange(max = 99) int indexToAddElement,                      <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1023895"></a>  @ForAll
+<a id="pgfId-1023901"></a>  @IntRange(max = 99) int startIndex) {                           <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1023913"></a> numbers.add(indexToAddElement, value);                           <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1023935"></a> 
+<a id="pgfId-1023930"></a> int[] array = convertListToArray(numbers);                       <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1023952"></a> 
+<a id="pgfId-1023947"></a> int expectedIndex = indexToAddElement &gt;= startIndex ?
+<a id="pgfId-1023958"></a>   indexToAddElement : -1;                                        <span class="fm-combinumeral">❼</span>
+<a id="pgfId-1023975"></a> 
+<a id="pgfId-1023970"></a> assertThat(ArrayUtils.indexOf(array, value, startIndex))
+<a id="pgfId-1023981"></a>   .isEqualTo(expectedIndex);                                     <span class="fm-combinumeral">❽</span>
+<a id="pgfId-1023993"></a>}
+<a id="pgfId-1024004"></a> 
+<a id="pgfId-1023999"></a>private int[] convertListToArray(List&lt;Integer&gt; numbers) {         <span class="fm-combinumeral">❾</span>
+<a id="pgfId-1024016"></a>  int[] array = numbers.stream().mapToInt(x -&gt; x).toArray();
+<a id="pgfId-1024022"></a>  return array;
+<a id="pgfId-1024028"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1037507"></a><span class="fm-combinumeral">❶</span> Generates a list with 100 numbers ranging from -1000 to 1000</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1048974"></a><span class="fm-combinumeral">❷</span> Generates a random number that we insert into the array. This number is outside the range of the list so we can find it easily.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1048991"></a><span class="fm-combinumeral">❸</span> Randomly picks a place to put the element in the list</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1049008"></a><span class="fm-combinumeral">❹</span> Randomly picks a number to start the search in the array</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1049025"></a><span class="fm-combinumeral">❺</span> Adds the number to the list at the randomly chosen position</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1049042"></a><span class="fm-combinumeral">❻</span> Converts the list to an array, since this is what the method expects</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1049059"></a><span class="fm-combinumeral">❼</span> If we added the element after the start index, we expect the method to return the position where we inserted the element. Otherwise we expect the method to return -1.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1049076"></a><span class="fm-combinumeral">❽</span> Asserts that the search for the value returns the index we expect</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1049093"></a><span class="fm-combinumeral">❾</span> Utility method that converts a list of integers to an array</p>
+
+  <p class="body"><a id="pgfId-1024182"></a>Jqwik will generate a large number of random inputs for this method, ensuring that regardless of where the value to find is, and regardless of the chosen start index, the method will always return the expected index. Notice how this property-based test better exercises the properties of the method than the testing method we used earlier.</p>
+
+  <p class="body"><a id="pgfId-1024214"></a>I hope this example shows you that writing property-based tests requires creativity. Here, we had to come up with the idea of generating a random value that is never in the list so that the <code class="fm-code-in-text">indexOf</code> method could find it without ambiguity. We also had to be creative when doing the assertion, given that the randomly generated <code class="fm-code-in-text">indexToAddElement</code> could be larger or smaller than the <code class="fm-code-in-text">startIndex</code> (which would drastically change the output). Pay attention to these two points:</p>
+
+  <ol class="calibre14">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1024223"></a>Ask yourself, “Am I exercising the property as closely as possible to the real world?” If you come up with input data that will be wildly different from what you expect in the real world, it may not be a good test.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1024237"></a>Do all the partitions have the same likelihood of being exercised by your test? In the example, the element to be found is sometimes before and sometimes after the start index. If you write a test in which, say, 95% of the inputs have the element before the start index, you may be biasing your test too much. You want all the partitions to have the same likelihood of being exercised.</p>
+
+      <p class="fm-list-body"><a class="calibre13" id="pgfId-1024263"></a>In the example code, given that both <code class="fm-code-in-text">indexToAddElement</code> and <code class="fm-code-in-text">startIndex</code> are random numbers between 0 and 99, we expect about a 50-50 split between the partitions. When you are unsure about the distribution, add some debugging instructions and see what inputs or partitions your test generates or exercises. <a class="calibre13" id="marker-1024268"></a><a class="calibre13" id="marker-1024271"></a></p>
+    </li>
+  </ol>
+
+  <h2 class="fm-head" id="heading_id_6"><a id="pgfId-1024277"></a>5.4 Example 4: Testing the Basket class</h2>
+
+  <p class="body"><a id="pgfId-1024378"></a><a id="marker-1024288"></a><a id="marker-1024290"></a>Let’s explore one last example that revisits the <code class="fm-code-in-text">Basket</code> class from chapter 4. The class offers two methods: an <code class="fm-code-in-text">add()</code> method that <a id="marker-1024315"></a>receives a <code class="fm-code-in-text">product</code> and adds it a <code class="fm-code-in-text">quantity</code> of times to the basket, and a <code class="fm-code-in-text">remove()</code> method that <a id="marker-1024351"></a>removes a <code class="fm-code-in-text">product</code> completely from the cart. Let’s start with <a id="marker-1024367"></a>the <code class="fm-code-in-text">add</code> method.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1024477"></a>Listing 5.12 Implementation of <code class="fm-code-in-text">Basket</code>s <code class="fm-code-in-text">add</code> method</p>
+  <pre class="programlisting"><a id="pgfId-1024387"></a>import static java.math.BigDecimal.valueOf;
+<a id="pgfId-1024507"></a> 
+<a id="pgfId-1024502"></a>public class Basket {
+<a id="pgfId-1024513"></a>  private BigDecimal totalValue = BigDecimal.ZERO;
+<a id="pgfId-1024519"></a>  private Map&lt;Product, Integer&gt; basket = new HashMap&lt;&gt;();
+<a id="pgfId-1024530"></a> 
+<a id="pgfId-1024525"></a>  public void add(Product product, int qtyToAdd) {
+<a id="pgfId-1024536"></a>    assert product != null : "Product is required";                       <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1024548"></a>    assert qtyToAdd &gt; 0 : "Quantity has to be greater than zero";         <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1024560"></a>    BigDecimal oldTotalValue = totalValue;                                <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1024572"></a>    int existingQuantity = basket.getOrDefault(product, 0);               <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1024589"></a>    int newQuantity = existingQuantity + qtyToAdd;
+<a id="pgfId-1024595"></a>    basket.put(product, newQuantity);
+<a id="pgfId-1024606"></a> 
+<a id="pgfId-1024601"></a>    BigDecimal valueAlreadyInTheCart = product.getPrice()
+<a id="pgfId-1024612"></a>      .multiply(valueOf(existingQuantity));                               <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1024624"></a>    BigDecimal newFinalValueForTheProduct = product.getPrice()
+<a id="pgfId-1024630"></a>      .multiply(valueOf(newQuantity));                                    <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1024647"></a> 
+<a id="pgfId-1024642"></a>    totalValue = totalValue
+<a id="pgfId-1024653"></a>      .subtract(valueAlreadyInTheCart)
+<a id="pgfId-1024659"></a>      .add(newFinalValueForTheProduct);                                   <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1024676"></a> 
+<a id="pgfId-1024671"></a>    assert basket.containsKey(product) : "Product was not inserted in     <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1024682"></a>    <span class="fm-code-continuation-arrow">➥</span> the basket";                                                       <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1024705"></a>    assert totalValue.compareTo(oldTotalValue) == 1 : "Total value should <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1024711"></a>    <span class="fm-code-continuation-arrow">➥</span> be greater than previous total value";                             <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1024734"></a>    assert invariant() : "Invariant does not hold";                       <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1024746"></a>  }
+<a id="pgfId-1024752"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1048409"></a><span class="fm-combinumeral">❶</span> Checks all the pre-conditions</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1048430"></a><span class="fm-combinumeral">❷</span> Stores the old value so we can check the post-condition later</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1048450"></a><span class="fm-combinumeral">❸</span> If the product is already in the cart, add to it.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1048467"></a><span class="fm-combinumeral">❹</span> Calculates the previous and the new value of the product for the relevant quantities</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1048484"></a><span class="fm-combinumeral">❺</span> Subtracts the previous value of the product from the total value of the basket and adds the new final value of the product to it</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1048501"></a><span class="fm-combinumeral">❻</span> Post-conditions and invariant checks</p>
+
+  <p class="body"><a id="pgfId-1024858"></a>The implementation is straightforward. First it does the pre-condition checks we discussed in chapter 4. The product cannot be null, and the quantity of the product to be added to the cart has to be larger than zero. Then the method checks whether the basket already contains the product. If so, it adds the quantity on top of the quantity already in the cart. It then calculates the value to add to the total value of the basket. To do so, it calculates the value of that product based on the previous amount in the basket, subtracts that from the total value, and then adds the new total value for that product. Finally, it ensures that the invariant (the total value of the basket must be positive) still holds.</p>
+
+  <p class="body"><a id="pgfId-1024886"></a>The <code class="fm-code-in-text">remove</code> method is <a id="marker-1048395"></a>simpler than the <code class="fm-code-in-text">add</code> method. It looks for the product in the basket, calculates the amount it needs to remove from the total value of the basket, subtracts it, and removes the product (listing 5.13). The method also ensures the same two pre-conditions we discussed before: the product cannot be null, and the product has to be in the basket.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1024985"></a>Listing 5.13 Implementation of <code class="fm-code-in-text">Basket</code>s <code class="fm-code-in-text">remove</code> method</p>
+  <pre class="programlisting"><a id="pgfId-1024895"></a>public void remove(Product product) {
+<a id="pgfId-1025010"></a>    assert product != null : "product can't be null";                 <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1025022"></a>    assert basket.containsKey(product) : "Product must already be in  <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1025028"></a>    <span class="fm-code-continuation-arrow">➥</span> the basket";                                                   <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1025056"></a> 
+<a id="pgfId-1025051"></a>    int qty = basket.get(product);
+<a id="pgfId-1025067"></a> 
+<a id="pgfId-1025062"></a>    BigDecimal productPrice = product.getPrice();                     <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1025079"></a>    BigDecimal productTimesQuantity = productPrice.multiply(          <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1025085"></a>      <span class="fm-code-continuation-arrow">➥</span> valueOf(qty));                                               <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1025108"></a>    totalValue = totalValue.subtract(productTimesQuantity);           <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1025125"></a> 
+<a id="pgfId-1025120"></a>    basket.remove(product);                                           <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1025142"></a> 
+<a id="pgfId-1025137"></a>    assert !basket.containsKey(product) : "Product is still           <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1025148"></a>    <span class="fm-code-continuation-arrow">➥</span> in the basket";                                                <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1025171"></a>    assert invariant() : "Invariant does not hold";                   <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1025183"></a>  }</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1047995"></a><span class="fm-combinumeral">❶</span> Pre-conditions check</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1048016"></a><span class="fm-combinumeral">❷</span> Calculates the amount that should be removed from the basket</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1048033"></a><span class="fm-combinumeral">❸</span> Removes the product from the hashmap</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1048050"></a><span class="fm-combinumeral">❹</span> Post-conditions and invariant check</p>
+
+  <p class="body"><a id="pgfId-1025273"></a>A developer who did not read the chapters on specification-based testing and structural testing would come up with at least three tests: one to ensure that <code class="fm-code-in-text">add()</code> adds the product to the cart, another to ensure that the method behaves correctly when the same product is added twice, and one to ensure that <code class="fm-code-in-text">remove()</code> indeed removes the product from the basket. Then they would probably add a few tests for the exceptional cases (which in this class are clearly specified in the contracts). Here are the automated test cases.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1025333"></a>Listing 5.14 Non-systematic tests for the <code class="fm-code-in-text">Basket</code> class</p>
+  <pre class="programlisting"><a id="pgfId-1025282"></a>import static java.math.BigDecimal.valueOf;
+<a id="pgfId-1025390"></a> 
+<a id="pgfId-1025385"></a>public class BasketTest {
+<a id="pgfId-1025396"></a>  private Basket basket = new Basket();
+<a id="pgfId-1025407"></a> 
+<a id="pgfId-1025402"></a>  @Test
+<a id="pgfId-1025413"></a>  void addProducts() {                               <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1025425"></a>    basket.add(new Product("TV", valueOf(10)), 2);
+<a id="pgfId-1025431"></a>    basket.add(new Product("Playstation", valueOf(100)), 1);
+<a id="pgfId-1025442"></a> 
+<a id="pgfId-1025437"></a>    assertThat(basket.getTotalValue())
+<a id="pgfId-1025448"></a>        .isEqualByComparingTo(valueOf(10*2 + 100*1));
+<a id="pgfId-1025454"></a>  }
+<a id="pgfId-1025465"></a> 
+<a id="pgfId-1025460"></a>  @Test
+<a id="pgfId-1025471"></a>  void addSameProductTwice() {                       <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1025483"></a>    Product p = new Product("TV", valueOf(10));
+<a id="pgfId-1025489"></a>    basket.add(p, 2);
+<a id="pgfId-1025495"></a>    basket.add(p, 3);
+<a id="pgfId-1025506"></a> 
+<a id="pgfId-1025501"></a>    assertThat(basket.getTotalValue())
+<a id="pgfId-1025512"></a>        .isEqualByComparingTo(valueOf(10*5));
+<a id="pgfId-1025518"></a>  }
+<a id="pgfId-1025529"></a> 
+<a id="pgfId-1025524"></a>  @Test
+<a id="pgfId-1025535"></a>  void removeProducts() {                            <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1025547"></a>    basket.add(new Product("TV", valueOf(100)), 1);
+<a id="pgfId-1025558"></a> 
+<a id="pgfId-1025553"></a>    Product p = new Product("PlayStation", valueOf(10));
+<a id="pgfId-1025564"></a>    basket.add(p, 2);
+<a id="pgfId-1025570"></a>    basket.remove(p);
+<a id="pgfId-1025581"></a> 
+<a id="pgfId-1025576"></a>    assertThat(basket.getTotalValue())
+<a id="pgfId-1025587"></a>        .isEqualByComparingTo(valueOf(100));         <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1025599"></a>  }
+<a id="pgfId-1025605"></a>  // tests for exceptional cases...
+<a id="pgfId-1025616"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1047706"></a><span class="fm-combinumeral">❶</span> Ensures that products are added to the basket</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1047734"></a><span class="fm-combinumeral">❷</span> If the same product is added twice, the basket sums up the quantities.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1047751"></a><span class="fm-combinumeral">❸</span> Ensures that products are removed from the basket</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1047768"></a><span class="fm-combinumeral">❹</span> Food for thought: is this assertion enough? You might also want to verify that PlayStation is not in the basket.</p>
+
+  <p class="fm-callout"><a id="pgfId-1025690"></a><span class="fm-callout-head">Note</span> I used the <code class="fm-code-in-text">isEqualByComparingTo</code> assert instruction. Remember that <code class="fm-code-in-text">BigDecimal</code>s are instances of a strange class, and the correct way to compare one <code class="fm-code-in-text">BigDecimal</code> to another is with <a id="marker-1025731"></a>the <code class="fm-code-in-text">compareTo()</code> method. That is what the <code class="fm-code-in-text">isEqualByComparingTo</code> assertion does. Again, the <code class="fm-code-in-text">BigDecimal</code> class is <a id="marker-1025767"></a>not easy to handle.</p>
+
+  <p class="body"><a id="pgfId-1025793"></a>The problem with these tests is that they do not exercise the feature extensively. If there is a bug in our implementation, it is probably hidden and will only appear after a long and unexpected sequence of adds and removes to and from the basket. Finding this specific sequence might be hard to see, even after proper domain and structural testing. However, we can express it as a property: given any arbitrary sequence of additions and removals, the basket still calculates the correct final amount. We have to customize jqwik so that it understands how to randomly call a sequence of <code class="fm-code-in-text">add()</code>s and <code class="fm-code-in-text">remove()</code>s, as shown in figure 5.2.</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/05-02.png" width="560" height="196"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1053386"></a>Figure 5.2 We want our test to call arbitrary sequences of add and remove actions.</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1025812"></a>Fasten your seatbelt, because this takes a lot of code. The first step is to create a bunch of jqwik <code class="fm-code-in-text">Action</code>s to represent the different actions that can happen with the basket. Actions are a way to explain to the framework how to execute a more complex action. In our case, two things can happen: we can add a product to the basket, or we can remove a product from the basket. We define how these two actions work so that later, jqwik can generate a random sequence of actions.</p>
+
+  <p class="body"><a id="pgfId-1025925"></a>Let’s start with the add action. It will receive a <code class="fm-code-in-text">Product</code> and a quantity and insert the <code class="fm-code-in-text">Product</code> into the <code class="fm-code-in-text">Basket</code>. The action will then ensure that the <code class="fm-code-in-text">Basket</code> behaved as expected by comparing its current total value against the expected value. Note that everything happens in <a id="marker-1025882"></a>the <code class="fm-code-in-text">run()</code> method: this method is defined <a id="marker-1025898"></a>by jqwik’s <code class="fm-code-in-text">Action</code> interface, which our action implements. In practice, jqwik will call this method whenever it generates an add action and passes the current basket to <a id="marker-1025914"></a>the <code class="fm-code-in-text">run</code> method. The following listing shows the implementation of <a id="marker-1025936"></a>the <code class="fm-code-in-text">AddAction</code> class.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1026007"></a>Listing 5.15 The <code class="fm-code-in-text">AddAction</code> action</p>
+  <pre class="programlisting"><a id="pgfId-1025956"></a>class AddAction
+<a id="pgfId-1026059"></a>  implements Action&lt;Basket&gt; {                             <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1026076"></a> 
+<a id="pgfId-1026081"></a> 
+<a id="pgfId-1026071"></a>  private final Product product;
+<a id="pgfId-1026087"></a>  private final int qty;
+<a id="pgfId-1026098"></a> 
+<a id="pgfId-1026093"></a>  public AddAction(Product product, int qty) {            <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1026110"></a>    this.product = product;
+<a id="pgfId-1026116"></a>    this.qty = qty;
+<a id="pgfId-1026122"></a>  }
+<a id="pgfId-1026133"></a> 
+<a id="pgfId-1026128"></a>  @Override
+<a id="pgfId-1026139"></a>  public Basket run(Basket basket) {                      <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1026156"></a> 
+<a id="pgfId-1026151"></a>    BigDecimal currentValue = basket.getTotalValue();     <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1026173"></a> 
+<a id="pgfId-1026168"></a>    basket.add(product, qty);                             <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1026190"></a> 
+<a id="pgfId-1026185"></a>    BigDecimal newProductValue = product.getPrice()
+<a id="pgfId-1026196"></a>      .multiply(valueOf(qty));
+<a id="pgfId-1026202"></a>    BigDecimal newValue = currentValue.add(newProductValue);
+<a id="pgfId-1026213"></a> 
+<a id="pgfId-1026208"></a>    assertThat(basket.getTotalValue())
+<a id="pgfId-1026219"></a>      .isEqualByComparingTo(newValue);                    <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1026236"></a> 
+<a id="pgfId-1026231"></a>    return basket;                                        <span class="fm-combinumeral">❼</span>
+<a id="pgfId-1026248"></a>  }
+<a id="pgfId-1026254"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1047201"></a><span class="fm-combinumeral">❶</span> Actions have to implement the jqwik Action interface.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1047222"></a><span class="fm-combinumeral">❷</span> The constructor receives a product and a quantity. These values will be randomly generated later by jqwik.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1047239"></a><span class="fm-combinumeral">❸</span> The run method receives a Basket and, in this case, adds a new random product to it.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1047256"></a><span class="fm-combinumeral">❹</span> Gets the current total value of the basket, so we can make the assertion later</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1047273"></a><span class="fm-combinumeral">❺</span> Adds the product to the basket</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1047297"></a><span class="fm-combinumeral">❻</span> Asserts that the value of the basket is correct after the addition</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1047314"></a><span class="fm-combinumeral">❼</span> Returns the current basket so the next action starts from it</p>
+
+  <p class="body"><a id="pgfId-1026376"></a>Now let’s implement the remove action. This is tricky: we need a way to get the set of products that are already in the basket and their quantities. Note that we do not have such a method in the <code class="fm-code-in-text">Basket</code> class. The simplest thing to do is add such a method to the class.</p>
+
+  <p class="body"><a id="pgfId-1026391"></a>You might be thinking that adding more methods for the tests is a bad idea. It’s a trade-off. I often favor anything that eases testing. An extra method will not hurt and will help our testing, so I’d do it, as shown next.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1026448"></a>Listing 5.16 <code class="fm-code-in-text">Basket</code> class modified to support the test</p>
+  <pre class="programlisting"><a id="pgfId-1026397"></a>class Basket {
+<a id="pgfId-1026496"></a>  // ... the code of the class here ...
+<a id="pgfId-1026507"></a> 
+<a id="pgfId-1026502"></a>  public int quantityOf(Product product) {               <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1026519"></a>    assert basket.containsKey(product);
+<a id="pgfId-1026525"></a>    return basket.get(product);
+<a id="pgfId-1026531"></a>  }
+<a id="pgfId-1026542"></a> 
+<a id="pgfId-1026537"></a>  public Set&lt;Product&gt; products() {                        <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1026554"></a>    return Collections.unmodifiableSet(basket.keySet());
+<a id="pgfId-1026560"></a>  }
+<a id="pgfId-1026566"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1047061"></a><span class="fm-combinumeral">❶</span> We only return the quantity if the product is in the cart. Note that here, we could have gone for a weaker pre-condition: for example, if the product is not in the basket, return 0.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1047082"></a><span class="fm-combinumeral">❷</span> Returns a copy of the set, not the original one!</p>
+
+  <p class="body"><a id="pgfId-1026608"></a>The remove action picks a random product from the basket, removes it, and then ensures that the current total value is the total value minus the value of the product that was just removed. The <code class="fm-code-in-text">pickRandom()</code> method chooses <a id="marker-1026619"></a>a random product from the set of products; I do not show the code here, to save space, but you can find it in the book’s code repository.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1026680"></a>Listing 5.17 The <code class="fm-code-in-text">RemoveAction</code> class</p>
+  <pre class="programlisting"><a id="pgfId-1026629"></a>class RemoveAction implements Action&lt;Basket&gt; {
+<a id="pgfId-1026737"></a> 
+<a id="pgfId-1026732"></a>  @Override
+<a id="pgfId-1026743"></a>  public Basket run(Basket basket) {
+<a id="pgfId-1026749"></a>    BigDecimal currentValue = basket.getTotalValue();             <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1026761"></a>    Set&lt;Product&gt; productsInBasket = basket.products();            <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1026778"></a> 
+<a id="pgfId-1026773"></a>    if(productsInBasket.isEmpty()) {
+<a id="pgfId-1026784"></a>      return basket;
+<a id="pgfId-1026790"></a>    }
+<a id="pgfId-1026801"></a> 
+<a id="pgfId-1026796"></a>    Product randomProduct = pickRandom(productsInBasket);         <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1026813"></a>    double currentProductQty = basket.quantityOf(randomProduct);
+<a id="pgfId-1026819"></a>    basket.remove(randomProduct);
+<a id="pgfId-1026830"></a> 
+<a id="pgfId-1026825"></a>    BigDecimal basketValueWithoutRandomProduct = currentValue
+<a id="pgfId-1026836"></a>      .subtract(randomProduct.getPrice()
+<a id="pgfId-1026842"></a>      .multiply(valueOf(currentProductQty)));                     <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1026859"></a> 
+<a id="pgfId-1026854"></a>    assertThat(basket.getTotalValue())
+<a id="pgfId-1026865"></a>      .isEqualByComparingTo(basketValueWithoutRandomProduct);     <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1026882"></a> 
+<a id="pgfId-1026877"></a>    return basket;                                                <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1026894"></a>  }
+<a id="pgfId-1026900"></a>  // ...
+<a id="pgfId-1026906"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1046653"></a><span class="fm-combinumeral">❶</span> Gets the current value of the basket for the assertion later</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1046674"></a><span class="fm-combinumeral">❷</span> If the basket is empty, we skip this action. This may happen, as we do not control the sequence jqwik generates.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1046691"></a><span class="fm-combinumeral">❸</span> Picks a random element in the basket to be removed</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1046708"></a><span class="fm-combinumeral">❹</span> Calculates the new value of the basket</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1046725"></a><span class="fm-combinumeral">❺</span> Asserts the value of the basket without the random product we removed</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1046742"></a><span class="fm-combinumeral">❻</span> Returns the current basket so the next action can continue from here</p>
+
+  <p class="body"><a id="pgfId-1027058"></a>Jqwik now knows how to call <code class="fm-code-in-text">add()</code> (via <code class="fm-code-in-text">AddAction</code>) and <code class="fm-code-in-text">remove()</code> (via <code class="fm-code-in-text">RemoveAction</code>). The next step is to explain how to instantiate random products and sequences of actions. Let’s start by explaining to jqwik how to instantiate an arbitrary <code class="fm-code-in-text">AddAction</code>. First we randomly pick a product from a predefined list of products. Then we generate a random quantity value. Finally, we add the random product in the random quantity to the basket.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1027118"></a>Listing 5.18 Instantiating add actions</p>
+  <pre class="programlisting"><a id="pgfId-1027067"></a>class BasketTest {
+<a id="pgfId-1027157"></a>  // ...
+<a id="pgfId-1042344"></a> 
+<a id="pgfId-1027163"></a>  private Arbitrary&lt;AddAction&gt; addAction() {
+<a id="pgfId-1027174"></a>    Arbitrary&lt;Product&gt; products = Arbitraries.oneOf(               <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1027186"></a>      randomProducts
+<a id="pgfId-1027192"></a>        .stream()
+<a id="pgfId-1027198"></a>        .map(product -&gt; Arbitraries.of(product))
+<a id="pgfId-1027204"></a>        .collect(Collectors.toList()));
+<a id="pgfId-1027210"></a>    Arbitrary&lt;Integer&gt; qtys =
+<a id="pgfId-1027221"></a>      Arbitraries.integers().between(1, 100);                      <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1027238"></a> 
+<a id="pgfId-1027233"></a>    return Combinators
+<a id="pgfId-1027244"></a>        .combine(products, qtys)
+<a id="pgfId-1027250"></a>        .as((product, qty) -&gt; new AddAction(product, qty));        <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1027262"></a>  }
+<a id="pgfId-1027273"></a> 
+<a id="pgfId-1027268"></a>  static List&lt;Product&gt; randomProducts = new ArrayList&lt;&gt;() {{       <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1027285"></a>    add(new Product("TV", new BigDecimal("100")));
+<a id="pgfId-1027291"></a>    add(new Product("PlayStation", new BigDecimal("150.3")));
+<a id="pgfId-1027297"></a>    add(new Product("Refrigerator", new BigDecimal("180.27")));
+<a id="pgfId-1027303"></a>    add(new Product("Soda", new BigDecimal("2.69")));
+<a id="pgfId-1027309"></a>  }};
+<a id="pgfId-1027315"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1046413"></a><span class="fm-combinumeral">❶</span> Creates an arbitrary product out of the list of predefined products</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1046430"></a><span class="fm-combinumeral">❷</span> Creates arbitrary quantities</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1046447"></a><span class="fm-combinumeral">❸</span> Combines products and quantities, and generates AddActions</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1046464"></a><span class="fm-combinumeral">❹</span> A static list of hard-coded products</p>
+
+  <p class="body"><a id="pgfId-1027389"></a>This is a complex piece of code, and it involves a lot of details about how jqwik works. Let’s digest it step by step:</p>
+
+  <ol class="calibre14">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1027459"></a>Our first goal is to randomly select an arbitrary <code class="fm-code-in-text">Product</code> from the list of products. To do so, we use jqwik’s <code class="fm-code-in-text">Arbitraries.oneOf()</code> method, which randomly picks an arbitrary element of a given set of options. Given that the <code class="fm-code-in-text">oneOf</code> method needs a <code class="fm-code-in-text">List&lt;Arbitrary&lt;Product&gt;&gt;</code>, we have to convert our <code class="fm-code-in-text">randomProducts</code> (which is a <code class="fm-code-in-text">List&lt;Product&gt;</code>). This is easily done using Java’s Stream API.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1027488"></a>We generate a random integer that will serve as the quantity to pass to the <code class="fm-code-in-text">add()</code> method. We define an <code class="fm-code-in-text">Arbitrary&lt;Integer&gt;</code> with numbers between 1 and 100 (random choices that I made after exploring the method’s source code).</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1027497"></a>We return an <code class="fm-code-in-text">AddAction</code> that is instantiated using a combination of arbitrary products and quantities.</p>
+    </li>
+  </ol>
+
+  <p class="body"><a id="pgfId-1027574"></a>We can now create our test. The property test should receive an <code class="fm-code-in-text">ActionSequence</code>, which we define as an arbitrary sequence of <code class="fm-code-in-text">AddAction</code>s and <code class="fm-code-in-text">RemoveAction</code>s. We do so with <a id="marker-1027547"></a>the <code class="fm-code-in-text">Arbitraries.sequences()</code> method. Let’s define this <a id="marker-1027563"></a>in an <code class="fm-code-in-text">addsAndRemoves</code> method.</p>
+
+  <p class="body"><a id="pgfId-1027605"></a>We also need arbitrary remove actions, as we did for add actions, but this is much simpler since the <code class="fm-code-in-text">RemoveAction</code> class does <a id="marker-1027594"></a>not receive anything in its constructor. So, we use <code class="fm-code-in-text">Arbitraries.of()</code>.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1027665"></a>Listing 5.19 Adding remove actions to the test</p>
+  <pre class="programlisting"><a id="pgfId-1027614"></a>private Arbitrary&lt;RemoveAction&gt; removeAction() {
+<a id="pgfId-1027704"></a>  return Arbitraries.of(new RemoveAction());           <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1027716"></a>}
+<a id="pgfId-1027727"></a> 
+<a id="pgfId-1027722"></a>@Provide
+<a id="pgfId-1027733"></a>Arbitrary&lt;ActionSequence&lt;Basket&gt;&gt; addsAndRemoves() {
+<a id="pgfId-1027739"></a>  return Arbitraries.sequences(Arbitraries.oneOf(      <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1027751"></a>      addAction(),
+<a id="pgfId-1027757"></a>      removeAction()));
+<a id="pgfId-1027763"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1046297"></a><span class="fm-combinumeral">❶</span> Returns an arbitrary remove action</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1046318"></a><span class="fm-combinumeral">❷</span> This is where the magic happens: jqwik generates random sequences of add and remove actions.</p>
+
+  <p class="body"><a id="pgfId-1027821"></a>We now only need a <code class="fm-code-in-text">@Property</code> test method that runs the different sequences of actions generated by the <code class="fm-code-in-text">addsAndRemoves</code> method.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1027881"></a>Listing 5.20 Property-based test that generates adds and removes</p>
+  <pre class="programlisting"><a id="pgfId-1027830"></a>@Property
+<a id="pgfId-1027920"></a>void sequenceOfAddsAndRemoves(
+<a id="pgfId-1027926"></a>  @ForAll("addsAndRemoves")           <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1027938"></a>  ActionSequence&lt;Basket&gt; actions) {
+<a id="pgfId-1027944"></a>    actions.run(new Basket());
+<a id="pgfId-1027950"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1046234"></a><span class="fm-combinumeral">❶</span> The property receives a sequence of Basket actions defined by the addsAndRemoves method.</p>
+
+  <p class="body"><a id="pgfId-1027976"></a>And we are finished. As soon as we run the test, jqwik randomly invokes sequences of adds and removes, passing random <code class="fm-code-in-text">Product</code>s and quantities and ensuring that the value of the basket is always correct.</p>
+
+  <p class="body"><a id="pgfId-1027991"></a>This was a long, complex property-based test, and you may be wondering if it is worth the effort. For this specific <code class="fm-code-in-text">Basket</code> implementation, I would probably write thorough example-based tests. But I hope this example illustrates the power of property-based testing. Although they tend to be more complicated than traditional example-based tests, you will get used to it, and you will soon be writing them quickly. <a id="marker-1028002"></a><a id="marker-1028005"></a></p>
+
+  <h2 class="fm-head" id="heading_id_7"><a id="pgfId-1028011"></a>5.5 Example 5: Creating complex domain objects</h2>
+
+  <p class="body"><a id="pgfId-1028044"></a><a id="marker-1028022"></a><a id="marker-1028024"></a>Building more complex objects may come in handy when testing business systems. This can be done using jqwik’s <code class="fm-code-in-text">Combinators</code> feature, which we’ll use in the following listing. Imagine that we have the following <code class="fm-code-in-text">Book</code> class, and we <a id="marker-1028049"></a>need to generate different books for a property-based test.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1028110"></a>Listing 5.21 A simple <code class="fm-code-in-text">Book</code> class</p>
+  <pre class="programlisting"><a id="pgfId-1028059"></a>public class Book {
+<a id="pgfId-1028167"></a> 
+<a id="pgfId-1028162"></a>  private final String title;
+<a id="pgfId-1028173"></a>  private final String author;
+<a id="pgfId-1028179"></a>  private final int qtyOfPages;
+<a id="pgfId-1028190"></a> 
+<a id="pgfId-1028185"></a>  public Book(String title, String author, int qtyOfPages) {
+<a id="pgfId-1028196"></a>    this.title = title;
+<a id="pgfId-1028202"></a>    this.author = author;
+<a id="pgfId-1028208"></a>    this.qtyOfPages = qtyOfPages;
+<a id="pgfId-1028214"></a>  }
+<a id="pgfId-1028225"></a> 
+<a id="pgfId-1028220"></a>  // getters...
+<a id="pgfId-1028231"></a>}</pre>
+
+  <p class="body"><a id="pgfId-1028303"></a>One way to do this would be to have a property test that receives three parameters: a <code class="fm-code-in-text">String</code> for <code class="fm-code-in-text">title</code>, a <code class="fm-code-in-text">String</code> for <code class="fm-code-in-text">author</code>, and an <code class="fm-code-in-text">Integer</code> for <code class="fm-code-in-text">quantity</code> <code class="fm-code-in-text">of</code> <code class="fm-code-in-text">pages</code>. Inside the property test, we would instantiate the <code class="fm-code-in-text">Book</code> class. Jqwik offers a better way to do that, as shown in the next listing.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1028363"></a>Listing 5.22 Using the <code class="fm-code-in-text">Combinators</code> API to generate complex objects</p>
+  <pre class="programlisting"><a id="pgfId-1028312"></a>public class BookTest {
+<a id="pgfId-1028420"></a> 
+<a id="pgfId-1028415"></a>  @Property
+<a id="pgfId-1028426"></a>  void differentBooks(@ForAll("books") Book book) {
+<a id="pgfId-1028432"></a>    // different books!
+<a id="pgfId-1028438"></a>    System.out.println(book);
+<a id="pgfId-1028449"></a> 
+<a id="pgfId-1028444"></a>    // write your test here!
+<a id="pgfId-1028455"></a>  }
+<a id="pgfId-1028466"></a> 
+<a id="pgfId-1028461"></a>  @Provide
+<a id="pgfId-1028472"></a>  Arbitrary&lt;Book&gt; books() {
+<a id="pgfId-1028478"></a>    Arbitrary&lt;String&gt; titles = Arbitraries.strings().withCharRange(
+<a id="pgfId-1028484"></a>      <span class="fm-code-continuation-arrow">➥</span> 'a', 'z')
+<a id="pgfId-1028501"></a>        .ofMinLength(10).ofMaxLength(100);                              <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1028513"></a>    Arbitrary&lt;String&gt; authors = Arbitraries.strings().withCharRange(
+<a id="pgfId-1028519"></a>      <span class="fm-code-continuation-arrow">➥</span> 'a', 'z')
+<a id="pgfId-1028536"></a>        .ofMinLength(5).ofMaxLength(21);                                <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1028548"></a>    Arbitrary&lt;Integer&gt; qtyOfPages = Arbitraries.integers().between(
+<a id="pgfId-1028554"></a>      <span class="fm-code-continuation-arrow">➥</span> 0, 450);                                                       <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1028582"></a> 
+<a id="pgfId-1028587"></a> 
+<a id="pgfId-1028577"></a>    return Combinators.combine(titles, authors, qtyOfPages)
+<a id="pgfId-1028593"></a>        .as((title, author, pages) -&gt; new Book(title, author, pages));  <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1028605"></a>  }
+<a id="pgfId-1028611"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1045988"></a><span class="fm-combinumeral">❶</span> Instantiates one arbitrary for each of the Book’s fields</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1046009"></a><span class="fm-combinumeral">❷</span> Combines them to generate an instance of Book</p>
+
+  <p class="body"><a id="pgfId-1028751"></a>The <code class="fm-code-in-text">Combinators</code> API lets us combine different generators to build a more complex object. All we have to do is to build specific <code class="fm-code-in-text">Arbitrary</code>s for each of the attributes of the complex class we want to build: in this case, one <code class="fm-code-in-text">Arbitrary&lt;String&gt;</code> for the title, another <code class="fm-code-in-text">Arbitrary&lt;String&gt;</code> for the author, and one <code class="fm-code-in-text">Arbitrary&lt;Integer&gt;</code> for the number of pages. After that, we use <a id="marker-1028704"></a>the <code class="fm-code-in-text">Combinators.combine()</code> method, which receives a series of <code class="fm-code-in-text">Arbitrary</code>s and returns an <code class="fm-code-in-text">Arbitrary</code> of the complex object. The magic happens in <a id="marker-1028740"></a>the <code class="fm-code-in-text">as()</code> method, which gives us the values we use to instantiate the object.</p>
+
+  <p class="body"><a id="pgfId-1028760"></a>Note how flexible jqwik is. You can build virtually any object you want. Moreover, nothing prevents you from building even more realistic input values: for example, instead of building random author names, we could develop something that returns real people’s names. Try implementing such an arbitrary yourself. <a id="marker-1028762"></a><a id="marker-1028765"></a></p>
+
+  <h2 class="fm-head" id="heading_id_8"><a id="pgfId-1028771"></a>5.6 Property-based testing in the real world</h2>
+
+  <p class="body"><a id="pgfId-1028781"></a>Let me give you some tips on writing property-based tests.</p>
+
+  <h3 class="fm-head1" id="heading_id_9"><a id="pgfId-1028787"></a>5.6.1 Example-based testing vs. property-based testing</h3>
+
+  <p class="body"><a id="pgfId-1028797"></a><a id="marker-1052848"></a>Property-based testing seems much fancier than example-based testing. It also explores the input domain much better. Should we only use property-based testing from now on?</p>
+
+  <p class="body"><a id="pgfId-1028806"></a>In practice, I mix example-based testing and property-based testing. In the testing workflow I propose, I use example-based testing when doing specification-based and structural testing. Example-based tests are naturally simpler than property-based tests, and they require less creativity to automate. I like that: their simplicity allows me to focus on understanding the requirements and engineer better test cases. When I am done with both testing techniques and have a much better grasp of the program under test, I evaluate which test cases would be better as property-based tests.</p>
+
+  <p class="body"><a id="pgfId-1028812"></a>Do I always write property-based tests for my programs? Honestly, no. In many of the problems I work on, I feel pretty confident with example-based testing. I use property-based testing when I do not feel entirely secure that my example-based tests were enough. <a id="marker-1028814"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_10"><a id="pgfId-1028821"></a>5.6.2 Common issues in property-based tests</h3>
+
+  <p class="body"><a id="pgfId-1028831"></a><a id="marker-1028832"></a>I see three common issues in the property-based tests my students write when they learn this technique. The first is requiring jqwik to generate data that is very expensive or even impossible. If you ask jqwik to, say, generate an array of 100 elements in which the numbers have to be unique and multiples of 2, 3, 5, and 15, such an array can be difficult to find, given jqwik’s random approach. Or if you want an array with 10 unique elements, but you give jqwik a range of 2 to 8, the array is impossible to generate. In general, if jqwik is taking too long to generate the data for you, maybe you can find a better way to generate the data or write the test.</p>
+
+  <p class="body"><a id="pgfId-1028866"></a>Second, we saw in previous chapters that boundaries are a perfect place for bugs. So, we want to exercise those boundaries when writing property-based tests. Ensure that you are expressing the boundaries of the property correctly. When we wrote the tests for the passing-grade problem (section 5.1), we wrote arbitraries like <code class="fm-code-in-text">Arbitraries</code> <code class="fm-code-in-text">.floats().lessThan(1f)</code> and <code class="fm-code-in-text">Arbitraries.floats().greaterThan(10f)</code>. Jqwik will do its best to generate boundary values: for example, the closest possible number to <code class="fm-code-in-text">1f</code> or the smallest possible float. The default configuration for jqwik is to mix edge cases with random data points. Again, all of this will work well only if you express the properties and boundaries correctly.</p>
+
+  <p class="body"><a id="pgfId-1028901"></a>The third caveat is ensuring that the input data you pass to the method under test is fairly distributed among all the possible options. Jqwik does its best to generate well-distributed inputs. For example, if you ask for an integer between 0 and 10, all the numbers in the interval will have the same probability of being generated. But I have seen tests that manipulate the generated data and then harm this property. For example, imagine testing a method that receives three integers, <code class="fm-code-in-text">a</code>, <code class="fm-code-in-text">b</code>, and <code class="fm-code-in-text">c</code>, and returns a boolean indicating whether these three sides can form a triangle. The implementation of this method is simple, as shown in the following listing.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1028961"></a>Listing 5.23 Implementation of the <code class="fm-code-in-text">isTriangle</code> method</p>
+  <pre class="programlisting"><a id="pgfId-1028910"></a>public class Triangle {
+<a id="pgfId-1029013"></a>  public static boolean isTriangle(int a, int b, int c) {
+<a id="pgfId-1029019"></a>    boolean hasABadSide = a &gt;= (b + c) || c &gt;= (b + a) || b &gt;= (a + c);
+<a id="pgfId-1029025"></a>    return !hasABadSide;
+<a id="pgfId-1029031"></a>  }
+<a id="pgfId-1029037"></a>}</pre>
+
+  <p class="body"><a id="pgfId-1029043"></a>To write a property-based test for this method, we need to express two properties: valid triangles and invalid triangles. If the developer generates three random integer values as shown next, there is a very low chance of them forming a valid triangle.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1029100"></a>Listing 5.24 A bad property-based test for <code class="fm-code-in-text">isTriangle</code></p>
+  <pre class="programlisting"><a id="pgfId-1029049"></a>@Property
+<a id="pgfId-1029147"></a>void triangleBadTest(                  <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1029159"></a>  @ForAll @IntRange(max = 100) int a,
+<a id="pgfId-1029165"></a>  @ForAll @IntRange(max = 100) int b,
+<a id="pgfId-1029171"></a>  @ForAll @IntRange(max = 100) int c) {
+<a id="pgfId-1029182"></a> 
+<a id="pgfId-1029177"></a>   // ... test here ...
+<a id="pgfId-1029193"></a> 
+<a id="pgfId-1029188"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1045905"></a><span class="fm-combinumeral">❶</span> Generates three different integers. The odds are that these a, b, and c will be an invalid triangle. We therefore do not exercise the valid triangle property as much as we wanted to.</p>
+
+  <p class="body"><a id="pgfId-1029219"></a>The test exercises the invalid triangle property more than the valid triangle property. A good property-based test for this problem would ensure that jqwik generates the same number of valid and invalid triangles. The easiest way to do that would be to split it into two tests: one for valid triangles and one for invalid triangles. (The solution is available in the code repository.) <a id="marker-1029221"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_11"><a id="pgfId-1029228"></a>5.6.3 Creativity is key</h3>
+
+  <p class="body"><a id="pgfId-1029245"></a><a id="marker-1029239"></a><a id="marker-1029241"></a>Writing property-based tests requires a lot of creativity from the developer. Finding ways to express the property, generating random data, and being able to assert the expected behavior without knowing the concrete input is not easy. Property-based testing requires more practice than traditional example-based testing: get your hands dirty as soon as possible. I hope the examples have given you some ideas!<a id="marker-1029246"></a><a id="marker-1029249"></a></p>
+
+  <h2 class="fm-head" id="heading_id_12"><a id="pgfId-1029255"></a>Exercises</h2>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1029265"></a>5.1 What is the main difference between example-based testing and property-based testing?</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1029287"></a>5.2 Suppose we have a method that returns <code class="fm-code-in-text">true</code> if the passed string is a palindrome or <code class="fm-code-in-text">false</code> otherwise. (A palindrome is a word or sentence that reads the same backward and forward.) What properties do you see that could be tested via property-based tests? Also describe how you would implement such tests.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1029312"></a>5.3 Find out what <i class="fm-italics">fuzz testing</i> or <i class="fm-italics">fuzzing</i> is. What is the difference between property-based testing and fuzzing?</p>
+
+  <h2 class="fm-head" id="heading_id_13"><a id="pgfId-1029321"></a>Summary</h2>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1029331"></a>In property-based testing, instead of coming up with concrete examples, we express the property that should hold for that method. The framework then randomly generates hundreds of different inputs.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1029345"></a>Property-based testing does not replace specification-based testing and structural testing. It is one more tool to have in your belt. Sometimes traditional example-based testing is enough.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1029355"></a>Writing property-based tests is a tad more challenging than example-based testing. You have to be creative to express the properties. Practice is key.</p>
+    </li>
+  </ul>
+</div>
+</div>
+</body>
+</html>

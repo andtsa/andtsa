@@ -1,0 +1,713 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xml:lang="en"
+      lang="en"
+      xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:epub="http://www.idpf.org/2007/ops">
+<head>
+<title>Effective Software Testing</title>
+<link rel="stylesheet" type="text/css" href="../../override_v1.css"/>
+<link rel="stylesheet" type="text/css" href="../../stylesheet.css"/><link rel="stylesheet" type="text/css" href="../../page_styles.css"/>
+</head>
+<body>
+<div id="book-content">
+<div id="sbo-rt-content" class="calibre"><h1 class="tochead" id="heading_id_2"><a id="pgfId-998407"></a><a id="pgfId-1017483"></a>8 Test-driven development</h1>
+
+  <p class="co-summary-head"><a id="pgfId-1011754"></a>This chapter covers</p>
+
+  <ul class="calibre12">
+    <li class="co-summary-bullet"><a class="calibre13" id="pgfId-1011760"></a>Understanding test-driven development</li>
+
+    <li class="co-summary-bullet"><a class="calibre13" id="pgfId-1011774"></a>Being productive with TDD</li>
+
+    <li class="co-summary-bullet"><a class="calibre13" id="pgfId-1011784"></a>When not to use TDD</li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1011794"></a>Software developers are pretty used to the traditional development process. First, they implement. Then, and only then, they test. But why not do it the other way around? In other words, why not write a test first and then implement the production code?</p>
+
+  <p class="body"><a id="pgfId-1011800"></a>In this chapter, we discuss this well-known approach: <i class="fm-italics">test-driven development</i> (TDD). In a<a id="marker-1011802"></a> nutshell, TDD challenges our traditional way of coding, which has always been “write some code and then test it.” With TDD, we start by writing a test representing the next small feature we want to implement. This test naturally fails, as the feature has not yet been implemented! We then make the test pass by writing some code. With the test now green, and knowing that the feature has been implemented, we go back to the code we wrote and refactor it.</p>
+
+  <p class="body"><a id="pgfId-1011812"></a>TDD is a popular practice, especially among Agile practitioners. Before I dive into the advantages of TDD and pragmatic questions about working this way, let’s look at a small example.</p>
+
+  <h2 class="fm-head" id="heading_id_3"><a id="pgfId-1011818"></a>8.1 Our first TDD session</h2>
+
+  <p class="body"><a id="pgfId-1011828"></a><a id="marker-1011829"></a>For this example, we will create a program that converts Roman numerals to integers. Roman numerals represent numbers with seven symbols:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1011837"></a>I, <i class="fm-italics1">unus</i>, 1, (one)</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1011860"></a>V, <i class="fm-italics1">quinque</i>, 5 (five)</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1011879"></a>X, <i class="fm-italics1">decem</i>, 10 (ten)</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1011898"></a>L, <i class="fm-italics1">quinquaginta</i>, 50 (fifty)</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1011917"></a>C, <i class="fm-italics1">centum</i>, 100 (one hundred)</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1011936"></a>D, <i class="fm-italics1">quingenti</i>, 500 (five hundred)</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1011955"></a>M, <i class="fm-italics1">mille</i>, 1,000 (one thousand)</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1011974"></a>To represent all possible numbers, the Romans combined the symbols, following these two rules:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1011980"></a>Digits of lower or equal value on the right are added to the higher-value digit.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1011994"></a>Digits of lower value on the left are subtracted from the higher-value digit.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1012004"></a>For instance, the number XV represents 15 (10 + 5), and the number XXIV represents 24 (10 + 10 – 1 + 5).</p>
+
+  <p class="body"><a id="pgfId-1012016"></a>The goal of our TDD session is to implement the following requirement:</p>
+
+  <p class="fm-callout"><a id="pgfId-1012032"></a>Implement a program that receives a Roman numeral (as a string) and returns its representation in the Arabic numeral system (as an integer).</p>
+
+  <p class="body"><a id="pgfId-1012054"></a>Coming up with examples is part of TDD. So, think about different inputs you can give the program, and their expected outputs. For example, if we input <code class="fm-code-in-text">"I"</code> to the program, we expect it to return 1. If we input <code class="fm-code-in-text">"XII"</code> to the program, we expect it to return 12. Here are the cases I can think of:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012063"></a>Simple cases, such as numbers with single characters:</p>
+
+      <ul class="calibre15">
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1012077"></a>If we input <code class="fm-code-in-text">"I"</code>, the program must return 1.</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1012104"></a>If we input <code class="fm-code-in-text">"V"</code>, the program must return 5.</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1012123"></a>If we input <code class="fm-code-in-text">"X"</code>, the program must return 10.</li>
+      </ul>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012142"></a>Numbers composed of more than one character (without using the subtractive notation):</p>
+
+      <ul class="calibre15">
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1012152"></a>If we input <code class="fm-code-in-text">"II"</code>, the program must return 2.</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1012179"></a>If we input <code class="fm-code-in-text">"III"</code>, the program must return 3.</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1012198"></a>If we input <code class="fm-code-in-text">"VI"</code>, the program must return 6.</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1012217"></a>If we input <code class="fm-code-in-text">"XVII"</code>, the program must return 17.</li>
+      </ul>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012236"></a>Numbers that use simple subtractive notation:</p>
+
+      <ul class="calibre15">
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1012246"></a>If we input <code class="fm-code-in-text">"IV"</code>, the program must return 4.</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1012273"></a>If we input <code class="fm-code-in-text">"IX"</code>, the program must return 9.</li>
+      </ul>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012292"></a>Numbers that are composed of many characters and use subtractive notation:</p>
+
+      <ul class="calibre15">
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1012302"></a>If we input <code class="fm-code-in-text">"XIV"</code>, the program must return 14.</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1012329"></a>If we input <code class="fm-code-in-text">"XXIX"</code>, the program must return 29.</li>
+      </ul>
+    </li>
+  </ul>
+
+  <p class="fm-callout"><a id="pgfId-1012348"></a><span class="fm-callout-head">Note</span> You may wonder about corner cases: What about an empty string? or null? Those cases are worth testing. However, when doing TDD, I first focus on the happy path and the business rules; I consider corners and boundaries later.</p>
+
+  <p class="body"><a id="pgfId-1012364"></a>Remember, we are not in testing mode. We are in development mode, coming up with inputs and outputs (or test cases) that will guide us through the implementation. In the development flow I introduced in figure 1.4, TDD is part of “testing to guide development.” When we are finished with the implementation, we can dive into rigorous testing using all the techniques we have discussed.</p>
+
+  <p class="body"><a id="pgfId-1012370"></a>Now that we have a (short) list of examples, we can write some code. Let’s do it this way:</p>
+
+  <ol class="calibre14">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012376"></a>Select the simplest example from our list of examples.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012390"></a>Write an automated test case that exercises the program with the given input and asserts its expected output. The code may not even compile at this point. And if it does, the test will fail, as the functionality is not implemented.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012400"></a>Write as much production code as needed to make that test pass.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012410"></a>Stop and reflect on what we have done so far. We may improve the production code. We may improve the test code. We may add more examples to our list.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012420"></a>Repeat the cycle.</p>
+    </li>
+  </ol>
+
+  <p class="body"><a id="pgfId-1012446"></a>The first iteration of the cycle focuses on ensuring that if we give <code class="fm-code-in-text">"I"</code> as input, the output is 1. The <code class="fm-code-in-text">RomanNumeralConverterTest</code> class contains <a id="marker-1012451"></a>our first test case.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1012512"></a>Listing 8.1 Our first test method</p>
+  <pre class="programlisting"><a id="pgfId-1012461"></a>public class RomanNumberConverterTest {
+<a id="pgfId-1012551"></a>  @Test
+<a id="pgfId-1012557"></a>  void shouldUnderstandSymbolI() {
+<a id="pgfId-1012563"></a>    RomanNumeralConverter roman = new RomanNumeralConverter();    <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1012575"></a>    int number = roman.convert("I");
+<a id="pgfId-1012581"></a>    assertThat(number).isEqualTo(1);
+<a id="pgfId-1012587"></a>  }
+<a id="pgfId-1012593"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1027380"></a><span class="fm-combinumeral">❶</span> We will get compilation errors here, as the RomanNumeralConverter class does not exist!</p>
+
+  <p class="body"><a id="pgfId-1012641"></a>At this moment, the test code does not compile, because the <code class="fm-code-in-text">RomanNumberConverter</code> class and <a id="marker-1012630"></a>its <code class="fm-code-in-text">convert()</code> method do <a id="marker-1012646"></a>not exist. To solve the compilation error, let’s create some skeleton code with no real implementation.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1012707"></a>Listing 8.2 Skeleton implementation of the class</p>
+  <pre class="programlisting"><a id="pgfId-1012656"></a>public class RomanNumeralConverter {
+<a id="pgfId-1012746"></a>  public int convert(String numberInRoman) {
+<a id="pgfId-1012752"></a>    return 0;                                <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1012764"></a>  }
+<a id="pgfId-1012770"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1027291"></a><span class="fm-combinumeral">❶</span> We do not want to return 0, but this makes the test code compile.</p>
+
+  <p class="body"><a id="pgfId-1012796"></a>The test code now compiles. When we run it, it fails: the test expected 1, but the program returned 0. This is not a problem, as we expected it to fail. Steps 1 and 2 of our cycle are finished. It is now time to write as much code as needed to make the test pass—and it looks weird.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1012853"></a>Listing 8.3 Making the test pass</p>
+  <pre class="programlisting"><a id="pgfId-1012802"></a>public class RomanNumeralConverter {
+<a id="pgfId-1012892"></a>  public int convert(String numberInRoman) {
+<a id="pgfId-1012898"></a>    return 1;                                 <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1012910"></a>  }
+<a id="pgfId-1012916"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1027206"></a><span class="fm-combinumeral">❶</span> Returning 1 makes the test pass. But is this the implementation we want?</p>
+
+  <p class="body"><a id="pgfId-1012942"></a>The test passes, but it only works in a single case. Again, this is not a problem: we are still working on the implementation. We are taking baby steps.</p>
+
+  <p class="body"><a id="pgfId-1012948"></a>Let’s move on to the next iteration of the cycle. The next-simplest example in the list is “If we input <code class="fm-code-in-text">"V"</code>, the program must return 5.” Let’s again begin with the test.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1013014"></a>Listing 8.4 Our second test</p>
+  <pre class="programlisting"><a id="pgfId-1012963"></a>@Test
+<a id="pgfId-1013053"></a>void shouldUnderstandSymbolV() {
+<a id="pgfId-1013059"></a>  RomanNumeralConverter roman = new RomanNumeralConverter();
+<a id="pgfId-1013065"></a>  int number = roman.convert("V");
+<a id="pgfId-1013071"></a>  assertThat(number).isEqualTo(5);
+<a id="pgfId-1013077"></a>}</pre>
+
+  <p class="body"><a id="pgfId-1013109"></a>The new test code compiles and fails. Now let’s make it pass. In the implementation, we can, for example, make the method <code class="fm-code-in-text">convert()</code> verify the content of the number to be converted. If the value is <code class="fm-code-in-text">"I"</code>, the method returns 1. If the value is <code class="fm-code-in-text">"V"</code>, it returns 5.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1013169"></a>Listing 8.5 Making the tests pass</p>
+  <pre class="programlisting"><a id="pgfId-1013118"></a>public int convert(String numberInRoman) {
+<a id="pgfId-1013208"></a>  if(numberInRoman.equals("I")) return 1;     <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1013220"></a>  if(numberInRoman.equals("V")) return 5;
+<a id="pgfId-1013226"></a>  return 0;
+<a id="pgfId-1013232"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1027149"></a><span class="fm-combinumeral">❶</span> Hard-coded ifs are the easiest way to make both tests pass.</p>
+
+  <p class="body"><a id="pgfId-1013258"></a>The two tests pass. We could repeat the cycle for X, L, C, M, and so on, but we already have a good idea about the first thing our implementation needs to generalize: when the Roman numeral has only one symbol, return the integer associated with it. How can we implement such an algorithm?</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1013264"></a>Write a set of <code class="fm-code-in-text">if</code> statements. The number <a class="calibre13" id="marker-1013283"></a>of characters we need to handle is not excessive.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1013319"></a>Write a <code class="fm-code-in-text">switch</code> statement, similar to <a class="calibre13" id="marker-1013308"></a>the <code class="fm-code-in-text">if</code> implementation.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1013328"></a>Use a map that is initialized with all the symbols and their respective integer values.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1013338"></a>The choice is a matter of taste. I will use the third option because I like it best.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1013395"></a>Listing 8.6 <code class="fm-code-in-text">RomanNumeralConverter</code> for single-character numbers</p>
+  <pre class="programlisting"><a id="pgfId-1013344"></a>public class RomanNumeralConverter {
+<a id="pgfId-1013448"></a> 
+<a id="pgfId-1013443"></a>  private static Map&lt;String, Integer&gt; table =
+<a id="pgfId-1013454"></a>      new HashMap&lt;&gt;() {{                       <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1013466"></a>        put("I", 1);
+<a id="pgfId-1013472"></a>        put("V", 5);
+<a id="pgfId-1013478"></a>        put("X", 10);
+<a id="pgfId-1013484"></a>        put("L", 50);
+<a id="pgfId-1013490"></a>        put("C", 100);
+<a id="pgfId-1013496"></a>        put("D", 500);
+<a id="pgfId-1013502"></a>        put("M", 1000);
+<a id="pgfId-1013508"></a>      }};
+<a id="pgfId-1013519"></a> 
+<a id="pgfId-1013514"></a>  public int convert(String numberInRoman) {
+<a id="pgfId-1013525"></a>    return table.get(numberInRoman);           <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1013537"></a>  }
+<a id="pgfId-1013543"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1027013"></a><span class="fm-combinumeral">❶</span> Declares a conversion table that contains the Roman numerals and their corresponding decimal numbers</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1027034"></a><span class="fm-combinumeral">❷</span> Gets the number from the table</p>
+
+  <p class="body"><a id="pgfId-1013611"></a>How do we make sure our implementation works? We have our (two) tests, and we can run them. Both pass. The production code is already general enough to work for single-character Roman numbers. But our test code is not: we have a test called <code class="fm-code-in-text">shouldUnderstandSymbolI</code> and another called <code class="fm-code-in-text">shouldUnderstandSymbolV</code>. This specific case would be better represented in a parameterized test called <code class="fm-code-in-text">shouldUnderstandOneCharNumbers</code>.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1013671"></a>Listing 8.7 Generalizing our first test</p>
+  <pre class="programlisting"><a id="pgfId-1013620"></a>public class RomanNumeralConverterTest {
+<a id="pgfId-1013715"></a> 
+<a id="pgfId-1013710"></a>  @ParameterizedTest
+<a id="pgfId-1013721"></a>  @CsvSource({"I,1","V,5", "X,10","L,50",
+<a id="pgfId-1013727"></a>  "C, 100", "D, 500", "M, 1000"})                           <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1013739"></a>  void shouldUnderstandOneCharNumbers(String romanNumeral,
+<a id="pgfId-1013745"></a>    <span class="fm-code-continuation-arrow">➥</span> int expectedNumberAfterConversion) {
+<a id="pgfId-1013762"></a>    RomanNumeralConverter roman = new RomanNumeralConverter();
+<a id="pgfId-1013768"></a>    int convertedNumber = roman.convert(romanNumeral);
+<a id="pgfId-1013774"></a>    assertThat(convertedNumber).isEqualTo(expectedNumberAfterConversion);
+<a id="pgfId-1013780"></a>  }
+<a id="pgfId-1013786"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1026934"></a><span class="fm-combinumeral">❶</span> Passes the inputs as a comma-separated value to the parameterized test. JUnit then runs the test method for each of the inputs.</p>
+
+  <p class="fm-callout"><a id="pgfId-1013812"></a><span class="fm-callout-head">Note</span> The test code now has some duplicate code compared to the production code. The test inputs and outputs somewhat match the map in the production code. This is a common phenomenon when doing testing by example, and it will be mitigated when we write more complex tests.</p>
+
+  <p class="body"><a id="pgfId-1013828"></a>We are finished with the first set of examples. Let’s consider the second scenario: two or more characters in a row, such as II or XX. Again, we start with the test code.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1013885"></a>Listing 8.8 Tests for Roman numerals with multiple characters</p>
+  <pre class="programlisting"><a id="pgfId-1013834"></a>@Test
+<a id="pgfId-1013924"></a>void shouldUnderstandMultipleCharNumbers() {
+<a id="pgfId-1013930"></a>  RomanNumeralConverter roman = new RomanNumeralConverter();
+<a id="pgfId-1013936"></a>  int convertedNumber = roman.convert("II");
+<a id="pgfId-1013942"></a>  assertThat(convertedNumber).isEqualTo(2);
+<a id="pgfId-1013948"></a>}</pre>
+
+  <p class="body"><a id="pgfId-1013954"></a>To make the test pass in a simple way, we could add the string “II” to the map.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1014011"></a>Listing 8.9 Map with all the Roman numerals</p>
+  <pre class="programlisting"><a id="pgfId-1013960"></a>private static Map&lt;String, Integer&gt; table =
+<a id="pgfId-1014050"></a>  new HashMap&lt;&gt;() {{
+<a id="pgfId-1014056"></a>    put("I", 1);
+<a id="pgfId-1014067"></a> 
+<a id="pgfId-1014062"></a>    put("II", 2);    <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1014084"></a> 
+<a id="pgfId-1014079"></a>    put("V", 5);
+<a id="pgfId-1014090"></a>    put("X", 10);
+<a id="pgfId-1014096"></a>    put("L", 50);
+<a id="pgfId-1014102"></a>    put("C", 100);
+<a id="pgfId-1014108"></a>    put("D", 500);
+<a id="pgfId-1014114"></a>    put("M", 1000);
+<a id="pgfId-1014120"></a>  }};</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1026878"></a><span class="fm-combinumeral">❶</span> Adds II. But that means we would need to add III, IV, and so on—not a good idea!</p>
+
+  <p class="body"><a id="pgfId-1014146"></a>If we did this, the test would succeed. But it does not seem like a good idea for implementation, because we would have to include all possible symbols in the map. It is time to generalize our implementation again. The first idea that comes to mind is to iterate over each symbol in the Roman numeral we’re converting, accumulate the value, and return the total value. A simple loop should do.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1014203"></a>Listing 8.10 Looping through each character in the Roman numeral</p>
+  <pre class="programlisting"><a id="pgfId-1014152"></a>public class RomanNumeralConverter {
+<a id="pgfId-1014242"></a>  private static Map&lt;Character, Integer&gt; table =
+<a id="pgfId-1014248"></a>      new HashMap&lt;&gt;() {{                                 <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1014260"></a>        put('I', 1);
+<a id="pgfId-1014266"></a>        put('V', 5);
+<a id="pgfId-1014272"></a>        put('X', 10);
+<a id="pgfId-1014278"></a>        put('L', 50);
+<a id="pgfId-1014284"></a>        put('C', 100);
+<a id="pgfId-1014290"></a>        put('D', 500);
+<a id="pgfId-1014296"></a>        put('M', 1000);
+<a id="pgfId-1014302"></a>      }};
+<a id="pgfId-1014313"></a> 
+<a id="pgfId-1014308"></a>  public int convert(String numberInRoman) {
+<a id="pgfId-1014319"></a>    int finalNumber = 0;                                 <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1014331"></a>    for(int i = 0; i &lt; numberInRoman.length(); i++) {    <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1014348"></a>      finalNumber += table.get(numberInRoman.charAt(i));
+<a id="pgfId-1014354"></a>    }
+<a id="pgfId-1014365"></a> 
+<a id="pgfId-1014360"></a>    return finalNumber;
+<a id="pgfId-1014371"></a>  }
+<a id="pgfId-1014377"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1026661"></a><span class="fm-combinumeral">❶</span> The conversion table only contains the unique Roman numeral.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1026682"></a><span class="fm-combinumeral">❷</span> Variable that aggregates the value of each Roman numeral</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1026699"></a><span class="fm-combinumeral">❸</span> Gets each character’s corresponding decimal value and adds it to the total sum</p>
+
+  <p class="body"><a id="pgfId-1014513"></a>Note that the type of key in the map has changed from <code class="fm-code-in-text">String</code> to <code class="fm-code-in-text">Character</code>. The algorithm iterates over each character of the <a id="marker-1014456"></a>string <code class="fm-code-in-text">numberInRoman</code> using the <code class="fm-code-in-text">charAt()</code> method, which returns a <code class="fm-code-in-text">char</code> type. We could <a id="marker-1014492"></a>convert the <code class="fm-code-in-text">char</code> to <code class="fm-code-in-text">String</code>, but doing so would add an extra, unnecessary step.</p>
+
+  <p class="body"><a id="pgfId-1014522"></a>The three tests continue passing. It is important to realize that our focus in this cycle was to make our algorithm work with Roman numerals with more than one character—we were not thinking about the previous examples. This is one of the main advantages of having the tests: we are sure that each step we take is sound. Any bugs we introduce to previously working behavior (<i class="fm-italics">regression bugs</i>) will be captured by our tests.</p>
+
+  <p class="body"><a id="pgfId-1014537"></a>We can now generalize the test code and exercise other examples that are similar to the previous one. We again use parameterized tests, as they work well for the purpose.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1014594"></a>Listing 8.11 Parameterizing the test for multiple characters</p>
+  <pre class="programlisting"><a id="pgfId-1014543"></a>@ParameterizedTest
+<a id="pgfId-1014633"></a>@CsvSource({"II,2","III,3", "VI, 6", "XVIII, 18",
+<a id="pgfId-1014639"></a>"XXIII, 23", "DCCLXVI, 766"})                                 <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1014651"></a>void shouldUnderstandMultipleCharNumbers(String romanNumeral,
+<a id="pgfId-1014657"></a>  <span class="fm-code-continuation-arrow">➥</span> int expectedNumberAfterConversion) {
+<a id="pgfId-1014674"></a>  RomanNumeralConverter roman = new RomanNumeralConverter();
+<a id="pgfId-1014680"></a>  int convertedNumber = roman.convert(romanNumeral);
+<a id="pgfId-1014686"></a>  assertThat(convertedNumber).isEqualTo(expectedNumberAfterConversion);
+<a id="pgfId-1014692"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1026576"></a><span class="fm-combinumeral">❶</span> Tries many inputs with multiple characters. Again, CSVSource is the simplest way to do this.</p>
+
+  <p class="fm-callout"><a id="pgfId-1014718"></a><span class="fm-callout-head">Note</span> I chose the examples I passed to the test at random. Our goal is not to be fully systematic when coming up with examples but only to use the test cases as a safety net for developing the feature. When we’re finished, we will perform systematic testing.</p>
+
+  <div class="fm-sidebar-block">
+    <p class="fm-sidebar-title"><a class="calibre13" id="pgfId-1014734"></a>A single test method or many?</p>
+
+    <p class="fm-sidebar-text"><a id="pgfId-1014744"></a>This test method is very similar to the previous one. We could combine them into a single test method, as shown here:</p>
+    <pre class="programlisting"><a id="pgfId-1014750"></a>@ParameterizedTest
+<a id="pgfId-1014768"></a>@CsvSource({                   <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1014780"></a>  // single character numbers
+<a id="pgfId-1014786"></a>  "I,1","V,5", "X,10","L,50", "C, 100", "D, 500", "M, 1000",
+<a id="pgfId-1014792"></a>  // multiple character numbers
+<a id="pgfId-1014798"></a>  "II,2","III,3", "V,5","VI, 6", "XVIII, 18", "XXIII, 23", "DCCLXVI, 766"
+<a id="pgfId-1014804"></a>})
+<a id="pgfId-1014810"></a>void convertRomanNumerals(String romanNumeral,
+<a id="pgfId-1014816"></a>  <span class="fm-code-continuation-arrow">➥</span> int expectedNumberAfterConversion) {
+<a id="pgfId-1014833"></a>  RomanNumeralConverter roman = new RomanNumeralConverter();
+<a id="pgfId-1014839"></a>  int convertedNumber = roman.convert(romanNumeral);
+<a id="pgfId-1014845"></a>  assertThat(convertedNumber).isEqualTo(expectedNumberAfterConversion);
+<a id="pgfId-1014851"></a>}</pre>
+
+    <p class="fm-code-annotation"><a id="pgfId-1026495"></a><span class="fm-combinumeral">❶</span> All the inputs from the different tests are combined into a single method.</p>
+
+    <p class="fm-sidebar-text"><a id="pgfId-1014877"></a>This is a matter of taste and your team’s preference. For the remainder of the chapter, I keep the test methods separated.</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1014883"></a>Our next step is to make the subtractive notation work: for example, <code class="fm-code-in-text">IV</code> should return 4. As always, let’s start with the test. This time, we add multiple examples: we understand the problem and can take a bigger step. If things go wrong, we can take a step back.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1014949"></a>Listing 8.12 Test for the subtractive notation</p>
+  <pre class="programlisting"><a id="pgfId-1014898"></a>@ParameterizedTest
+<a id="pgfId-1014988"></a>@CsvSource({"IV,4","XIV,14", "XL, 40",
+<a id="pgfId-1014994"></a>"XLI,41", "CCXCIV, 294"})                                     <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1015006"></a>void shouldUnderstandSubtractiveNotation(String romanNumeral,
+<a id="pgfId-1015012"></a>  <span class="fm-code-continuation-arrow">➥</span> int expectedNumberAfterConversion) {
+<a id="pgfId-1015029"></a>  RomanNumeralConverter roman = new RomanNumeralConverter();
+<a id="pgfId-1015035"></a>  int convertedNumber = roman.convert(romanNumeral);
+<a id="pgfId-1015041"></a>  assertThat(convertedNumber).isEqualTo(expectedNumberAfterConversion);
+<a id="pgfId-1015047"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1026398"></a><span class="fm-combinumeral">❶</span> Provides many inputs that exercise the subtractive notation rule</p>
+
+  <p class="body"><a id="pgfId-1015096"></a>Implementing this part of the algorithm requires more thought. The characters in a Roman numeral, from right to left, increase in terms of value. However, when a numeral is smaller than its neighbor on the right, it must be subtracted from instead of added to the accumulator. Listing 8.13 uses a trick to accomplish <a id="marker-1024389"></a>this: the <code class="fm-code-in-text">multiplier</code> variable becomes -1 if the current numeral (that is, the current character we are looking at) is smaller than the last neighbor (that is, the character we looked at previously). We then multiply the current digit by <code class="fm-code-in-text">multiplier</code> to make the digit negative.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1015156"></a>Listing 8.13 Implementation for the subtractive notation</p>
+  <pre class="programlisting"><a id="pgfId-1015105"></a>public int convert(String numberInRoman) {
+<a id="pgfId-1015195"></a>  int finalNumber = 0;
+<a id="pgfId-1015201"></a>  int lastNeighbor = 0;                                      <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1015218"></a> 
+<a id="pgfId-1015213"></a>  for(int i = numberInRoman.length() - 1; i &gt;= 0; i--) {     <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1015235"></a> 
+<a id="pgfId-1015230"></a>   int current = table.get(numberInRoman.charAt(i));         <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1015252"></a> 
+<a id="pgfId-1015247"></a>   int multiplier = 1;
+<a id="pgfId-1015258"></a>   if(current &lt; lastNeighbor) multiplier = -1;               <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1015275"></a> 
+<a id="pgfId-1015270"></a>   finalNumber +=
+<a id="pgfId-1015281"></a>     table.get(numberInRoman.charAt(i)) * multiplier;        <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1015298"></a> 
+<a id="pgfId-1015293"></a>   lastNeighbor = current;                                   <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1015310"></a>  }
+<a id="pgfId-1015321"></a> 
+<a id="pgfId-1015316"></a>  return finalNumber;
+<a id="pgfId-1015327"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1026008"></a><span class="fm-combinumeral">❶</span> Keeps the last visited digit</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1026025"></a><span class="fm-combinumeral">❷</span> Loops through the characters, but now from right to left</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1026042"></a><span class="fm-combinumeral">❸</span> Gets the decimal value of the current Roman digit</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1026059"></a><span class="fm-combinumeral">❹</span> If the previous digit was higher than the current one, multiplies the current digit by -1 to make it negative</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1026076"></a><span class="fm-combinumeral">❺</span> Adds the current digit to the finalNumber variable. The current digit is positive or negative depending on whether we should add or subtract it, respectively.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1026093"></a><span class="fm-combinumeral">❻</span> Updates lastNeighbor to be the current digit</p>
+
+  <p class="body"><a id="pgfId-1015449"></a>The tests pass. Is there anything we want to improve in the production code? We use <code class="fm-code-in-text">numberInRoman.charAt(i)</code> when summing the final number, but this value is already stored in the <code class="fm-code-in-text">current</code> variable, so we <a id="marker-1015454"></a>can reuse it. Also, extracting a variable to store the current digit after it is multiplied by 1 or -1 will help developers understand the algorithm. We can refactor the code, as shown in the following listing, and run the tests again.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1015515"></a>Listing 8.14 Refactored version</p>
+  <pre class="programlisting"><a id="pgfId-1015464"></a>public int convert(String numberInRoman) {
+<a id="pgfId-1015554"></a>  int finalNumber = 0;
+<a id="pgfId-1015560"></a>  int lastNeighbor = 0;                                   <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1015577"></a> 
+<a id="pgfId-1015572"></a>  for(int i = numberInRoman.length() - 1; i &gt;= 0; i--) {
+<a id="pgfId-1015588"></a> 
+<a id="pgfId-1015583"></a>   int current = table.get(numberInRoman.charAt(i));
+<a id="pgfId-1015599"></a> 
+<a id="pgfId-1015594"></a>   int multiplier = 1;
+<a id="pgfId-1015605"></a>   if(current &lt; lastNeighbor) multiplier = -1;
+<a id="pgfId-1015616"></a> 
+<a id="pgfId-1015611"></a>   int currentNumeralToBeAdded = current * multiplier;    <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1015628"></a>   finalNumber += currentNumeralToBeAdded;
+<a id="pgfId-1015639"></a> 
+<a id="pgfId-1015634"></a>   lastNeighbor = current;
+<a id="pgfId-1015645"></a>  }
+<a id="pgfId-1015656"></a> 
+<a id="pgfId-1015651"></a>  return finalNumber;
+<a id="pgfId-1015662"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1025890"></a><span class="fm-combinumeral">❶</span> Keeps the last digit visited</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1025891"></a><span class="fm-combinumeral">❷</span> Uses the current variable and introduces <a id="marker-1025928"></a>the currentNumeralToBeAdded variable</p>
+
+  <p class="body"><a id="pgfId-1015745"></a>Now that we have implemented all the examples in our initial list, we can think of other cases to handle. We are not handling invalid numbers, for example. The program must reject inputs such as <code class="fm-code-in-text">"VXL"</code> and <code class="fm-code-in-text">"ILV"</code>. When we have new examples, we repeat the entire procedure until the whole program is implemented. I will leave that as an exercise for you—we have done enough that we are ready to more formally discuss TDD. <a id="marker-1015750"></a></p>
+
+  <h2 class="fm-head" id="heading_id_4"><a id="pgfId-1015757"></a>8.2 Reflecting on our first TDD experience</h2>
+
+  <p class="body"><a id="pgfId-1015767"></a>Abstractly, the cycle we repeated in the previous section’s development process was as follows:</p>
+
+  <ol class="calibre14">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1015773"></a>We wrote a (unit) test for the next piece of functionality we wanted to implement. The test failed.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1015787"></a>We implemented the functionality. The test passed.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1015797"></a>We refactored our production and test code.</p>
+    </li>
+  </ol>
+
+  <p class="body"><a id="pgfId-1015820"></a>This TDD process is also called <a id="marker-1015809"></a>the <i class="fm-italics">red-green-refactor cycle</i>. Figure 8.1 shows a popular way to represent the TDD cycle.</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/08-01.png" width="313" height="221"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1027839"></a>Figure 8.1 TDD, also known as the red-green-refactor cycle</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1015839"></a>TDD practitioners say this approach can be very advantageous for the development process. Here are some of the advantages:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1015859"></a><i class="fm-italics1">Looking at the requirements first</i> —In the TDD cycle, the tests we write to support development are basically executable requirements. Whenever we write one of them, we reflect on what the program should and should not do.</p>
+    </li>
+  </ul>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1015880"></a>This approach makes us write code for the specific problem we are supposed to solve, preventing us from writing unnecessary code. And exploring the requirement systematically forces us to think deeply about it. Developers often go back to the requirements engineer and ask questions about cases that are not explicit in the requirement.</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1015886"></a><i class="fm-italics1">Full control over the pace of writing production code</i> —If we are confident about the problem, we can take a big step and create a test that involves more complicated cases. However, if we are still unsure how to tackle the problem, we can break it into smaller parts and create tests for these simpler pieces first.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1015903"></a><i class="fm-italics1">Quick feedback</i> —Developers who do not work in TDD cycles produce large chunks of production code before getting any feedback. In a TDD cycle, developers are forced to take one step at a time. We write one test, make it pass, and reflect on it. These many moments of reflection make it easier to identify new problems as they arise, because we have only written a small amount of code since the last time everything was under control.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1015920"></a><i class="fm-italics1">Testable code</i> —Creating the tests first makes us think from the beginning about a way to (easily) test the production code before implementing it. In the traditional flow, developers often think about testing only in the later stages of developing a feature. At that point, it may be expensive to change how the code works to facilitate testing.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1015937"></a><i class="fm-italics1">Feedback about design</i> —The test code is often the first client of the class or component we are developing. A test method instantiates the class under test, invokes a method passing all its required parameters, and asserts that the method produces the expected results. If this is hard to do, perhaps there is a better way to design the class. When doing TDD, these problems arise earlier in the development of the feature. And the earlier we observe such issues, the cheaper it is to fix them.</p>
+    </li>
+  </ul>
+
+  <p class="fm-callout"><a id="pgfId-1015954"></a><span class="fm-callout-head">Note</span> TDD shows its advantages best in more complicated problems. I suggest watching <a id="marker-1015966"></a>James Shore’s YouTube playlist on TDD (2014), where he TDDs an entire software system. I also recommend Freeman <a id="marker-1015972"></a>and <a id="marker-1015978"></a>Pryce’s book <i class="fm-italics">Growing Object-Oriented Systems Guided by Tests</i> (2009). They also <a id="marker-1015994"></a>TDD an entire system, and they discuss in depth how they use tests to guide their design decisions.</p>
+
+  <h2 class="fm-head" id="heading_id_5"><a id="pgfId-1016004"></a>8.3 TDD in the real world</h2>
+
+  <p class="body"><a id="pgfId-1016014"></a>This section discusses the most common questions and discussions around TDD. Some developers love TDD and defend its use fiercely; others recommend not using it.</p>
+
+  <p class="body"><a id="pgfId-1016020"></a>As always, software engineering practices are not silver bullets. The reflections I share in this section are personal and not based on scientific evidence. The best way to see if TDD is beneficial for you is to try it!</p>
+
+  <h3 class="fm-head1" id="heading_id_6"><a id="pgfId-1016026"></a>8.3.1 To TDD or not to TDD?</h3>
+
+  <p class="body"><a id="pgfId-1016036"></a><a id="marker-1016037"></a>Skeptical readers may be thinking, “I can get the same benefits without doing TDD. I can think more about my requirements, force myself to only implement what is needed, and consider the testability of my class from the beginning. I do not need to write tests for that!” That is true. But I appreciate TDD because it gives me a rhythm to follow. Finding the next-simplest feature, writing a test for it, implementing nothing more than what is needed, and reflecting on what I did gives me a pace that I can fully control. TDD helps me avoid infinite loops of confusion and frustration.</p>
+
+  <p class="body"><a id="pgfId-1016045"></a>The more defined development cycle also reminds me to review my code often. The TDD cycle offers a natural moment to reflect: as soon as the test passes. When all my tests are green, I consider whether there is anything to improve in the current code.</p>
+
+  <p class="body"><a id="pgfId-1016051"></a>Designing classes is one of the most challenging tasks of a software engineer. I appreciate the TDD cycle because it forces me to use the code I am developing from the very beginning. The perception I have about the class I am designing is often different from my perception when I try to use the class. I can combine both of these perceptions and make the best decision about how to model the class.</p>
+
+  <p class="body"><a id="pgfId-1016057"></a>If you write the tests after the code, and not before, as in TDD, the challenge is making sure the time between writing code and testing is small enough to provide developers with timely feedback. Don’t write code for an entire day and then start testing—that may be too late.</p>
+
+  <h3 class="fm-head1" id="heading_id_7"><a id="pgfId-1016063"></a>8.3.2 TDD 100% of the time?</h3>
+
+  <p class="body"><a id="pgfId-1016073"></a>Should we always use TDD? My answer is a <i class="fm-italics">pragmatic</i> “no.” I do a lot of TDD, but I do not use TDD 100% of the time. It depends on how much I need to learn about the feature I am implementing:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016088"></a>I use TDD when I don’t have a clear idea of how to design, architect, or implement a specific requirement. In such cases, I like to go slowly and use my tests to experiment with different possibilities. If I am working on a problem I know well, and I already know the best way to solve the problem, I do not mind skipping a few cycles.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016102"></a>I use TDD when dealing with a complex problem or a problem I lack the expertise to solve. Whenever I face a challenging implementation, TDD helps me take a step back and learn about the requirements as I go by writing very small tests.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016112"></a>I do <i class="fm-italics1">not</i> use TDD when there is nothing to be learned in the process. If I already know the problem and how to best solve it, I am comfortable coding the solution directly. (Even if I do not use TDD, I always write tests promptly. I never leave it until the end of the day or the end of the sprint. I code the production code, and then I code the test code. And if I have trouble, I take a step back and slow down.)</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1016131"></a>TDD creates opportunities for me to learn more about the code I am writing from an implementation point of view (does it do what it needs to do?) as well as from a design point of view (is it structured in a way that I want?). But for some complex features, it’s difficult even to determine what the first test should look like; in those cases, I do not use TDD.</p>
+
+  <p class="body"><a id="pgfId-1016137"></a>We need ways to stop and think about what we are doing. TDD is a perfect approach for that purpose, but not the only one. Deciding when to use TDD comes with experience. You will quickly learn what works best for you. <a id="marker-1016139"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_8"><a id="pgfId-1016146"></a>8.3.3 Does TDD work for all types of applications and domains?</h3>
+
+  <p class="body"><a id="pgfId-1016172"></a><a id="marker-1016157"></a>TDD works for most types of applications and domains. There are even books about using it for embedded systems, where things are naturally more challenging, such as <a id="marker-1016161"></a> Grenning’s book <i class="fm-italics">Test Driven Development for Embedded C</i> (2011). If you can write automated tests for your application, you can do TDD. <a id="marker-1016183"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_9"><a id="pgfId-1016190"></a>8.3.4 What does the research say about TDD?</h3>
+
+  <p class="body"><a id="pgfId-1016200"></a><a id="marker-1016201"></a>TDD is such a significant part of software development that it is no wonder researchers try to assess its effectiveness using scientific methods. Because so many people treat it as a silver bullet, I strongly believe that you should know what practitioners think, what I think, and what research currently knows about the subject.</p>
+
+  <p class="body"><a id="pgfId-1016209"></a>Research has shown several situations in which TDD can improve class design:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016215"></a>Janzen (2005) showed that TDD practitioners, compared to non-TDDers, produced less-complex algorithms and test suites that covered more.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016229"></a>Janzen and Saiedian (2006) showed that the code produced using TDD made better use of object-oriented concepts, and responsibilities were better distributed into different classes. In contrast, other teams produced more procedural code.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016239"></a>George and Williams (2003) showed that although TDD can initially reduce the productivity of inexperienced developers, 92% of the developers in a qualitative analysis thought that TDD helped improve code quality.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016249"></a>Dogša and Baticˇ (2011) also found an improvement in class design when using TDD. According to the authors, the improvement resulted from the simplicity TDD adds to the process.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016259"></a>Erdogmus et al. (2005) used an experiment with 24 undergraduate students to show that TDD increased their productivity but did not change the quality of the produced code.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016269"></a>Nagappan and colleagues (2008) performed three case studies at Microsoft and showed that the pre-release defect density of projects that were TDD’d decreased 40 to 90% in comparison to projects that did not do TDD.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1016279"></a>Fucci et al. (2016) argue that the important aspect is writing tests (before or after). Gerosa and I (2015) have made similar observations after interviewing many TDD practitioners. This is also the perception of practitioners. To quote Michael <a id="marker-1016281"></a>Feathers (2008), “That’s the magic, and it’s why unit testing works also. When you write unit tests, TDD-style or after your development, you scrutinize, you think, and often you prevent problems without even encountering a test failure.”</p>
+
+  <p class="body"><a id="pgfId-1016291"></a>However, other academic studies show inconclusive results for TDD:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016297"></a>Müeller and Hagner (2002), after an experiment with 19 students taking a one-semester graduate course on extreme programming, observed that test-first did not accelerate implementation compared to traditional approaches. The code written with TDD was also not more reliable.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016311"></a>Siniaalto and Abrahamsson (2007) compared five small-scale software projects using different code metrics and showed that the benefits of TDD were not clear.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016321"></a>Shull and colleagues (2010), after summarizing the findings of 14 papers on TDD, concluded that TDD shows no consistent effect on internal code quality. This paper is easy to read, and I recommend that you look at it.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1016331"></a>As an academic who has read most of the work on this topic, I find that many of these studies—both those that show positive effects and those that do not—are not perfect. Some use students, who are not experts in software development or TDD. Others use toy projects without specific room for TDD to demonstrate its benefits. And some use code metrics such as coupling and cohesion that only partially measure code quality. Of course, designing experiments to measure the benefits of a software engineering practice is challenging, and the academic community is still trying to find the best way to do it.</p>
+
+  <p class="body"><a id="pgfId-1016337"></a>More recent papers explore the idea that TDD’s effects may be due not to the “write the tests first” aspect but rather to taking baby steps toward the final goal. Fucci et al. (2016) argue that “the claimed benefits of TDD may not be due to its distinctive test-first dynamic, but rather due to the fact that TDD-like processes encourage fine-grained, steady steps that improve focus and flow.”</p>
+
+  <p class="body"><a id="pgfId-1016343"></a>I suggest that you give TDD a chance. See if it fits your way of working and your programming style. You may decide to adopt it full-time (like many of my colleagues) or only in a few situations (like me), or you may choose never to do it (also like many of my colleagues). It is up to you. <a id="marker-1016345"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_10"><a id="pgfId-1016352"></a>8.3.5 Other schools of TDD</h3>
+
+  <p class="body"><a id="pgfId-1016362"></a><a id="marker-1016363"></a>TDD does not tell you how to start or what tests to write. This flexibility gave rise to various different schools of TDD. If you are familiar with TDD, you may have heard of the London school of TDD, mockist vs. classicist TDD, and outside-in TDD. This section summarizes their differences and points you to other material if you want to learn more.</p>
+
+  <p class="body"><a id="pgfId-1016397"></a>In the <i class="fm-italics">classicist school of TDD</i> (or the <i class="fm-italics">Detroit school of TDD</i>, or <i class="fm-italics">inside-out TDD</i>), developers start their TDD cycles with the different units that will compose the overall feature. More often than not, classicist TDDers begin with the entities that hold the main business rules; they slowly work toward the outside of the feature and connect these entities to, say, controllers, UIs, and web services. In other words, classicists go from the inside (entities and business rules) to the outside (interface with the user).</p>
+
+  <p class="body"><a id="pgfId-1016406"></a>Classicists also avoid mocks as much as possible. For example, when implementing a business rule that would require the interaction of two or more other classes, classicists would focus on testing the entire behavior at once (all the classes working together) without mocking dependencies or making sure to test the units in a fully isolated manner. Classicists argue that mocks reduce the effectiveness of the test suite and make test suites more fragile. This is the same negative argument we discussed in chapter 6.</p>
+
+  <p class="body"><a id="pgfId-1016438"></a>The <i class="fm-italics">London school of TDD</i> (or <i class="fm-italics">outside-in TDD</i>, or <i class="fm-italics">mockist TDD</i>), on the other hand, prefers to start from the outside (such as the UI or the controller that handles the web service) and then slowly work toward the units that will handle the functionality. To do so, they focus on how the different objects will collaborate. And for that to happen in an outside-in manner, these developers use mocks to explore how the collaboration will work. They favor testing isolated units.</p>
+
+  <p class="body"><a id="pgfId-1016447"></a>Both schools of thought use the test code to learn more about the design of the code being developed. I like the way Test Double (2018) puts it: “In [the] Detroit school, if an object is hard to test, then it’s hard to use; in [the] London school, if a dependency is hard to mock, then it’s hard to use for the object that’ll be using it.”</p>
+
+  <p class="body"><a id="pgfId-1016453"></a>My style is a mixture of both schools. I start from the inside, coding entities and business rules, and then slowly work to the outside, making the external layers call these entities. However, I favor unit testing as much as possible: I do not like the tests of unit A breaking due to a bug in unit B. I use mocks for that, and I follow all the practices discussed in chapter 6.</p>
+
+  <p class="body"><a id="pgfId-1016459"></a>I suggest that you learn more about both schools. Both have good points, and combining them makes sense. I recommend Mancuso’s 2018 talk, which elaborates on the differences between the schools and how the approaches can be used. <a id="marker-1016461"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_11"><a id="pgfId-1016468"></a>8.3.6 TDD and proper testing</h3>
+
+  <p class="body"><a id="pgfId-1016478"></a><a id="marker-1016479"></a>Some studies show that TDD practitioners write more test cases than non-TDD practitioners. However, I do not believe that the test suites generated by TDD sessions are as good as the strong, systematic test suites we engineered in the previous chapters after applying different testing practices. The reasoning is simple: when doing TDD, we are not focused on testing. TDD is a tool to help us develop, not to help us test.</p>
+
+  <p class="body"><a id="pgfId-1016487"></a>Let’s revisit figure 1.4 in chapter 1. As I mentioned earlier, TDD is part of “testing to guide development.” In other words, you should use TDD when you want your tests to guide you through the development process. When you are finished with your TDD sessions and the code looks good, it is time to begin the effective and systematic testing part of the process I describe: change your focus to testing, and apply specification-based testing, structural testing, and property-based testing.</p>
+
+  <p class="body"><a id="pgfId-1016494"></a>Can you reuse the tests you created during TDD in the effective and systematic part of the process? Sure. Doing so becomes natural.</p>
+
+  <p class="body"><a id="pgfId-1016500"></a>Combining TDD and effective testing makes even more sense when both are done in a timely manner. You do not want to TDD something and then wait a week before properly testing it. Can you mix short TDD cycles with short systematic and effective testing cycles? Yes! Once you master all the techniques, you will begin to combine them. The practices I discuss in this book are not meant to be followed linearly—they are tools that are always at your disposal. <a id="marker-1016502"></a></p>
+
+  <h2 class="fm-head" id="heading_id_12"><a id="pgfId-1016509"></a>Exercises</h2>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1016519"></a>8.1 This figure illustrates the test-driven development cycle. Fill in the numbered gaps in the figure.</p>
+
+  <p class="figure2"><img alt="" class="calibre1" src="../../OEBPS/Images/08-unnumb.png" width="223" height="192"/></p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1016531"></a>8.2 Which of the following is the least important reason to do TDD?</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1016555"></a>A) TDD practitioners use the feedback from the test code as a design hint.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1016569"></a>B) The practice of TDD enables developers to have steady, incremental progress throughout the development of a feature.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1016579"></a>C) As a consequence of the practice of TDD, software systems are tested completely.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1016589"></a>D) Using mock objects helps developers understand the relationships between objects.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1016599"></a>8.3 TDD has become a popular practice among developers. According to them, TDD has several benefits. Which of the following statements is <i class="fm-italics">not</i> considered a benefit of TDD? (This is from the perspective of developers, which may not always match the results of empirical research.)</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1016614"></a>A) Baby steps. Developers can take smaller steps whenever they feel it is necessary.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1016628"></a>B) Better team integration. Writing tests is a social activity and makes the team more aware of their code quality.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1016638"></a>C) Refactoring. The cycle prompts developers to improve their code constantly.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1016648"></a>D) Design for testability. Developers are forced to write testable code from the beginning.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1016658"></a>8.4 It is time to practice TDD. A very common practice problem is calculating the final score of a bowling game.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1016664"></a>In bowling, a game consists of 10 rounds. In each round, each player has a frame. In a frame, the player can make two attempts to knock over 10 pins with the bowling ball. The score for each frame is the number of pins knocked down, with a bonus for a strike or a spare.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1016706"></a>A <i class="fm-italics1">strike</i> means the player knocks over all pins with one roll. In addition to 10 points for knocking down all 10 pins, the player receives a bonus: the total number of pins knocked over in the next frame. Here is an example: <code class="fm-code-in-text">[X]</code> <code class="fm-code-in-text">[1</code> <code class="fm-code-in-text">2]</code> (each set of <code class="fm-code-in-text">[</code> <code class="fm-code-in-text">]</code> is one frame, and <code class="fm-code-in-text">X</code> indicates a strike). The player has accumulated a total of 16 points in these two frames. The first frame scores 10 + 3 points (10 for the strike, and 3 for the sum of the next two rolls, 1 + 2), and the second frame scores 3 (the sum of the rolls).</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1016741"></a>A <i class="fm-italics1">spare</i> means the player knocks down all pins in one frame, with two rolls. As a bonus, the points for the next roll are added to the score of the frame. For example, take <code class="fm-code-in-text">[4</code> <code class="fm-code-in-text">/]</code> <code class="fm-code-in-text">[3</code> <code class="fm-code-in-text">2]</code> (<code class="fm-code-in-text">/</code> represents a spare). The player scores 13 points for the first frame (10 pins + 3 from the next roll), plus 5 for the second frame, for a total of 18 points.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1016750"></a>If a strike or a spare is achieved in the tenth (final) frame, the player makes an additional one (for a spare) or two (for a strike) rolls. However, the total rolls for this frame cannot exceed three (that is, rolling a strike with one of the extra rolls does not grant more rolls).</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1016756"></a>Write a program that receives the results of the 10 frames and returns the game’s final score. Use the TDD cycle: write a test, make it pass, and repeat.</p>
+
+  <h2 class="fm-head" id="heading_id_13"><a id="pgfId-1016762"></a>Summary</h2>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016772"></a>Writing a test that fails, making it pass, and then refactoring is what test-driven development is all about.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016786"></a>The red-green-refactor cycle brings different advantages to the coding process, such as more control over the pace of development, and quick feedback.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016796"></a>All the schools of TDD make sense, and all should be used depending on the current context.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016806"></a>Empirical research does not find clear benefits from TDD. The current consensus is that working on small parts of a feature and making steady progress makes developers more productive. Therefore, while TDD is a matter of taste, using short implementation cycles and testing is the way to go.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016816"></a>Deciding whether to use TDD 100% of the time is also a personal choice. You should determine when TDD makes you more productive.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016826"></a>Baby steps are key to TDD. Do not be afraid to go slowly when you are in doubt about what to do next. And do not be afraid to go faster when you feel confident!</p>
+    </li>
+  </ul>
+</div>
+</div>
+</body>
+</html>

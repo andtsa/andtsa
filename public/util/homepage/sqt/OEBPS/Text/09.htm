@@ -1,0 +1,1837 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xml:lang="en"
+      lang="en"
+      xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:epub="http://www.idpf.org/2007/ops">
+<head>
+<title>Effective Software Testing</title>
+<link rel="stylesheet" type="text/css" href="../../override_v1.css"/>
+<link rel="stylesheet" type="text/css" href="../../stylesheet.css"/><link rel="stylesheet" type="text/css" href="../../page_styles.css"/>
+</head>
+<body>
+<div id="book-content">
+<div id="sbo-rt-content" class="calibre"><h1 class="tochead" id="heading_id_2"><a id="pgfId-998407"></a><a id="pgfId-1072771"></a>9 Writing larger tests</h1>
+
+  <p class="co-summary-head"><a id="pgfId-1011754"></a>This chapter covers</p>
+
+  <ul class="calibre12">
+    <li class="co-summary-bullet"><a class="calibre13" id="pgfId-1011760"></a>Deciding when to write a larger test</li>
+
+    <li class="co-summary-bullet"><a class="calibre13" id="pgfId-1011774"></a>Engineering reliable integration and system tests</li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1011784"></a>Most of the code we tested in previous chapters could be tested via unit tests. When that was not possible because, say, the class depended on something else, we used stubs and mocks to replace the dependency, and we still wrote a unit test. As I said when we discussed the testing pyramid in chapter 1, I favor unit tests as much as possible when testing business rules.</p>
+
+  <p class="body"><a id="pgfId-1011790"></a>But not everything in our systems can (or should) be tested via unit tests. Writing unit tests for some pieces of code is a waste of time. Forcing yourself to write unit tests for them would result in test suites that are not good enough to find bugs, are hard to write, or are flaky and break when you make small changes in the code.</p>
+
+  <p class="body"><a id="pgfId-1011796"></a>This chapter discusses how to identify which parts of the system should be tested with integration or system tests. Then I will illustrate how I write these tests for three common situations: (1) components (or sets of classes) that should be exercised together, because otherwise, the test suite would be too weak; (2) components that communicate with external infrastructure, such as classes that communicate with databases and are full of SQL queries; and (3) the entire system, end to end.</p>
+
+  <h2 class="fm-head" id="heading_id_3"><a id="pgfId-1011802"></a>9.1 When to use larger tests</h2>
+
+  <p class="body"><a id="pgfId-1011812"></a><a id="marker-1011813"></a>I see two situations where you should use a larger test:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1011821"></a>You have exercised each class individually, but the overall behavior is composed of many classes, and you want to see them work together. Think of a set of classes that calculates the final cost of a shopping cart. You have unit-tested the class responsible for business rule 1 and the class responsible for business rule 2. But you still want to see the final cost of the shopping cart after <i class="fm-italics1">all</i> the rules have been applied to it.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1011844"></a>The class you want to test is a component in a larger plug-and-play architecture. One of the main advantages of object-oriented design is that we can encapsulate and abstract repetitive complexity, so the user only has to implement what matters. Think of a plugin for your favorite IDE (in my case, IntelliJ). You can develop the logic of the plugin, but many actions will only happen when IntelliJ calls the plugin and passes parameters to it.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1011862"></a>The following sections show examples of both cases and will help you generalize them.</p>
+
+  <h3 class="fm-head1" id="heading_id_4"><a id="pgfId-1011868"></a>9.1.1 Testing larger components</h3>
+
+  <p class="body"><a id="pgfId-1011878"></a><a id="marker-1011879"></a>As always, let’s use a concrete example. Suppose we have the following requirement:</p>
+
+  <p class="fm-callout"><a id="pgfId-1011897"></a>Given a shopping cart with items, quantities, and respective unit prices, the final price of the cart is calculated as follows:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-bullet-callout">
+      <p class="list-s"><a id="pgfId-1011903"></a>The final price of each item is calculated by multiplying its unit price by the quantity.</p>
+    </li>
+
+    <li class="fm-list-bullet-callout">
+      <p class="list-s"><a id="pgfId-1011917"></a>The delivery costs are the following. For shopping carts with</p>
+
+      <ul class="calibre15">
+        <li class="fm-list-bullet-callout1"><a class="calibre13" id="pgfId-1011927"></a>1 to 3 elements (inclusive), we charge 5 dollars extra.</li>
+
+        <li class="fm-list-bullet-callout1"><a class="calibre13" id="pgfId-1011945"></a>4 to 10 elements (inclusive), we charge 12.5 dollars extra.</li>
+
+        <li class="fm-list-bullet-callout1"><a class="calibre13" id="pgfId-1011955"></a>More than 10 elements, we charge 20 dollars extra.</li>
+      </ul>
+    </li>
+
+    <li class="fm-list-bullet-callout">
+      <p class="list-s"><a id="pgfId-1011965"></a>If there is an electronic item in the cart, we charge 7.5 dollars extra.</p>
+    </li>
+  </ul>
+
+  <p class="fm-callout"><a id="pgfId-1011975"></a><span class="fm-callout-head">Note</span> The business rule related to delivery costs is not realistic. As a developer, when you notice such inconsistencies, you should talk to the stakeholder, product owner, or whomever is sponsoring that feature. I am keeping this business rule simple for the sake of the example.</p>
+
+  <p class="body"><a id="pgfId-1011991"></a>Before I begin coding, I think about how to approach the problem. I see how the final price is calculated and that a list of rules is applied to the shopping cart. My experience with software design and design for testability tells me that each rule should be in its own class—putting everything in a single class would result in a large class, which would require lots of tests. We prefer small classes that require only a handful of tests.</p>
+
+  <p class="body"><a id="pgfId-1012055"></a>Suppose the <code class="fm-code-in-text">ShoppingCart</code> and <code class="fm-code-in-text">Item</code> classes already <a id="marker-1012018"></a>exist <a id="marker-1012024"></a>in our code base. They are simple entities. <code class="fm-code-in-text">ShoppingCart</code> holds a list of <code class="fm-code-in-text">Item</code>s. An <code class="fm-code-in-text">Item</code> is composed of a name, a quantity, a price per unit, and a type indicating whether this item is a piece of electronics.</p>
+
+  <p class="body"><a id="pgfId-1012086"></a>Let’s define the contract that all the prices have in common. Listing 9.1 shows the <code class="fm-code-in-text">PriceRule</code> interface that<a id="marker-1012075"></a> all the price rules will follow. It receives a <code class="fm-code-in-text">ShoppingCart</code> and returns the value that should be aggregated to the final price of the shopping cart. Aggregating all the price rules will be the responsibility of another class, which we will code later.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1012146"></a>Listing 9.1 <code class="fm-code-in-text">PriceRule</code> interface</p>
+  <pre class="programlisting"><a id="pgfId-1012095"></a>public interface PriceRule {
+<a id="pgfId-1012194"></a>    double priceToAggregate(ShoppingCart cart);
+<a id="pgfId-1012200"></a>}</pre>
+
+  <p class="body"><a id="pgfId-1012206"></a>We begin with the <code class="fm-code-in-text">DeliveryPrice</code> price rule. It is straightforward, as its value depends solely on the number of items in the cart.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1012272"></a>Listing 9.2 Implementation of <code class="fm-code-in-text">DeliveryPrice</code></p>
+  <pre class="programlisting"><a id="pgfId-1012221"></a>public class DeliveryPrice implements PriceRule {
+<a id="pgfId-1012319"></a>  @Override
+<a id="pgfId-1012325"></a>  public double priceToAggregate(ShoppingCart cart) {
+<a id="pgfId-1012336"></a> 
+<a id="pgfId-1012331"></a>    int totalItems = cart.numberOfItems();      <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1012353"></a> 
+<a id="pgfId-1012348"></a>    if(totalItems == 0)                         <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1012365"></a>      return 0;
+<a id="pgfId-1012371"></a>    if(totalItems &gt;= 1 &amp;&amp; totalItems &lt;= 3)
+<a id="pgfId-1012377"></a>      return 5;
+<a id="pgfId-1012383"></a>    if(totalItems &gt;= 4 &amp;&amp; totalItems &lt;= 10)
+<a id="pgfId-1012389"></a>      return 12.5;
+<a id="pgfId-1012400"></a> 
+<a id="pgfId-1012395"></a>    return 20.0;
+<a id="pgfId-1012406"></a>  }
+<a id="pgfId-1012412"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1128404"></a><span class="fm-combinumeral">❶</span> Gets the number of items in the cart. The delivery price is based on this.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1128425"></a><span class="fm-combinumeral">❷</span> These if statements based on the requirements are enough to return the price.</p>
+
+  <p class="fm-callout"><a id="pgfId-1012454"></a><span class="fm-callout-head">Note</span> I am using <code class="fm-code-in-text">double</code> to represent prices for illustration purposes, but as discussed before, that would be a poor choice in real life. You may prefer to use <code class="fm-code-in-text">BigDecimal</code> or represent prices using <code class="fm-code-in-text">integer</code>s or <code class="fm-code-in-text">long</code>s.</p>
+
+  <p class="body"><a id="pgfId-1012509"></a>With the implementation ready, let’s test it as we have learned: with unit testing. The class is so small and localized that it makes sense to exercise it via unit testing. We will apply specification-based and, more importantly, boundary testing (discussed in chapter 2). The requirements contain clear boundaries, and these boundaries are continuous (1 to 3 items, 4 to 10 items, more than 10 items). This means we can test each rule’s on and off points:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012515"></a>0 items</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012529"></a>1 item</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012539"></a>3 items</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012549"></a>4 items</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012559"></a>10 items</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012569"></a>More than 10 items (with 11 being the off point)</p>
+    </li>
+  </ul>
+
+  <p class="fm-callout"><a id="pgfId-1012579"></a><span class="fm-callout-head">Note</span> Notice the “0 items” handler: the requirements do not mention that case. But I was thinking of the class’s pre-conditions and decided that if the cart has no items, the price should return 0. This corner case deserves a test.</p>
+
+  <p class="body"><a id="pgfId-1012595"></a>We use a parameterized test and comma-separated values (CSV) source to implement the JUnit test.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1012652"></a>Listing 9.3 Tests for <code class="fm-code-in-text">DeliveryPrice</code></p>
+  <pre class="programlisting"><a id="pgfId-1012601"></a>public class DeliveryPriceTest {
+<a id="pgfId-1012704"></a> 
+<a id="pgfId-1012699"></a>  @ParameterizedTest
+<a id="pgfId-1012710"></a>  @CsvSource({                                                   <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1012722"></a>    "0,0",
+<a id="pgfId-1012728"></a>    "1,5",
+<a id="pgfId-1012734"></a>    "3,5",
+<a id="pgfId-1012740"></a>    "4,12.5",
+<a id="pgfId-1012746"></a>    "10,12.5",
+<a id="pgfId-1012752"></a>    "11,20"})
+<a id="pgfId-1012758"></a>  void deliveryIsAccordingToTheNumberOfItems(int noOfItems,
+<a id="pgfId-1012764"></a>    <span class="fm-code-continuation-arrow">➥</span> double expectedDeliveryPrice) {
+<a id="pgfId-1012786"></a> 
+<a id="pgfId-1012781"></a>    ShoppingCart cart = new ShoppingCart();                      <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1012798"></a>    for(int i = 0; i &lt; noOfItems; i++) {
+<a id="pgfId-1012804"></a>      cart.add(new Item(ItemType.OTHER, "ANY", 1, 1));
+<a id="pgfId-1012810"></a>    }
+<a id="pgfId-1012821"></a> 
+<a id="pgfId-1012816"></a>    double price = new DeliveryPrice().priceToAggregate(cart);   <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1012838"></a> 
+<a id="pgfId-1012833"></a>    assertThat(price).isEqualTo(expectedDeliveryPrice);          <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1012850"></a>  }
+<a id="pgfId-1107244"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1128129"></a><span class="fm-combinumeral">❶</span> Exercises the six boundaries. The first value is the number of items in the cart; the second is the expected delivery price.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1128150"></a><span class="fm-combinumeral">❷</span> Creates a shopping cart and adds the specified number of items to it. The type, name, quantity, and unit price do not matter.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1128167"></a><span class="fm-combinumeral">❸</span> Calls the DeliveryPrice rule ...</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1128184"></a><span class="fm-combinumeral">❹</span> ... and asserts its output.</p>
+
+  <div class="fm-sidebar-block">
+    <p class="fm-sidebar-title"><a class="calibre13" id="pgfId-1012930"></a>Refactoring to achieve 100% code coverage</p>
+
+    <p class="fm-sidebar-text"><a id="pgfId-1012956"></a>This example illustrates why you cannot blindly use code coverage. If you generate the report, you will see that the tool does not report 100% branch coverage! In fact, only three of the five conditions are fully exercised: <code class="fm-code-in-text">totalItems</code> <code class="fm-code-in-text">&gt;=</code> <code class="fm-code-in-text">1</code> and <code class="fm-code-in-text">totalItems</code> <code class="fm-code-in-text">&gt;=</code> <code class="fm-code-in-text">4</code> are not.</p>
+
+    <p class="fm-sidebar-text"><a id="pgfId-1116309"></a>Why? Let’s take the first case as an example. We have lots of tests where the number of items is greater than 1, so the <code class="fm-code-in-text">true</code> branch of this condition is exercised. But how can we exercise <a id="marker-1128097"></a>the <code class="fm-code-in-text">false</code> branch? We would need a number of items less than 1. We have a test where the number of items is zero, but the test never reaches that condition because an early <code class="fm-code-in-text">return</code> happens in <code class="fm-code-in-text">totalItems</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">0</code>. Pragmatically speaking, we have covered all the branches, but the tool cannot see it.</p>
+
+    <p class="fm-sidebar-text"><a id="pgfId-1013016"></a>One idea is to rewrite the code so this is not a problem. In the following code, the implementation is basically the same, but the sequence of <code class="fm-code-in-text">if</code> statements is written such that the tool can report 100% branch coverage:</p>
+    <pre class="programlisting"><a id="pgfId-1013031"></a>public double priceToAggregate(ShoppingCart cart) {
+<a id="pgfId-1013054"></a> 
+<a id="pgfId-1013049"></a>  int totalItems = cart.numberOfItems();
+<a id="pgfId-1013065"></a> 
+<a id="pgfId-1013060"></a>  if(totalItems == 0)
+<a id="pgfId-1013071"></a>    return 0;
+<a id="pgfId-1013077"></a>  if(totalItems &lt;= 3)    <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1013089"></a>    return 5;
+<a id="pgfId-1013095"></a>  if(totalItems &lt;= 10)   <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1013107"></a>    return 12.5;
+<a id="pgfId-1013118"></a> 
+<a id="pgfId-1013113"></a>  return 20.0;
+<a id="pgfId-1013124"></a>}</pre>
+
+    <p class="fm-code-annotation"><a id="pgfId-1127986"></a><span class="fm-combinumeral">❶</span> We do not need to check totalItems &gt;= 1, as that is the only thing that can happen if we reach this if statement.</p>
+
+    <p class="fm-code-annotation"><a id="pgfId-1128007"></a><span class="fm-combinumeral">❷</span> Same here: no need to check totalItems &gt;= 4</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1013166"></a>Next, we implement <code class="fm-code-in-text">ExtraChargeForElectronics</code>. The implementation is also straightforward, as all we need to do is check whether the cart contains any electronics. If so, we add the extra charge.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1013232"></a>Listing 9.4 <code class="fm-code-in-text">ExtraChargeForElectronics</code> implementation</p>
+  <pre class="programlisting"><a id="pgfId-1013181"></a>public class ExtraChargeForElectronics implements PriceRule {
+<a id="pgfId-1013280"></a>  @Override
+<a id="pgfId-1013286"></a>  public double priceToAggregate(ShoppingCart cart) {
+<a id="pgfId-1013297"></a> 
+<a id="pgfId-1013292"></a>    List&lt;Item&gt; items = cart.getItems();
+<a id="pgfId-1013308"></a> 
+<a id="pgfId-1013303"></a>    boolean hasAnElectronicDevice = items
+<a id="pgfId-1013314"></a>      .stream()
+<a id="pgfId-1013320"></a>      .anyMatch(it -&gt; it.getType() == ItemType.ELECTRONIC);   <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1013337"></a> 
+<a id="pgfId-1013332"></a>    if(hasAnElectronicDevice)                                 <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1013349"></a>      return 7.50;
+<a id="pgfId-1013360"></a> 
+<a id="pgfId-1013355"></a>    return 0;                                                 <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1013372"></a>  }
+<a id="pgfId-1013378"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1127760"></a><span class="fm-combinumeral">❶</span> Looks for any item whose type is equal to ELECTRONIC</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1127781"></a><span class="fm-combinumeral">❷</span> If there is at least one such item, we return the extra charge.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1127798"></a><span class="fm-combinumeral">❸</span> Otherwise, we do not add an extra charge.</p>
+
+  <p class="body"><a id="pgfId-1013436"></a>We have three cases to exercise: no electronics in the cart, one or more electronics in the cart, and an empty cart. Let’s implement them in three test methods. First, the following test exercises the “one or more electronics” case. We can use parameterized tests to try this.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1013493"></a>Listing 9.5 Testing the extra charge for electronics</p>
+  <pre class="programlisting"><a id="pgfId-1013442"></a>public class ExtraChargeForElectronicsTest {
+<a id="pgfId-1013537"></a> 
+<a id="pgfId-1013532"></a>  @ParameterizedTest
+<a id="pgfId-1013543"></a>  @CsvSource({"1", "2"})                                              <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1013555"></a>  void chargeTheExtraPriceIfThereIsAnyElectronicInTheCart(
+<a id="pgfId-1013561"></a>    <span class="fm-code-continuation-arrow">➥</span> int numberOfElectronics) {
+<a id="pgfId-1013578"></a>    ShoppingCart cart = new ShoppingCart();
+<a id="pgfId-1013589"></a> 
+<a id="pgfId-1013584"></a>    for(int i = 0; i &lt; numberOfElectronics; i++) {                    <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1013601"></a>      cart.add(new Item(ItemType.ELECTRONIC, "ANY ELECTRONIC", 1, 1));
+<a id="pgfId-1013607"></a>    }
+<a id="pgfId-1013618"></a> 
+<a id="pgfId-1013613"></a>    double price = new ExtraChargeForElectronics().priceToAggregate(cart);
+<a id="pgfId-1013629"></a> 
+<a id="pgfId-1013624"></a>    assertThat(price).isEqualTo(7.50);                                <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1013641"></a>  }
+<a id="pgfId-1013647"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1127489"></a><span class="fm-combinumeral">❶</span> The parameterized test will run a test with one electronic item in the cart and another test with two electronic items in the cart. We want to ensure that having multiple electronics in the cart does not incur incorrect extra charges.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1127510"></a><span class="fm-combinumeral">❷</span> A simple loop that adds the specified number of electronics. We could also have added a non-electronic item. Would that make the test stronger?</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1127527"></a><span class="fm-combinumeral">❸</span> Asserts that the extra electronics price is charged</p>
+
+  <p class="body"><a id="pgfId-1013705"></a>We then test that no extra charges are added when there are no electronics in the cart (see listing 9.6).</p>
+
+  <p class="fm-callout"><a id="pgfId-1013711"></a><span class="fm-callout-head">Note</span> If you read chapter 5, you may wonder if we should write a property-based test in this case. The implementation is straightforward, and the number of electronic items does not significantly affect how the algorithm works, so I am fine with example-based testing here.</p>
+
+  <p class="fm-callout"><a id="pgfId-1128574"></a> </p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1013778"></a>Listing 9.6 Testing for no extra charge for electronics</p>
+  <pre class="programlisting"><a id="pgfId-1013727"></a>@Test
+<a id="pgfId-1013817"></a>void noExtraChargesIfNoElectronics() {
+<a id="pgfId-1013823"></a>  ShoppingCart cart = new ShoppingCart();                  <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1013835"></a>  cart.add(new Item(ItemType.OTHER, "BOOK", 1, 1));
+<a id="pgfId-1013841"></a>  cart.add(new Item(ItemType.OTHER, "CD", 1, 1));
+<a id="pgfId-1013847"></a>  cart.add(new Item(ItemType.OTHER, "BABY TOY", 1, 1));
+<a id="pgfId-1013858"></a> 
+<a id="pgfId-1013853"></a>  double price = new ExtraChargeForElectronics().priceToAggregate(cart);
+<a id="pgfId-1013864"></a>  assertThat(price).isEqualTo(0);                          <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1013876"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1127348"></a><span class="fm-combinumeral">❶</span> Creates a cart with random items, all non-electronic</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1127369"></a><span class="fm-combinumeral">❷</span> Asserts that nothing is charged</p>
+
+  <p class="body"><a id="pgfId-1013918"></a>Finally, we test the case where there are no items in the shopping cart.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1013975"></a>Listing 9.7 No items in the shopping cart, so no electronics charge</p>
+  <pre class="programlisting"><a id="pgfId-1013924"></a>@Test
+<a id="pgfId-1014014"></a>void noItems() {
+<a id="pgfId-1014020"></a>  ShoppingCart cart = new ShoppingCart();
+<a id="pgfId-1014026"></a>  double price = new ExtraChargeForElectronics().priceToAggregate(cart);
+<a id="pgfId-1014032"></a>  assertThat(price).isEqualTo(0);         <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1014044"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1127291"></a><span class="fm-combinumeral">❶</span> The shopping cart is empty, so nothing is charged.</p>
+
+  <p class="body"><a id="pgfId-1014070"></a>The final rule to implement is <code class="fm-code-in-text">PriceOfItems</code>, which navigates the list of items and calculates the unit price times the quantity of each item. I do not show the code and the test, to save space; they are available in the book’s code repository.</p>
+
+  <p class="body"><a id="pgfId-1014133"></a>Let’s go to the class that aggregates all the price rules and calculates the final price. The <code class="fm-code-in-text">FinalPriceCalculator</code> class receives <a id="marker-1014096"></a>a list of <code class="fm-code-in-text">PriceRule</code>s in its <a id="marker-1014112"></a>constructor. Its <code class="fm-code-in-text">calculate</code> method receives a <code class="fm-code-in-text">ShoppingCart</code>, passes it to all the price rules, and returns the aggregated price.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1014230"></a>Listing 9.8 <code class="fm-code-in-text">FinalPriceCalculator</code> that runs all the <code class="fm-code-in-text">PriceRule</code>s</p>
+  <pre class="programlisting"><a id="pgfId-1014142"></a>public class FinalPriceCalculator {
+<a id="pgfId-1014258"></a> 
+<a id="pgfId-1014253"></a>  private final List&lt;PriceRule&gt; rules;
+<a id="pgfId-1014269"></a> 
+<a id="pgfId-1014264"></a>  public FinalPriceCalculator(List&lt;PriceRule&gt; rules) {    <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1014281"></a>    this.rules = rules;
+<a id="pgfId-1014287"></a>  }
+<a id="pgfId-1014298"></a> 
+<a id="pgfId-1014293"></a>  public double calculate(ShoppingCart cart) {
+<a id="pgfId-1014304"></a>    double finalPrice = 0;
+<a id="pgfId-1014315"></a> 
+<a id="pgfId-1014310"></a>    for (PriceRule rule : rules) {                        <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1014327"></a>      finalPrice += rule.priceToAggregate(cart);
+<a id="pgfId-1014333"></a>    }
+<a id="pgfId-1014344"></a> 
+<a id="pgfId-1014339"></a>    return finalPrice;                                    <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1014356"></a>  }
+<a id="pgfId-1014362"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1127087"></a><span class="fm-combinumeral">❶</span> Receives a list of price rules in the constructor. This class is flexible and can receive any combination of price rules.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1127108"></a><span class="fm-combinumeral">❷</span> For each price rule, gets the price to add to the final price</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1127125"></a><span class="fm-combinumeral">❸</span> Returns the final aggregated price</p>
+
+  <p class="body"><a id="pgfId-1014420"></a>We can easily unit-test this class: all we need to do is stub a set of <code class="fm-code-in-text">PriceRule</code>s. Listing 9.9 creates three price rule stubs. Each returns a different value, including 0, as 0 may happen. We then create a very simple shopping cart—its items do not matter, because we are mocking the price rules.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1014486"></a>Listing 9.9 Testing <code class="fm-code-in-text">FinalPriceCalculator</code></p>
+  <pre class="programlisting"><a id="pgfId-1014435"></a>public class FinalPriceCalculatorTest {
+<a id="pgfId-1014538"></a> 
+<a id="pgfId-1014533"></a>  @Test
+<a id="pgfId-1014544"></a>  void callAllPriceRules() {
+<a id="pgfId-1014550"></a>    PriceRule rule1 = mock(PriceRule.class);                       <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1014562"></a>    PriceRule rule2 = mock(PriceRule.class);
+<a id="pgfId-1014568"></a>    PriceRule rule3 = mock(PriceRule.class);
+<a id="pgfId-1014579"></a> 
+<a id="pgfId-1014574"></a>    ShoppingCart cart = new ShoppingCart();                        <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1014591"></a>    cart.add(new Item(ItemType.OTHER, "ITEM", 1, 1));
+<a id="pgfId-1014602"></a> 
+<a id="pgfId-1014597"></a>    when(rule1.priceToAggregate(cart)).thenReturn(1.0);            <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1014614"></a>    when(rule2.priceToAggregate(cart)).thenReturn(0.0);
+<a id="pgfId-1014620"></a>    when(rule3.priceToAggregate(cart)).thenReturn(2.0);
+<a id="pgfId-1014631"></a> 
+<a id="pgfId-1014626"></a>    List&lt;PriceRule&gt; rules = Arrays.asList(rule1, rule2, rule3);    <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1014643"></a>    FinalPriceCalculator calculator = new FinalPriceCalculator(rules);
+<a id="pgfId-1014649"></a>    double price = calculator.calculate(cart);
+<a id="pgfId-1014660"></a> 
+<a id="pgfId-1014655"></a>    assertThat(price).isEqualTo(3);                                <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1014672"></a>  }
+<a id="pgfId-1014678"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1126765"></a><span class="fm-combinumeral">❶</span> Creates three different stubs of price rules</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1126786"></a><span class="fm-combinumeral">❷</span> Creates a simple cart</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1126803"></a><span class="fm-combinumeral">❸</span> Makes the stubs return different values, given the cart</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1126820"></a><span class="fm-combinumeral">❹</span> Passes the stubs to the calculator and runs it</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1126837"></a><span class="fm-combinumeral">❺</span> Given the values we set for the stubs, we expect a final value of 3.</p>
+
+  <p class="body"><a id="pgfId-1014768"></a>If this is what you envisioned when I posed the requirements, you understand my way of thinking about design and testing. But you may be thinking that even though we tested each of the price rules individually, and we tested the price calculator with stubbed rules, we don’t know if these pieces will work when we plug them together.</p>
+
+  <p class="body"><a id="pgfId-1014790"></a>This is a valid skeptical thought. Why not write more tests? Because our tests already cover all the requirements. Structurally, we have covered everything. In these cases, I suggest writing a larger test that exercises all the classes together. In this case, the larger test will exercise <code class="fm-code-in-text">FinalPriceCalculator</code> together with all the <code class="fm-code-in-text">PriceRule</code>s. First, let’s create a factory class in the production code that is responsible for instantiating the calculator with all its dependencies.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1014850"></a>Listing 9.10 <code class="fm-code-in-text">FinalPriceCalculatorFactory</code></p>
+  <pre class="programlisting"><a id="pgfId-1014799"></a>public class FinalPriceCalculatorFactory {
+<a id="pgfId-1014898"></a> 
+<a id="pgfId-1014893"></a>  public FinalPriceCalculator build() {
+<a id="pgfId-1014909"></a> 
+<a id="pgfId-1014904"></a>    List&lt;PriceRule&gt; priceRules = Arrays.asList(     <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1014921"></a>        new PriceOfItems(),
+<a id="pgfId-1014927"></a>        new ExtraChargeForElectronics(),
+<a id="pgfId-1014933"></a>        new DeliveryPrice());
+<a id="pgfId-1014944"></a> 
+<a id="pgfId-1014939"></a>    return new FinalPriceCalculator(priceRules);
+<a id="pgfId-1014950"></a>  }
+<a id="pgfId-1014956"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1126710"></a><span class="fm-combinumeral">❶</span> Passes the list of PriceRules manually. You can use dependency injection frameworks to do this.</p>
+
+  <p class="body"><a id="pgfId-1014982"></a>Now all we need to do is to use the factory to build up a real <code class="fm-code-in-text">FinalPriceCalculator</code> and then give it some inputs. To get started, let’s write a test with a shopping cart that has four items (the delivery price is 12.5) and an electronic item (the final price will include the extra charge).</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1015048"></a>Listing 9.11 A larger test for <code class="fm-code-in-text">FinalPriceCalculator</code></p>
+  <pre class="programlisting"><a id="pgfId-1014997"></a>public class FinalPriceCalculatorLargerTest {
+<a id="pgfId-1015100"></a> 
+<a id="pgfId-1015095"></a>  private final FinalPriceCalculator calculator =
+<a id="pgfId-1015106"></a>  <span class="fm-code-continuation-arrow">➥</span>  new FinalPriceCalculatorFactory().build();            <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1015134"></a> 
+<a id="pgfId-1015129"></a>  @Test
+<a id="pgfId-1015140"></a>  void appliesAllRules() {
+<a id="pgfId-1015146"></a>    ShoppingCart cart = new ShoppingCart();                 <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1015158"></a>    cart.add(new Item(ItemType.ELECTRONIC, "PS5", 1, 299));
+<a id="pgfId-1015164"></a>    cart.add(new Item(ItemType.OTHER, "BOOK", 1, 29));
+<a id="pgfId-1015170"></a>    cart.add(new Item(ItemType.OTHER, "CD", 2, 12));
+<a id="pgfId-1015176"></a>    cart.add(new Item(ItemType.OTHER, "CHOCOLATE", 3, 1.50));
+<a id="pgfId-1015187"></a> 
+<a id="pgfId-1015182"></a>    double price = calculator.calculate(cart);
+<a id="pgfId-1015198"></a> 
+<a id="pgfId-1015193"></a>    double expectedPrice =
+<a id="pgfId-1015204"></a>        299 + 29 + 12 * 2 + 1.50 * 3 +                      <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1015216"></a>        7.50 +                                              <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1015228"></a>        12.5;                                               <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1015245"></a> 
+<a id="pgfId-1015240"></a>    assertThat(price)
+<a id="pgfId-1015251"></a>      .isEqualTo(expectedPrice);                            <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1015263"></a>  }
+<a id="pgfId-1015269"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1126260"></a><span class="fm-combinumeral">❶</span> Uses a real FinalPriceCalculator with all the real PriceRules</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1126281"></a><span class="fm-combinumeral">❷</span> Builds up a shopping cart</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1126298"></a><span class="fm-combinumeral">❸</span> The prices of the items</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1126315"></a><span class="fm-combinumeral">❹</span> Includes an electronic</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1126332"></a><span class="fm-combinumeral">❺</span> Delivery price</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1126349"></a><span class="fm-combinumeral">❻</span> Asserts that the final value matches the shopping cart</p>
+
+  <p class="body"><a id="pgfId-1015375"></a>In terms of test code, this is no different from writing a unit test. In fact, based on the definition I gave in chapter 1, I do not consider this an integration test, as it does not go beyond the system’s boundaries. This is a larger test that exercises many units.</p>
+
+  <p class="body"><a id="pgfId-1015381"></a>From a testing perspective, we can apply specification-based, boundary, and structural testing the same way. The difference is that the granularity may be coarser. When testing the <code class="fm-code-in-text">DeliveryPrice</code> unit, we only had to think about the rules related to delivery. Now that we are testing all the behavior together (the calculator plus the price rules), the number of combinations is larger.</p>
+
+  <div class="fm-sidebar-block">
+    <p class="fm-sidebar-title"><a class="calibre13" id="pgfId-1015396"></a>Specification-based testing in larger tests</p>
+
+    <p class="fm-sidebar-text"><a id="pgfId-1015432"></a>Let’s look at how I would apply specification-based testing here. I would consider each price rule a category to exercise individually, analogous to the input values of the methods we test in isolation. Therefore, my categories would be <i class="fm-italics">price per item</i>, <i class="fm-italics">delivery</i>, and <i class="fm-italics">electronics extra charge</i>, each with its own partitions. The item itself can also vary. The categories and partitions are as follows:</p>
+
+    <ul class="calibre12">
+      <li class="fm-sidebar-bullet">
+        <p class="list-s"><a id="pgfId-1015441"></a>Shopping cart:</p>
+
+        <p class="fm-sidebar-letter"><a id="pgfId-1015455"></a>a) Empty cart</p>
+
+        <p class="fm-sidebar-letter"><a id="pgfId-1015473"></a>b) 1 element</p>
+
+        <p class="fm-sidebar-letter"><a id="pgfId-1015483"></a>c) Many elements</p>
+      </li>
+
+      <li class="fm-sidebar-bullet">
+        <p class="list-s"><a id="pgfId-1015493"></a>Each individual item:</p>
+
+        <p class="fm-sidebar-letter"><a id="pgfId-1015503"></a>a) Single quantity</p>
+
+        <p class="fm-sidebar-letter"><a id="pgfId-1015521"></a>b) More than one</p>
+
+        <p class="fm-sidebar-letter"><a id="pgfId-1015531"></a>c) Unit price times quantity, rounded</p>
+
+        <p class="fm-sidebar-letter"><a id="pgfId-1015541"></a>d) Unit price times quantity, not rounded</p>
+      </li>
+
+      <li class="fm-sidebar-bullet">
+        <p class="list-s"><a id="pgfId-1015551"></a>Delivery price:</p>
+
+        <p class="fm-sidebar-letter"><a id="pgfId-1015561"></a>a) 1 to 3 items</p>
+
+        <p class="fm-sidebar-letter"><a id="pgfId-1015579"></a>b) 4 to 10 items</p>
+
+        <p class="fm-sidebar-letter"><a id="pgfId-1015589"></a>c) More than 10 items</p>
+      </li>
+
+      <li class="fm-sidebar-bullet">
+        <p class="list-s"><a id="pgfId-1015599"></a>Electronics:</p>
+
+        <p class="fm-sidebar-letter"><a id="pgfId-1015609"></a>a) Has an electronic item</p>
+
+        <p class="fm-sidebar-letter"><a id="pgfId-1015627"></a>b) No electronic items</p>
+      </li>
+    </ul>
+
+    <p class="fm-sidebar-text"><a id="pgfId-1129771"></a>I would then combine the partitions that make sense, engineer the different test cases, and write them as automated JUnit tests. I will leave that as an exercise for you.</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1015643"></a>This example shows how much more work it is to test sets of classes together. I use this approach when I see value in it, such as for debugging a problem that happens in production. However, I use these tests in addition to unit tests. I also do not re-test everything. I prefer to use these large component tests as an excuse to try the component with real-world inputs. <a id="marker-1015645"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_5"><a id="pgfId-1015652"></a>9.1.2 Testing larger components that go beyond our code base</h3>
+
+  <p class="body"><a id="pgfId-1015662"></a><a id="marker-1015663"></a>In the previous example, the large test gives us confidence about the overall behavior of the component, but we could still test each unit individually. In some cases, however, we cannot write tests for units in isolation. Or rather, we can write tests, but doing so would not make sense. Let’s look at examples of two small open source projects I coded.</p>
+
+  <p class="fm-head2"><a id="pgfId-1015671"></a>Testing the CK tool</p>
+
+  <p class="body"><a id="pgfId-1015681"></a><a id="marker-1109223"></a>The first example is a project called CK (<a class="url" href="https://github.com/mauricioaniche/ck">https://github.com/mauricioaniche/ck</a>), available on my GitHub page. CK is a tool that calculates code metrics for Java code. To do so, it relies on Eclipse JDT (<a class="url" href="http://www.eclipse.org/jdt/">www.eclipse.org/jdt/</a>), a library that is part of the Eclipse IDE. Among its many functionalities, JDT enables us to build abstract syntax trees (ASTs) of Java <a id="marker-1109227"></a><a id="marker-1109228"></a>code. CK builds ASTs using JDT and then visits these trees and calculates the different metrics.</p>
+
+  <p class="body"><a id="pgfId-1018200"></a>As you can imagine, CK is highly dependent on how JDT does things. Given an AST, JDT offers clients a way to visit the tree. Clients need to create a class that inherits from <code class="fm-code-in-text">ASTVisitor</code>. (Visitor is a popular design pattern for navigating complex data structures.) CK then implements many of these AST visitors, one for each metric.</p>
+
+  <p class="body"><a id="pgfId-1018270"></a>One of the metrics that CK implements is coupling between objects (CBO). The metric<a id="marker-1018217"></a><a id="marker-1018220"></a> counts the number of other classes the class under analysis depends on. Imagine the fictitious class <code class="fm-code-in-text">A</code> in the following listing. This class declares a field of type <code class="fm-code-in-text">B</code> and instantiates class <code class="fm-code-in-text">C</code>. CK detects the dependency on <code class="fm-code-in-text">B</code> and <code class="fm-code-in-text">C</code> and returns 2 as the CBO.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1018380"></a>Listing 9.12 Fictitious class <code class="fm-code-in-text">A</code> that depends on <code class="fm-code-in-text">B</code> and <code class="fm-code-in-text">C</code></p>
+  <pre class="programlisting"><a id="pgfId-1018279"></a>class A {
+<a id="pgfId-1018402"></a>  private B b;
+<a id="pgfId-1018413"></a> 
+<a id="pgfId-1018408"></a>  public void action() {
+<a id="pgfId-1018419"></a>    new C().method();
+<a id="pgfId-1018425"></a>  }
+<a id="pgfId-1018431"></a>}</pre>
+
+  <p class="body"><a id="pgfId-1018437"></a>In listing 9.13, I show a simplified implementation of the CBO metric (you can see the full code on my GitHub). The implementation looks at any declared or used type in the class and adds it to a set. Later, it returns the number of types in the set. Note all the <code class="fm-code-in-text">visit</code> methods: they are <a id="marker-1018448"></a>called by the JDT whenever there is, for example, a method invocation or a field declaration.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1018509"></a>Listing 9.13 CBO implementation in CK</p>
+  <pre class="programlisting"><a id="pgfId-1018458"></a>public class CBO implements CKASTVisitor {                    <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1018559"></a> 
+<a id="pgfId-1018554"></a>  private Set&lt;String&gt; coupling = new HashSet&lt;String&gt;();       <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1018576"></a> 
+<a id="pgfId-1018571"></a>  @Override
+<a id="pgfId-1018582"></a>  public void visit(MethodInvocation node) {                  <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1018594"></a>    IMethodBinding binding = node.resolveMethodBinding();
+<a id="pgfId-1018600"></a>    if(binding!=null)
+<a id="pgfId-1018606"></a>      coupleTo(binding.getDeclaringClass());
+<a id="pgfId-1018612"></a>  }
+<a id="pgfId-1018623"></a> 
+<a id="pgfId-1018618"></a>  @Override
+<a id="pgfId-1018629"></a>  public void visit(FieldDeclaration node) {                  <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1018641"></a>    coupleTo(node.getType());
+<a id="pgfId-1018647"></a>  }
+<a id="pgfId-1018658"></a> 
+<a id="pgfId-1018653"></a>  // this continues for all the possible places where a type can appear...
+<a id="pgfId-1018669"></a> 
+<a id="pgfId-1018664"></a>  private void coupleTo(Type type) {
+<a id="pgfId-1018675"></a>    // some complex code here to extract the name of the type.
+<a id="pgfId-1018681"></a>    String fullyQualifiedName = ...;
+<a id="pgfId-1018692"></a> 
+<a id="pgfId-1018687"></a>    addToSet(fullyQualifiedName);                             <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1018704"></a>  }
+<a id="pgfId-1018715"></a> 
+<a id="pgfId-1018710"></a>  private void addToSet(String name) {
+<a id="pgfId-1018721"></a>    this.coupling.add(name);
+<a id="pgfId-1018727"></a>  }
+<a id="pgfId-1018733"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1125938"></a><span class="fm-combinumeral">❶</span> I created my own interface, instead of using JDT’s ASTVisitor, but it is the same thing.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1125959"></a><span class="fm-combinumeral">❷</span> Declares a set to keep all the unique types this class uses</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1125976"></a><span class="fm-combinumeral">❸</span> If there is a method invocation, gets the type of the class of the invoked method</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1125993"></a><span class="fm-combinumeral">❹</span> If there is a field declaration, gets the type of the field</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1126010"></a><span class="fm-combinumeral">❺</span> Adds the full name of the type to the set</p>
+
+  <p class="body"><a id="pgfId-1018859"></a>How can we write a unit test for the CBO class? The CBO class offers many <code class="fm-code-in-text">visit</code> methods called by the JDT once the JDT builds the AST out of real Java code. We could try to mock all the types that these <code class="fm-code-in-text">visit</code> methods receive, such as <code class="fm-code-in-text">MethodInvocation</code> and <code class="fm-code-in-text">FieldDeclaration</code>, and then make a sequence of calls to these methods. But in my opinion, that would be too far from what will happen when we run JDT for real.</p>
+
+  <p class="body"><a id="pgfId-1018868"></a>I do not see a way to unit-test this class without starting up JDT, asking JDT to build an AST out of a small but real Java class, using CBO to visit the generated AST, and comparing the result. So, I used real integration testing in this case.</p>
+
+  <p class="body"><a id="pgfId-1018900"></a>The test class in listing 9.14 runs CK (which runs JDT) in a specific directory. This directory contains fake Java classes that I created for the sole purpose of the tests. In the code, it is the <code class="fm-code-in-text">cbo</code> directory. I have one directory per metric. Because running JDT takes a few seconds, I run it once for the entire test class (see the <code class="fm-code-in-text">@BeforeAll</code> method). The test method then asks for the report of a specific class. In the case of the <code class="fm-code-in-text">countDifferentDependencies</code> test, I am interested in the coupling of the fake <code class="fm-code-in-text">Coupling1</code> class. I then assert that its coupling is 6.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1018960"></a>Listing 9.14 <code class="fm-code-in-text">CBOTest</code></p>
+  <pre class="programlisting"><a id="pgfId-1018909"></a>public class CBOTest extends BaseTest {                   <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1019014"></a> 
+<a id="pgfId-1019009"></a>  @BeforeAll
+<a id="pgfId-1019020"></a>  public void setUp() {
+<a id="pgfId-1019026"></a>    report = run(fixturesDir() + "/cbo");                 <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1019038"></a>  }
+<a id="pgfId-1019049"></a> 
+<a id="pgfId-1019044"></a>  @Test
+<a id="pgfId-1019055"></a>  public void countDifferentDependencies() {
+<a id="pgfId-1019061"></a>    CKClassResult result = report.get("cbo.Coupling1");   <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1019078"></a> 
+<a id="pgfId-1019073"></a>    assertEquals(6, result.getCbo());                     <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1019090"></a>  }
+<a id="pgfId-1019096"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1125664"></a><span class="fm-combinumeral">❶</span> The BaseTest class provides basic functionality for all the test classes.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1125685"></a><span class="fm-combinumeral">❷</span> Runs JDT on all code in the cbo directory. This directory contains Java code I created solely for testing purposes.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1125702"></a><span class="fm-combinumeral">❸</span> CK returns a report, which we use to get the results of a specific Java class we created for this test (see listing 9.15).</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1125719"></a><span class="fm-combinumeral">❹</span> We expect this class to be coupled with six classes.</p>
+
+  <p class="body"><a id="pgfId-1019242"></a>To help you better understand why the CBO is 6, listing 9.15 shows the <code class="fm-code-in-text">Coupling1</code> class. This code makes no sense, but it is enough for us to count dependencies. This class uses classes <code class="fm-code-in-text">A</code>, <code class="fm-code-in-text">B</code>, <code class="fm-code-in-text">C</code>, <code class="fm-code-in-text">D</code>, <code class="fm-code-in-text">C2</code>, and <code class="fm-code-in-text">CouplingHelper</code>: that makes six dependencies.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1019302"></a>Listing 9.15 <code class="fm-code-in-text">Coupling1</code> fixture</p>
+  <pre class="programlisting"><a id="pgfId-1019251"></a>public class Coupling1 {
+<a id="pgfId-1019355"></a> 
+<a id="pgfId-1019350"></a>  private B b;                                  <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1019372"></a> 
+<a id="pgfId-1019367"></a>  public D m1() {                               <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1019384"></a>    A a = new A();                              <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1019396"></a>    C[] x = new C[10];                          <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1019413"></a> 
+<a id="pgfId-1019408"></a>    CouplingHelper h = new CouplingHelper();    <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1019425"></a>    C2 c2 = h.m1();                             <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1019442"></a> 
+<a id="pgfId-1019437"></a>    return d;
+<a id="pgfId-1019448"></a>  }
+<a id="pgfId-1019454"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1125242"></a><span class="fm-combinumeral">❶</span> B</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1125263"></a><span class="fm-combinumeral">❷</span> D</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1125280"></a><span class="fm-combinumeral">❸</span> A</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1125297"></a><span class="fm-combinumeral">❹</span> C</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1125314"></a><span class="fm-combinumeral">❺</span> CouplingHelper</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1125331"></a><span class="fm-combinumeral">❻</span> C2</p>
+
+  <p class="body"><a id="pgfId-1019582"></a>The <code class="fm-code-in-text">CBOTest</code> class contains many other test methods, each exercising a different case. For example, it tests whether CK can count a dependency even though the dependency’s code is not available (imagine that class <code class="fm-code-in-text">A</code> in the example is not in the directory). It also tests whether it counts interfaces and inherited classes, types in method parameters, and so on.</p>
+
+  <p class="body"><a id="pgfId-1019591"></a>It was challenging to come up with good test cases here; and it was not easy to apply specification-based testing, because the input could be virtually any Java class. You may face similar challenges when implementing classes for a plug-and-play architecture. This is a good example of a specific context where we need to learn more about how to test. Testing compilers, which is a related problem, is also a significant area of research. <a id="marker-1019593"></a></p>
+
+  <p class="fm-head2"><a id="pgfId-1019600"></a>Testing the Andy tool</p>
+
+  <p class="body"><a id="pgfId-1019610"></a>Another example where I could not write isolated unit tests involved a tool my teaching assistants and I wrote to assess the test suites that our students engineered. The tool, named Andy (<a class="url" href="https://github.com/cse1110/andy">https://github.com/cse1110/andy</a>), compiles the test code provided by a student, runs all the provided JUnit tests, calculates code coverage, runs some static analysis, and checks whether the test suite is strong enough to kill mutant versions of the code under test. Andy then gives a grade and a detailed description of its assessment.</p>
+
+  <p class="body"><a id="pgfId-1022482"></a>Each step is implemented in its own class. For example, <code class="fm-code-in-text">CompilationStep</code> is responsible for compiling the student’s code, <code class="fm-code-in-text">RunJUnitTestsStep</code> is responsible for executing all the unit tests in the student’s submission, and <code class="fm-code-in-text">RunMetaTestsStep</code> checks whether the test suite kills all the manually engineered mutants we expect it to kill. Figure 9.1 illustrates Andy’s overall flow.</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/09-01.png" width="702" height="346"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1130085"></a>Figure 9.1 Simplified flow of Andy</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1022501"></a>If we were to unit-test everything, we would need a unit test for the compilation step, another for the step that runs JUnit, and so on. But how could we exercise the “run JUnit” step without compiling the code first? It is not possible.</p>
+
+  <p class="body"><a id="pgfId-1022521"></a>We decided to use larger tests. For example, the tests that exercise <code class="fm-code-in-text">RunMetaTestsStep</code> run the entire engine we developed. Thus our test provides a real Java file that simulates the student’s submission and another Java file that contains the class under test. Andy gets these files, compiles them, runs the JUnit tests, and finally runs the meta tests.</p>
+
+  <p class="body"><a id="pgfId-1022552"></a>Listing 9.16 shows one of the tests in the test suite. The <code class="fm-code-in-text">run()</code> method, which is implemented in the <code class="fm-code-in-text">IntegrationTestBase</code> test base so all the test classes can use it, runs the entire Andy engine. The parameters are real Java files:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1115780"></a><code class="fm-code-in-text">NumberUtilsAddLibrary.java</code>, which contains the code of the class under test</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1115792"></a><code class="fm-code-in-text">NumberUtilsAddOfficialSolution.java</code>, which contains a possible solution submitted by the student (in this case, the official solution of this exercise)</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1115797"></a><code class="fm-code-in-text">NumberUtilsAddConfiguration.java</code>, a configuration class that should be provided by the teacher</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1022623"></a>The <code class="fm-code-in-text">run()</code> method returns <a id="marker-1022572"></a>a <code class="fm-code-in-text">Result</code> class: an entity containing all the results of each step. Because this test case focuses on the meta tests, the assertions also focus on them. In this test method, we expect Andy to run four meta tests—<code class="fm-code-in-text">AppliesMultipleCarriesWrongly</code>, <code class="fm-code-in-text">DoesNotApplyCarryAtAll</code>, <code class="fm-code-in-text">DoesNotApplyLastCarry</code>, and <code class="fm-code-in-text">DoesNotCheckNumbersOutOfRange</code>—and we expect them all to pass.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1022683"></a>Listing 9.16 Integration test for the <code class="fm-code-in-text">MetaTests</code> step</p>
+  <pre class="programlisting"><a id="pgfId-1022632"></a>public class MetaTestsTest extends IntegrationTestBase {
+<a id="pgfId-1022740"></a> 
+<a id="pgfId-1022735"></a>  @Test
+<a id="pgfId-1022746"></a>  void allMetaTestsPassing() {
+<a id="pgfId-1022752"></a>    Result result =
+<a id="pgfId-1022758"></a>      run(                                                 <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1022770"></a>      "NumberUtilsAddLibrary.java",
+<a id="pgfId-1022776"></a>      "NumberUtilsAddOfficialSolution.java",
+<a id="pgfId-1022782"></a>      "NumberUtilsAddConfiguration.java");
+<a id="pgfId-1022793"></a> 
+<a id="pgfId-1022788"></a>    assertThat(result.getMetaTests().getTotalTests())
+<a id="pgfId-1022799"></a>      .isEqualTo(4);                                       <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1022811"></a>    assertThat(result.getMetaTests().getPassedMetaTests())
+<a id="pgfId-1022817"></a>      .isEqualTo(4);
+<a id="pgfId-1022823"></a>    assertThat(result.getMetaTests())
+<a id="pgfId-1022829"></a>      .has(passedMetaTest("AppliesMultipleCarriesWrongly"))
+<a id="pgfId-1022835"></a>      .has(passedMetaTest("DoesNotApplyCarryAtAll"))
+<a id="pgfId-1022841"></a>      .has(passedMetaTest("DoesNotApplyLastCarry"))
+<a id="pgfId-1022847"></a>      .has(passedMetaTest("DoesNotCheckNumbersOutOfRange"));
+<a id="pgfId-1022853"></a>  }
+<a id="pgfId-1022859"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1125026"></a><span class="fm-combinumeral">❶</span> Runs the full Andy engine</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1125054"></a><span class="fm-combinumeral">❷</span> Asserts that the meta tests step executed as expected</p>
+
+  <p class="fm-callout"><a id="pgfId-1022901"></a><span class="fm-callout-head">Note</span> You may be curious about the <code class="fm-code-in-text">passedMetaTest</code> method in <a id="marker-1125103"></a>this test method. AssertJ enables us to extend its set of assertions, and we created one specifically for meta tests. I will show how to do this in chapter 10.</p>
+
+  <p class="body"><a id="pgfId-1022932"></a>These two examples illustrate situations where unit-testing a class in isolation does not make sense. In general, my advice is to use unit testing as much as possible, because—as I have said many times before—unit tests are cheap and easy to write. But do not be afraid to write larger tests whenever you believe they will give you more confidence. <a id="marker-1022937"></a><a id="marker-1022939"></a></p>
+
+  <h2 class="fm-head" id="heading_id_6"><a id="pgfId-1022945"></a>9.2 Database and SQL testing</h2>
+
+  <p class="body"><a id="pgfId-1022962"></a><a id="marker-1022956"></a><a id="marker-1022958"></a>In many of the examples in this book, a Data Access Object (DAO) class is <a id="marker-1022963"></a>responsible for retrieving or persisting information in the database. Whenever these classes appear, we quickly stub or mock them out of our way. However, at some point, you need to test these classes. These DAOs often perform complex SQL queries, and they encapsulate a lot of business knowledge, requiring testers to spend some energy making sure they produce the expected outcomes. The following sections examine what to test in a SQL query, how to write automated test cases for such queries, and the challenges and best practices involved.</p>
+
+  <h3 class="fm-head1" id="heading_id_7"><a id="pgfId-1022973"></a>9.2.1 What to test in a SQL query</h3>
+
+  <p class="body"><a id="pgfId-1022990"></a><a id="marker-1022984"></a><a id="marker-1022986"></a>SQL is a robust language and contains many different functions we can use. Let’s simplify and look at queries as a composition of predicates. Here are some examples:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1022995"></a><code class="fm-code-in-text">SELECT</code> <code class="fm-code-in-text">*</code> <code class="fm-code-in-text">FROM</code> <code class="fm-code-in-text">INVOICE</code> <code class="fm-code-in-text">WHERE</code> <code class="fm-code-in-text">VALUE</code> <code class="fm-code-in-text">&lt;</code> <code class="fm-code-in-text">50</code></p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023013"></a><code class="fm-code-in-text">SELECT</code> <code class="fm-code-in-text">*</code> <code class="fm-code-in-text">FROM</code> <code class="fm-code-in-text">INVOICE</code> <code class="fm-code-in-text">I</code> <code class="fm-code-in-text">JOIN</code> <code class="fm-code-in-text">CUSTOMER</code> <code class="fm-code-in-text">C</code> <code class="fm-code-in-text">ON</code> <code class="fm-code-in-text">I.CUSTOMER_ID</code> <code class="fm-code-in-text">=</code> <code class="fm-code-in-text">C.ID</code> <code class="fm-code-in-text">WHERE</code> <code class="fm-code-in-text">C.COUNTRY</code> <code class="fm-code-in-text">=</code> <code class="fm-code-in-text">'NL'</code></p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023027"></a><code class="fm-code-in-text">SELECT</code> <code class="fm-code-in-text">*</code> <code class="fm-code-in-text">FROM</code> <code class="fm-code-in-text">INVOICE</code> <code class="fm-code-in-text">WHERE</code> <code class="fm-code-in-text">VALUE</code> <code class="fm-code-in-text">&gt;</code> <code class="fm-code-in-text">50</code> <code class="fm-code-in-text">AND</code> <code class="fm-code-in-text">VALUE</code> <code class="fm-code-in-text">&lt;</code> <code class="fm-code-in-text">200</code></p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1023067"></a>In these examples, <code class="fm-code-in-text">value</code> <code class="fm-code-in-text">&lt;</code> <code class="fm-code-in-text">50</code>, <code class="fm-code-in-text">i.customer_id</code> <code class="fm-code-in-text">=</code> <code class="fm-code-in-text">c.id</code>, <code class="fm-code-in-text">c.country</code> <code class="fm-code-in-text">=</code> <code class="fm-code-in-text">'NL'</code>, and <code class="fm-code-in-text">value</code> <code class="fm-code-in-text">&gt;</code> <code class="fm-code-in-text">50</code> <code class="fm-code-in-text">and</code> <code class="fm-code-in-text">value</code> <code class="fm-code-in-text">&lt;</code> <code class="fm-code-in-text">200</code> are the predicates that compose the different queries. As a tester, a possible criterion is to exercise the predicates and check whether the SQL query returns the expected results when predicates are evaluated to different results.</p>
+
+  <p class="body"><a id="pgfId-1023076"></a>Virtually all the testing techniques we have discussed in this book can be applied here:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023082"></a><i class="fm-italics1">Specification-based testing</i> —SQL queries emerge out of a requirement. A tester can analyze the requirements and derive equivalent partitions that need to be tested.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023103"></a><i class="fm-italics1">Boundary analysis</i> —Such programs have boundaries. Because we expect boundaries to be places with a high bug probability, exercising them is important.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023120"></a><i class="fm-italics1">Structural testing</i> —SQL queries contain predicates, and a tester can use the SQL’s structure to derive test cases.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1023203"></a>Here, we focus on structural testing. If we look at the third SQL example and try to make an analogy with what we have discussed about structural testing, we see that the SQL query contains a single branch composed of two predicates (<code class="fm-code-in-text">value</code> <code class="fm-code-in-text">&gt;</code> <code class="fm-code-in-text">50</code> and <code class="fm-code-in-text">value</code> <code class="fm-code-in-text">&lt;</code> <code class="fm-code-in-text">200</code>). This means there are four possible combinations of results in these two predicates: <code class="fm-code-in-text">(true,</code> <code class="fm-code-in-text">true)</code>, <code class="fm-code-in-text">(true,</code> <code class="fm-code-in-text">false)</code>, <code class="fm-code-in-text">(false,</code> <code class="fm-code-in-text">true)</code>, and <code class="fm-code-in-text">(false,</code> <code class="fm-code-in-text">false)</code>. We can aim at either of the following:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023244"></a><i class="fm-italics1">Branch coverage</i> —In this case, two tests (one that makes the overall decision evaluate to <code class="fm-code-in-text">true</code> and one that makes it evaluate to <code class="fm-code-in-text">false</code>) would be enough to achieve 100% branch coverage.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023291"></a><i class="fm-italics1">Condition + branch coverage</i> —In this case, three tests would be enough to achieve 100% condition + branch coverage: for example, <code class="fm-code-in-text">T1</code> <code class="fm-code-in-text">=</code> <code class="fm-code-in-text">150</code>, <code class="fm-code-in-text">T2</code> <code class="fm-code-in-text">=</code> <code class="fm-code-in-text">40</code>, <code class="fm-code-in-text">T3</code> <code class="fm-code-in-text">=</code> <code class="fm-code-in-text">250</code>.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1023300"></a>In “A practical guide to SQL white-box testing,” a 2006 paper by Tuya, Suárez-Cabal, and De La Riva, the authors suggest five guidelines for designing SQL tests:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023348"></a><i class="fm-italics1">Adopting modified condition/decision coverage (MC/DC) for SQL conditions</i> —Decisions happen at three places in a SQL query: <code class="fm-code-in-text">join</code>, <code class="fm-code-in-text">where</code>, and <code class="fm-code-in-text">having</code> conditions. We can use criteria like MC/DC to fully exercise the query’s predicates. If you do not remember how MC/DC coverage works, revisit chapter 3.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023415"></a><i class="fm-italics1">Adapting MC/DC for tackling nulls</i> —Because databases have a special way of handling/returning <code class="fm-code-in-text">null</code>s, any (coverage) criteria should be adapted to three-valued logic (<code class="fm-code-in-text">true</code>, <code class="fm-code-in-text">false</code>, <code class="fm-code-in-text">null</code>). In other words, consider the possibility of values being <code class="fm-code-in-text">null</code> in your query.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023424"></a><i class="fm-italics1">Category-partitioning selected data</i> —SQL can be considered a declarative specification for which we can define partitions to be tested. Directly from Tuya et al.’s paper, we define the following:</p>
+
+      <ul class="calibre15">
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1023441"></a><i class="fm-italics1">Rows that are retrieved</i> —We include a test state to force the query to not select any row.</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1023466"></a><i class="fm-italics1">Rows that are merged</i> —The presence of unwanted duplicate rows in the output is a common failure in some queries. We include a test state in which identical rows are selected.</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1023483"></a><i class="fm-italics1">Rows that are grouped</i> —For each of the group-by columns, we design test states to obtain at least two different groups at the output, such that the value used for the grouping is the same and all the others are different.</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1023518"></a><i class="fm-italics1">Rows that are selected in a subquery</i> —For each subquery, we include test states that return zero or more rows, with at least one <code class="fm-code-in-text">null</code> and two different values in the selected column.</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1023545"></a><i class="fm-italics1">Values that participate in aggregate functions</i> —For each aggregate function (excluding <code class="fm-code-in-text">count</code>), we include at least one test state in which the function computes two equal values and another that is different.</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1023572"></a><i class="fm-italics1">Other expressions</i> —We also design test states for expressions involving the <code class="fm-code-in-text">like</code> predicate, date management, string management, data type conversions, or other functions using category partitioning and boundary checking.</li>
+      </ul>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023607"></a><i class="fm-italics1">Checking the outputs</i> —We should check not only the input domain but also the output domain. SQL queries may return <code class="fm-code-in-text">null</code> or empty values in specific columns, which may make the rest of the program break.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023616"></a><i class="fm-italics1">Checking the database constraints</i> —Databases have constraints. We should make sure the database enforces these constraints.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1023633"></a>As you can see, many things can go wrong in a SQL query. It is part of the tester’s job to make sure that does not happen. <a id="marker-1023635"></a><a id="marker-1023638"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_8"><a id="pgfId-1023644"></a>9.2.2 Writing automated tests for SQL queries</h3>
+
+  <p class="body"><a id="pgfId-1023661"></a><a id="marker-1023655"></a><a id="marker-1023657"></a>We can use JUnit to write SQL tests. All we need to do is (1) establish a connection with the database, (2) make sure the database is in the right initial state, (3) execute the SQL query, and (4) check the output.</p>
+
+  <p class="body"><a id="pgfId-1023666"></a>Consider the following scenario:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023706"></a>We have an <code class="fm-code-in-text">Invoice</code> table composed of a <code class="fm-code-in-text">name</code> (varchar, length 100) and a <code class="fm-code-in-text">value</code> (double).</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023715"></a>We have an <code class="fm-code-in-text">InvoiceDao</code> class that <a class="calibre13" id="marker-1023730"></a>uses an API to communicate with the database. The precise API does not matter.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023770"></a>This DAO performs three actions: <code class="fm-code-in-text">save()</code> persists an invoice in the database, <code class="fm-code-in-text">all()</code> returns all invoices in the database, and <code class="fm-code-in-text">allWithAtLeast()</code> returns all invoices with at least a specified value. Specifically,</p>
+
+      <ul class="calibre15">
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1023805"></a><code class="fm-code-in-text">save()</code> runs <code class="fm-code-in-text">INSERT</code> <code class="fm-code-in-text">INTO</code> <code class="fm-code-in-text">invoice</code> <code class="fm-code-in-text">(name,</code> <code class="fm-code-in-text">value)</code> <code class="fm-code-in-text">VALUES</code> <code class="fm-code-in-text">(?,?)</code>.</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1023832"></a><code class="fm-code-in-text">all()</code> runs <code class="fm-code-in-text">SELECT</code> <code class="fm-code-in-text">*</code> <code class="fm-code-in-text">FROM</code> <code class="fm-code-in-text">invoice</code>.</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1023859"></a><code class="fm-code-in-text">allWithAtLeast()</code> runs <code class="fm-code-in-text">SELECT</code> <code class="fm-code-in-text">*</code> <code class="fm-code-in-text">FROM</code> <code class="fm-code-in-text">invoice</code> <code class="fm-code-in-text">WHERE</code> <code class="fm-code-in-text">value</code> <code class="fm-code-in-text">&gt;=</code> <code class="fm-code-in-text">?</code>.</li>
+      </ul>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1023868"></a>A simple JDBC implementation of such a class is shown in listings 9.17, 9.18, and 9.19.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1023925"></a>Listing 9.17 Simple JDBC implementation of <code class="fm-code-in-text">InvoiceDao</code>, part 1</p>
+  <pre class="programlisting"><a id="pgfId-1023874"></a>import java.sql.*;
+<a id="pgfId-1023977"></a>import java.util.ArrayList;
+<a id="pgfId-1023983"></a>import java.util.List;
+<a id="pgfId-1023994"></a> 
+<a id="pgfId-1023989"></a>public class InvoiceDao {
+<a id="pgfId-1024005"></a> 
+<a id="pgfId-1024000"></a>  private final Connection connection;                     <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1024022"></a> 
+<a id="pgfId-1024017"></a>  public InvoiceDao(Connection connection) {
+<a id="pgfId-1024028"></a>    this.connection = connection;
+<a id="pgfId-1024034"></a>  }
+<a id="pgfId-1024045"></a> 
+<a id="pgfId-1024040"></a>  public List&lt;Invoice&gt; all() {
+<a id="pgfId-1024051"></a>    try {
+<a id="pgfId-1024057"></a>      PreparedStatement ps = connection.prepareStatement(
+<a id="pgfId-1024063"></a>        <span class="fm-code-continuation-arrow">➥</span> "select * from invoice");                       <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1024086"></a>      ResultSet rs = ps.executeQuery();
+<a id="pgfId-1024097"></a> 
+<a id="pgfId-1024092"></a>      List&lt;Invoice&gt; allInvoices = new ArrayList&lt;&gt;();
+<a id="pgfId-1024103"></a>      while (rs.next()) {                                  <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1024115"></a>        allInvoices.add(new Invoice(rs.getString("name"),
+<a id="pgfId-1024121"></a>        <span class="fm-code-continuation-arrow">➥</span> rs.getInt("value")));
+<a id="pgfId-1024138"></a>      }
+<a id="pgfId-1024149"></a> 
+<a id="pgfId-1024144"></a>      return allInvoices;
+<a id="pgfId-1024160"></a> 
+<a id="pgfId-1024155"></a>    } catch(Exception e) {                                 <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1024172"></a>      throw new RuntimeException(e);
+<a id="pgfId-1024178"></a>    }
+<a id="pgfId-1024184"></a>  }</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1124757"></a><span class="fm-combinumeral">❶</span> The DAO holds a connection to the database.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1124778"></a><span class="fm-combinumeral">❷</span> Prepares and executes the SQL query</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1124795"></a><span class="fm-combinumeral">❸</span> Loops through the results, creating a new Invoice entity for each of them</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1124812"></a><span class="fm-combinumeral">❹</span> The JDBC API throws checked exceptions. To simplify, we convert them to unchecked exceptions.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1024309"></a>Listing 9.18 Simple JDBC implementation of <code class="fm-code-in-text">InvoiceDao</code>, part 2</p>
+  <pre class="programlisting"><a id="pgfId-1024258"></a>public List&lt;Invoice&gt; allWithAtLeast(int value) {        <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1024367"></a>    try {
+<a id="pgfId-1024373"></a>      PreparedStatement ps = connection.prepareStatement(
+<a id="pgfId-1024379"></a>        <span class="fm-code-continuation-arrow">➥</span> "select * from invoice where value &gt;= ?");
+<a id="pgfId-1024396"></a>      ps.setInt(1, value);
+<a id="pgfId-1024402"></a>      ResultSet rs = ps.executeQuery();
+<a id="pgfId-1024413"></a> 
+<a id="pgfId-1024408"></a>      List&lt;Invoice&gt; allInvoices = new ArrayList&lt;&gt;();
+<a id="pgfId-1024419"></a>      while (rs.next()) {
+<a id="pgfId-1024425"></a>        allInvoices.add(
+<a id="pgfId-1024431"></a>          new Invoice(rs.getString("name"), rs.getInt("value"))
+<a id="pgfId-1024437"></a>        );
+<a id="pgfId-1024443"></a>      }
+<a id="pgfId-1024449"></a>      return allInvoices;
+<a id="pgfId-1024455"></a>    } catch (Exception e) {
+<a id="pgfId-1024461"></a>      throw new RuntimeException(e);
+<a id="pgfId-1024467"></a>    }
+<a id="pgfId-1024473"></a>  }</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1124685"></a><span class="fm-combinumeral">❶</span> The same thing happens here: we prepare the SQL query, execute it, and then create one Invoice entity for each row.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1024550"></a>Listing 9.19 Simple JDBC implementation of <code class="fm-code-in-text">InvoiceDao</code>, part 3</p>
+  <pre class="programlisting"><a id="pgfId-1024499"></a>public void save(Invoice inv) {
+<a id="pgfId-1024602"></a>    try {
+<a id="pgfId-1024608"></a>      PreparedStatement ps = connection.prepareStatement(
+<a id="pgfId-1024614"></a>        "insert into invoice (name, value) values (?,?)");    <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1024631"></a> 
+<a id="pgfId-1024626"></a>      ps.setString(1, inv.customer);
+<a id="pgfId-1024637"></a>      ps.setInt(2, inv.value);
+<a id="pgfId-1024643"></a>      ps.execute();
+<a id="pgfId-1024654"></a> 
+<a id="pgfId-1024649"></a>      connection.commit();
+<a id="pgfId-1024660"></a>    } catch(Exception e) {
+<a id="pgfId-1024666"></a>      throw new RuntimeException(e);
+<a id="pgfId-1024672"></a>    }
+<a id="pgfId-1024678"></a>  }
+<a id="pgfId-1024689"></a> 
+<a id="pgfId-1024684"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1124630"></a><span class="fm-combinumeral">❶</span> Prepares the INSERT statement and executes it</p>
+
+  <p class="fm-callout"><a id="pgfId-1024715"></a><span class="fm-callout-head">Note</span> This implementation is a naive way to access a database. In more complex projects, you should use a professional production-ready database API such as jOOQ, Hibernate, or Spring Data.</p>
+
+  <p class="body"><a id="pgfId-1024793"></a>Let’s test the <code class="fm-code-in-text">InvoiceDao</code> class. Remember, we want to apply the same ideas we have seen so far. The difference is that we have a database in the loop. Let’s start with <code class="fm-code-in-text">all()</code>. This method sends a <code class="fm-code-in-text">SELECT</code> <code class="fm-code-in-text">*</code> <code class="fm-code-in-text">FROM</code> <code class="fm-code-in-text">invoice</code> to the database and gets back the result. But for this query to return something, we must first insert some invoices into the database. The <code class="fm-code-in-text">InvoiceDao</code> class also provides <a id="marker-1024772"></a>the <code class="fm-code-in-text">save()</code> method, which sends an <code class="fm-code-in-text">INSERT</code> query. This is <a id="marker-1024798"></a>enough for our first test.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1024859"></a>Listing 9.20 First step of our SQL test</p>
+  <pre class="programlisting"><a id="pgfId-1024808"></a>public class InvoiceDaoIntegrationTest {
+<a id="pgfId-1024903"></a> 
+<a id="pgfId-1024898"></a>  private Connection connection;                   <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1024915"></a>  private InvoiceDao dao;                          <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1024932"></a> 
+<a id="pgfId-1024927"></a>  @Test
+<a id="pgfId-1024938"></a>  void save() {
+<a id="pgfId-1024944"></a>   Invoice inv1 = new Invoice("Mauricio", 10);     <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1024956"></a>   Invoice inv2 = new Invoice("Frank", 11);
+<a id="pgfId-1024967"></a> 
+<a id="pgfId-1024962"></a>   dao.save(inv1);                                 <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1024984"></a> 
+<a id="pgfId-1024979"></a>   List&lt;Invoice&gt; afterSaving = dao.all();          <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1024996"></a>   assertThat(afterSaving).containsExactlyInAnyOrder(inv1);
+<a id="pgfId-1025007"></a> 
+<a id="pgfId-1025002"></a>   dao.save(inv2);                                 <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1025019"></a>   List&lt;Invoice&gt; afterSavingAgain = dao.all();
+<a id="pgfId-1025030"></a> 
+<a id="pgfId-1025025"></a>   assertThat(afterSavingAgain)
+<a id="pgfId-1025036"></a>     .containsExactlyInAnyOrder(inv1, inv2);
+<a id="pgfId-1025042"></a>  }
+<a id="pgfId-1025048"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1124255"></a><span class="fm-combinumeral">❶</span> This test requires a connection to the database and an invoice DAO.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1124276"></a><span class="fm-combinumeral">❷</span> Creates a set of invoices</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1124293"></a><span class="fm-combinumeral">❸</span> Persists the first one</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1124310"></a><span class="fm-combinumeral">❹</span> Gets all invoices from the database and ensures that the database only contains the invoice we inserted</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1124327"></a><span class="fm-combinumeral">❺</span> Inserts another invoice and ensures that the database contains both of them</p>
+
+  <p class="body"><a id="pgfId-1025238"></a>This test method creates two invoices (<code class="fm-code-in-text">inv1</code>, <code class="fm-code-in-text">inv2</code>), persists the first one using the <code class="fm-code-in-text">save()</code> method, retrieves the invoices from the database, and asserts that it returns one invoice. Then it persists another invoice, retrieves the invoices from the database again, and asserts that now it returns two invoices. The test method ensures the correct behavior of both <a id="marker-1116001"></a>the <code class="fm-code-in-text">save()</code> and <code class="fm-code-in-text">all()</code> methods. The <code class="fm-code-in-text">containsExactlyInAnyOrder</code> assertion from<a id="marker-1116002"></a> AssertJ ensures that the list contains the precise invoices that we pass to it, in any order. For that to happen, the <code class="fm-code-in-text">Invoice</code> class needs <a id="marker-1116003"></a>a proper implementation of<a id="marker-1116004"></a> the <code class="fm-code-in-text">equals()</code> method.</p>
+
+  <p class="body"><a id="pgfId-1025247"></a>In terms of testing, our implementation is correct. However, given the database, we have some extra concerns. First, we should not forget that the database persists the data permanently. Suppose we start with an empty database. The first time we run the test, it will persist two invoices in the database. The second time we run the test, it will persist two new invoices, totaling four invoices. This will make our test fail, as it expects the database to have one and two invoices, respectively.</p>
+
+  <p class="body"><a id="pgfId-1025253"></a>This was never a problem in our previous unit tests: every object we created lived in memory, and they disappeared after the test method was done. When testing with a real database, we must ensure a clean state:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1025259"></a><i class="fm-italics1">Before the test runs</i>, we open the database connection, clean the database, and (optionally) put it in the state we need it to be in before executing the SQL query under test.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1025280"></a><i class="fm-italics1">After the test runs</i>, we close the database connection.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1025313"></a>This is a perfect fit for JUnit’s <code class="fm-code-in-text">@BeforeEach</code> and <code class="fm-code-in-text">@AfterEach</code>, as shown in the following listing.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1025373"></a>Listing 9.21 Setting up and tearing down the database</p>
+  <pre class="programlisting"><a id="pgfId-1025322"></a>public class InvoiceDaoIntegrationTest {
+<a id="pgfId-1025417"></a> 
+<a id="pgfId-1025412"></a>  private Connection connection;
+<a id="pgfId-1025423"></a>  private InvoiceDao dao;
+<a id="pgfId-1025434"></a> 
+<a id="pgfId-1025429"></a>  @BeforeEach
+<a id="pgfId-1025440"></a>  void openConnectionAndCleanup() throws SQLException {
+<a id="pgfId-1025451"></a> 
+<a id="pgfId-1025446"></a>    connection = DriverManager.getConnection("jdbc:hsqldb:mem:book");    <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1025468"></a> 
+<a id="pgfId-1025463"></a>    PreparedStatement preparedStatement = connection.prepareStatement(
+<a id="pgfId-1025474"></a>      <span class="fm-code-continuation-arrow">➥</span> "create table if not exists invoice (name varchar(100),
+<a id="pgfId-1025491"></a>      <span class="fm-code-continuation-arrow">➥</span> value double)");                                                <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1025514"></a>    preparedStatement.execute();
+<a id="pgfId-1025520"></a>    connection.commit();
+<a id="pgfId-1025531"></a> 
+<a id="pgfId-1025526"></a>    connection.prepareStatement("truncate table invoice").execute();     <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1025548"></a> 
+<a id="pgfId-1025543"></a>    dao = new InvoiceDao(connection);                                    <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1025560"></a>  }
+<a id="pgfId-1025571"></a> 
+<a id="pgfId-1025566"></a>  @AfterEach
+<a id="pgfId-1025577"></a>  void close() throws SQLException {
+<a id="pgfId-1025583"></a>    connection.close();                                                  <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1025595"></a>  }
+<a id="pgfId-1025606"></a> 
+<a id="pgfId-1025601"></a>  @Test
+<a id="pgfId-1025612"></a>  void save() {                                                          <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1025624"></a>    // ...
+<a id="pgfId-1025630"></a>  }
+<a id="pgfId-1025641"></a> 
+<a id="pgfId-1025636"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1123773"></a><span class="fm-combinumeral">❶</span> Opens a connection to the database. For simplicity, I am using HSQLDB, an in-memory database. In real systems, you may want to connect to the same type of database you use in production.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1123794"></a><span class="fm-combinumeral">❷</span> Ensures that the database has the right tables and schema. In this example, we create the invoice table. You may need something fancier than that in real applications.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1123811"></a><span class="fm-combinumeral">❸</span> Truncates the table to ensure that no data from previous tests is in the database. Again, you may need something fancier in more complex applications.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1123828"></a><span class="fm-combinumeral">❹</span> Creates the DAO</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1123845"></a><span class="fm-combinumeral">❺</span> Closes the connection. You may decide to close the connection only at the end of the entire test suite. In that case, you can use JUnit’s @BeforeAll and @AfterAll.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1123862"></a><span class="fm-combinumeral">❻</span> The test we wrote</p>
+
+  <p class="body"><a id="pgfId-1025779"></a>The <code class="fm-code-in-text">openConnectionAndCleanup()</code> method is <a id="marker-1025758"></a>annotated as <code class="fm-code-in-text">@BeforeEach</code>, which means JUnit will run the cleanup before every test method. Right now, its implementation is simplistic: it sends a <code class="fm-code-in-text">truncate</code> <code class="fm-code-in-text">table</code> query to<a id="marker-1025784"></a> the database.</p>
+
+  <p class="fm-callout"><a id="pgfId-1025794"></a><span class="fm-callout-head">Note</span> In larger systems, you may prefer to use a framework to help you handle the database. I suggest Flyway (<a class="url" href="https://flywaydb.org">https://flywaydb.org</a>) or Liquibase (<a class="url" href="https://www.liquibase.org">https://www.liquibase.org</a>). In addition to supporting you in evolving your database schema, these frameworks contain helper methods that help clean up the database and make sure it contains the right schema (that is, all tables, constraints, and indexes are there).</p>
+
+  <p class="body"><a id="pgfId-1025834"></a>We also open the connection to the database manually, using JDBC’s most rudimentary API call, <code class="fm-code-in-text">getConnection</code>. (In a real software system, you would probably ask Hibernate or Spring Data for an active database connection.) Finally, we close the connection in <a id="marker-1025823"></a>the <code class="fm-code-in-text">close()</code> method (which happens after every test method).</p>
+
+  <p class="body"><a id="pgfId-1025865"></a>Let’s now test the other method: <code class="fm-code-in-text">allWithAtLeast()</code>. This method <a id="marker-1112804"></a>is more interesting, as the SQL query contains a predicate, <code class="fm-code-in-text">where</code> <code class="fm-code-in-text">value</code> <code class="fm-code-in-text">&gt;=</code> <code class="fm-code-in-text">?</code>. This means we have different scenarios to exercise. Here we can use all of our knowledge about boundary testing and think of on and off points, as we did in chapter 2.</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/09-02.png" width="494" height="267"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1130130"></a>Figure 9.2 On and off points for the <code class="fm-code-in-text">allWithAtLeast()</code> SQL query</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1025874"></a>Figure 9.2 shows the boundary analysis. The on point is the point on the boundary. In this case, it is whatever concrete number we pass in the SQL query. The off point is the nearest point to the on point that flips the condition. In this case, that is whatever concrete number we pass in the SQL query minus one, since it makes the condition false.</p>
+
+  <p class="body"><a id="pgfId-1025899"></a>The following listing shows the JUnit test. Note that we add an in point to the test suite. Although it isn’t needed, it is cheap to do and makes the test more readable:</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1025970"></a>Listing 9.22 Integration test for the <code class="fm-code-in-text">atLeast</code> method</p>
+  <pre class="programlisting"><a id="pgfId-1025919"></a>@Test
+<a id="pgfId-1026022"></a>void atLeast() {
+<a id="pgfId-1026028"></a>  int value = 50;
+<a id="pgfId-1026039"></a> 
+<a id="pgfId-1026034"></a>  Invoice inv1 = new Invoice("Mauricio", value - 1);   <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1026051"></a>  Invoice inv2 = new Invoice("Arie", value);           <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1026063"></a>  Invoice inv3 = new Invoice("Frank", value + 1);      <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1026080"></a> 
+<a id="pgfId-1026075"></a>  dao.save(inv1);                                      <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1026092"></a>  dao.save(inv2);
+<a id="pgfId-1026098"></a>  dao.save(inv3);
+<a id="pgfId-1026109"></a> 
+<a id="pgfId-1026104"></a>  List&lt;Invoice&gt; afterSaving = dao.allWithAtLeast(value);
+<a id="pgfId-1026115"></a>  assertThat(afterSaving)
+<a id="pgfId-1026121"></a>    .containsExactlyInAnyOrder(inv2, inv3);            <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1026133"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1123558"></a><span class="fm-combinumeral">❶</span> The on point of the value &gt;= x boundary is x. The off point is x - 1. A random in point can be x + 1.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1123579"></a><span class="fm-combinumeral">❷</span> Persists them all in the database</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1123596"></a><span class="fm-combinumeral">❸</span> We expect the method to return only inv2 and inv3.</p>
+
+  <p class="body"><a id="pgfId-1026247"></a>The strategy we use to derive the test case is very similar to what we have seen previously. We exercise the on and off points and then ensure that the result is correct. Given <code class="fm-code-in-text">where</code> <code class="fm-code-in-text">value</code> <code class="fm-code-in-text">&gt;=</code> <code class="fm-code-in-text">?</code>, where we concretely replace <code class="fm-code-in-text">?</code> with 50 (see the <code class="fm-code-in-text">value</code> variable and the <code class="fm-code-in-text">inv2</code> variable), we have 50 as on point and 49 as off point (<code class="fm-code-in-text">value</code> <code class="fm-code-in-text">-</code> <code class="fm-code-in-text">1</code> in <code class="fm-code-in-text">inv1</code>). In addition, we test a single in point. While doing so is not necessary, as we discussed in the boundary testing section in chapter 2, one more test case is cheap and makes the test strategy more comprehensible.</p>
+
+  <p class="fm-callout"><a id="pgfId-1026256"></a><span class="fm-callout-head">Note</span> Your tests should run against a test database—a database set up exclusively for your tests. Needless to say, you do not want to run your tests against the production database. <a id="marker-1026268"></a><a id="marker-1026271"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_9"><a id="pgfId-1026277"></a>9.2.3 Setting up infrastructure for SQL tests</h3>
+
+  <p class="body"><a id="pgfId-1026294"></a><a id="marker-1026288"></a><a id="marker-1026290"></a>In our example, it was simple to open a connection, reset the database state, and so on, but that may become more complicated (or lengthy) when your database schema is complicated. Invest in test infrastructure to facilitate your SQL testing and make sure that when a developer wants to write an integration test, they do not need to set up connections manually or handle transactions. This should be a given from the test suite class.</p>
+
+  <p class="body"><a id="pgfId-1026345"></a>A strategy I often apply is to create a base class for my integration tests: say, <code class="fm-code-in-text">SQLIntegrationTestBase</code>. This base class handles all the magic, such as creating a connection, cleaning up the database, and closing the connection. Then the test class, such as <code class="fm-code-in-text">InvoiceDaoTest</code>, which would extend <code class="fm-code-in-text">SQLIntegrationTestBase</code>, focuses only on testing the SQL queries. JUnit allows you to put <code class="fm-code-in-text">BeforeEach</code> and <code class="fm-code-in-text">AfterEach</code> in base classes, and those are executed as if they were in the child test class.</p>
+
+  <p class="body"><a id="pgfId-1026354"></a>Another advantage of having all the database logic in the test base class is that future changes will only need to be made in one place. Listing 9.23 shows an implementation example. Note how the <code class="fm-code-in-text">InvoiceDaoIntegrationTest</code> code focuses primarily on tests.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1026420"></a>Listing 9.23 Base class that handles the database-related logic</p>
+  <pre class="programlisting"><a id="pgfId-1026369"></a>public class SqlIntegrationTestBase {
+<a id="pgfId-1026464"></a> 
+<a id="pgfId-1026459"></a>  private Connection connection;
+<a id="pgfId-1026470"></a>  protected InvoiceDao dao;                                               <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1026487"></a> 
+<a id="pgfId-1026482"></a>  @BeforeEach                                                             <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1026499"></a>  void openConnectionAndCleanup() throws SQLException {
+<a id="pgfId-1026505"></a>    // ...
+<a id="pgfId-1026511"></a>  }
+<a id="pgfId-1026522"></a> 
+<a id="pgfId-1026517"></a>  @AfterEach                                                              <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1026534"></a>  void close() throws SQLException {
+<a id="pgfId-1026540"></a>    // ...
+<a id="pgfId-1026546"></a>  }
+<a id="pgfId-1026557"></a> 
+<a id="pgfId-1026552"></a>}
+<a id="pgfId-1026568"></a> 
+<a id="pgfId-1026563"></a>public class InvoiceDaoIntegrationTest extends SqlIntegrationTestBase {   <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1026585"></a> 
+<a id="pgfId-1026580"></a>  @Test
+<a id="pgfId-1026591"></a>  void save() {                                                           <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1026603"></a>    // ...
+<a id="pgfId-1026609"></a>  }
+<a id="pgfId-1026620"></a> 
+<a id="pgfId-1026615"></a>  @Test
+<a id="pgfId-1026626"></a>  void atLeast() {                                                        <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1026638"></a>    // ...
+<a id="pgfId-1026644"></a>  }
+<a id="pgfId-1026655"></a> 
+<a id="pgfId-1026650"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1123059"></a><span class="fm-combinumeral">❶</span> Makes the InvoiceDao protected so we can access it from the child classes</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1123080"></a><span class="fm-combinumeral">❷</span> The methods are the same as before.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1123097"></a><span class="fm-combinumeral">❸</span> InvoiceDaoTest now extends SqlIntegrationTestBase.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1123114"></a><span class="fm-combinumeral">❹</span> The test class focuses on the tests themselves, as the database infrastructure is handled by the base class.</p>
+
+  <p class="body"><a id="pgfId-1026729"></a>I will not provide a complete code example, because it changes from project to project. Instead, the following sections list what I do in such an integration test base class.</p>
+
+  <p class="fm-head2"><a id="pgfId-1026735"></a>Opening the database connection</p>
+
+  <p class="body"><a id="pgfId-1026765"></a><a id="marker-1026746"></a>This means opening a JDBC connection, a Hibernate connection, or the connection of whatever persistence framework you use. In some cases, you may be able to open a single connection per test suite instead of one per test method. In this case, you may want to declare it as static and use JUnit’s <code class="fm-code-in-text">BeforeAll</code> to open and <code class="fm-code-in-text">AfterAll</code> to close it. <a id="marker-1026770"></a></p>
+
+  <p class="fm-head2"><a id="pgfId-1026777"></a>Opening and committing the transaction</p>
+
+  <p class="body"><a id="pgfId-1026797"></a><a id="marker-1026788"></a>In more complex database operations, it is common to make them all happen within a transaction scope. In some systems, your framework handles this automatically (think of Spring and its <code class="fm-code-in-text">@Transactional</code> annotations). In other systems, developers do it by hand, calling something that begins the transaction and later something that commits it.</p>
+
+  <p class="body"><a id="pgfId-1026806"></a>You should decide on how to handle transactions in your test. A common approach is to open the transaction and, at the end of the test method, commit the transaction. Some people never commit the transaction, but roll it back once the test is over. Because this is an integration test, I suggest committing the transaction for each test method (and not for the entire test class, as we did for the connection). <a id="marker-1026808"></a></p>
+
+  <p class="fm-head2"><a id="pgfId-1026815"></a>Resetting the state of the database</p>
+
+  <p class="body"><a id="pgfId-1026835"></a><a id="marker-1026826"></a>You want all your tests to start with a clean database state. This means ensuring the correct database schema and having no unexpected data in the tables. The simplest way to do this is to truncate every table at the beginning of each test method. If you have many tables, you truncate them all. You can do this by hand (and manually add one <code class="fm-code-in-text">truncate</code> instruction per table in the code) or use a smarter framework that does it automatically.</p>
+
+  <p class="body"><a id="pgfId-1026844"></a>Some developers prefer to truncate the tables before the test method, and others after. In the former case, you are sure the database is clean before running the test. In the latter, you ensure that everything is clean afterward, which helps ensure that it will be clean the next time you run it. I prefer to avoid confusion and truncate before the test method. <a id="marker-1026846"></a></p>
+
+  <p class="fm-head2"><a id="pgfId-1026853"></a>Helper methods that reduce the amount of code in the tests</p>
+
+  <p class="body"><a id="pgfId-1026863"></a><a id="marker-1026864"></a>SQL integration test methods can be long. You may need to create many entities and perform more complex assertions. If code can be reused by many other tests, I extract it to a method and move it to the base class. The test classes now all inherit this utility method and can use it. Object builders, frequent assertions, and specific database operations that are often reused are good candidates to become methods in the base class. <a id="marker-1026868"></a><a id="marker-1026871"></a><a id="marker-1026873"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_10"><a id="pgfId-1026879"></a>9.2.4 Best practices</h3>
+
+  <p class="body"><a id="pgfId-1026896"></a><a id="marker-1026890"></a><a id="marker-1026892"></a>Let’s close this section with some final tips on writing tests for SQL queries.</p>
+
+  <p class="fm-head2"><a id="pgfId-1026901"></a>Use test data builders</p>
+
+  <p class="body"><a id="pgfId-1026921"></a><a id="marker-1026912"></a>Creating invoices in our earlier example was a simple task. The entity was small and contained only two properties. However, entities in real-world systems are much more complex and may require more work to be instantiated. You do not want to write 15 lines of code and pass 20 parameters to create a simple invoice object. Instead, use helper classes that instantiate test objects for you. These <i class="fm-italics">test data builders</i>, as they are known, help you quickly build the data structures you need. I will show how to implement test data builders in chapter 10. <a id="marker-1026926"></a></p>
+
+  <p class="fm-head2"><a id="pgfId-1026933"></a>Use good and reusable assertion APIs</p>
+
+  <p class="body"><a id="pgfId-1026943"></a><a id="marker-1026944"></a>Asserting was easy in the example, thanks to AssertJ. However, many SQL queries return lists of objects, and AssertJ provides several methods to assert them in many different ways. If a specific assertion is required by many test methods, do not be afraid to create a utility method that encapsulates this complex assertion. As I discussed, putting it in the base test class is my usual way to go. <a id="marker-1026948"></a></p>
+
+  <p class="fm-head2"><a id="pgfId-1026955"></a>Minimize the required data</p>
+
+  <p class="body"><a id="pgfId-1026965"></a><a id="marker-1026966"></a>Make sure the input data is minimized. You do not want to have to load hundreds of thousands of elements to exercise your SQL query. If your test only requires data in two tables, only insert data in these two tables. If your test requires no more than 10 rows in that table, only insert 10 rows. <a id="marker-1026970"></a></p>
+
+  <p class="fm-head2"><a id="pgfId-1026977"></a>Take the schema evolution into consideration</p>
+
+  <p class="body"><a id="pgfId-1026987"></a><a id="marker-1026988"></a>In real software systems, database schemas evolve quickly. Make sure your test suite is resilient toward these changes. In other words, database evolution should not break the existing test suite. Of course, you cannot (and you probably do not want to) decouple your code completely from the database. But if you are writing a test and notice that a future change may break it, consider reducing the number of points that will require change. Also, if the database changes, you must propagate the change to the test database. If you are using a framework to help you with migration (like Flyway or Liquibase), you can ask the framework to perform the migrations. <a id="marker-1026992"></a></p>
+
+  <p class="fm-head2"><a id="pgfId-1026999"></a>Consider (or don’t) an in-memory database</p>
+
+  <p class="body"><a id="pgfId-1027016"></a><a id="marker-1027010"></a><a id="marker-1027012"></a>You should decide whether your tests will communicate with a real database (the same type of database as in your production environment) or a simpler database (such as an in-memory database). As always, both sides have advantages and disadvantages. Using the same database as in production makes your tests more realistic: your tests will exercise the same SQL engine that will be exercised in production. On the other hand, running full-blown MySQL is much more expensive, computationally speaking, than a simple in-memory database. All in all, I favor using real databases when I am writing SQL integration tests. <a id="marker-1027017"></a><a id="marker-1027020"></a><a id="marker-1027022"></a><a id="marker-1027024"></a><a id="marker-1027026"></a></p>
+
+  <h2 class="fm-head" id="heading_id_11"><a id="pgfId-1027032"></a>9.3 System tests</h2>
+
+  <p class="body"><a id="pgfId-1027049"></a><a id="marker-1027043"></a><a id="marker-1027045"></a>At some point, your classes, business rules, persistence layers, and so on are combined to form, for example, a web application. Let’s think about how a web application traditionally works. Users visit a web page (that is, their browser makes a request to the server, and the server processes the request and returns a response that the browser shows) and interact with the elements on the page. These interactions often trigger other requests and responses. Considering a pet clinic application: a user goes to the web page that lists all the scheduled appointments for today, clicks the New Appointment button, fills out the name of their pet and its owner, and selects an available time slot. The web page then takes the user back to the Appointments page, which now shows the newly added appointment.</p>
+
+  <p class="body"><a id="pgfId-1027054"></a>If this pet clinic web application was developed using test-driven approaches and everything we discussed in the previous chapters of this book, the developer already wrote (systematic) unit tests for each unit in the software. For example, the <code class="fm-code-in-text">Appointment</code> class already <a id="marker-1027065"></a>has unit tests of its own.</p>
+
+  <p class="body"><a id="pgfId-1027075"></a>In this section, we discuss what to test in a web application and what tools we can use to automatically open the browser and interact with the web page. We also discuss some best practices for writing system tests.</p>
+
+  <p class="fm-callout"><a id="pgfId-1027081"></a><span class="fm-callout-head">Note</span> Although I use a web application as an example of how to write a system test, the ideas in this section apply to any other type of software system.</p>
+
+  <h3 class="fm-head1" id="heading_id_12"><a id="pgfId-1027097"></a>9.3.1 An introduction to Selenium</h3>
+
+  <p class="body"><a id="pgfId-1027116"></a><a id="marker-1113335"></a><a id="marker-1113336"></a><a id="marker-1113337"></a>Before diving into the best practices, let’s get familiar with the mechanics of writing such tests. For that, we will rely on Selenium. The Selenium framework (<a class="url" href="http://www.selenium.dev">www.selenium.dev</a>) is a well-known tool that supports developers in testing web applications. Selenium can connect to any browser and control it. Then, through the Selenium API, we can give commands such as “open this URL,” “find this HTML element in the page and get its inner text,” and “click that button.” We will use commands like these to test our web applications.</p>
+
+  <p class="body"><a id="pgfId-1027121"></a>We use the Spring PetClinic web application (<a class="url" href="https://github.com/spring-projects/spring-petclinic">https://github.com/spring-projects/spring-petclinic</a>) as an example throughout this section. If you are a Java web developer, you are probably familiar with Spring Boot. For those who are not, Spring Boot is the state-of-the-art framework for web development in Java. Spring PetClinic is a simple web application that illustrates how powerful and easy to use Spring Boot is. Its code base contains the two lines required for you to download (via Git) and run (via Maven) the web application. Once you do, you should be able to visit your localhost:8080 and see the web application, shown in figures 9.3 and 9.4.</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/09-03.png" width="956" height="359"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1130226"></a>Figure 9.3 First screenshot of the Spring PetClinic application</p>
+  </div>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/09-04.png" width="850" height="493"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1130182"></a>Figure 9.4 Second screenshot of the Spring PetClinic application</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1027162"></a>Before discussing testing techniques and best practices, let’s get started with Selenium. The Selenium API is intuitive and easy to use. The following listing shows our first test.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1027233"></a>Listing 9.24 Our first Selenium test</p>
+  <pre class="programlisting"><a id="pgfId-1027182"></a>public class FirstSeleniumTest {
+<a id="pgfId-1027277"></a> 
+<a id="pgfId-1027272"></a>  @Test
+<a id="pgfId-1027283"></a>  void firstSeleniumTest() {
+<a id="pgfId-1027289"></a>    WebDriver browser = new SafariDriver();                             <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1027306"></a> 
+<a id="pgfId-1027301"></a>    browser.get("http:/ /localhost:8080");                               <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1027323"></a> 
+<a id="pgfId-1027318"></a>    WebElement welcomeHeader = browser.findElement(By.tagName("h2"));   <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1027340"></a> 
+<a id="pgfId-1027335"></a>    assertThat(welcomeHeader.getText())
+<a id="pgfId-1027346"></a>      .isEqualTo("Welcome");                                            <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1027363"></a> 
+<a id="pgfId-1027358"></a>    browser.close();                                                    <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1027375"></a>  }
+<a id="pgfId-1027381"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1122670"></a><span class="fm-combinumeral">❶</span> Selects a driver. The driver indicates which browser to use.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1122691"></a><span class="fm-combinumeral">❷</span> Visits a page at the given URL</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1122708"></a><span class="fm-combinumeral">❸</span> Finds an HTML element in the page</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1122725"></a><span class="fm-combinumeral">❹</span> Asserts that the page contains what we want</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1122742"></a><span class="fm-combinumeral">❺</span> Closes the browser and the selenium session</p>
+
+  <p class="body"><a id="pgfId-1027471"></a>Let’s go line by line:</p>
+
+  <ol class="calibre14">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1027521"></a>The first line, <code class="fm-code-in-text">WebDriver</code> <code class="fm-code-in-text">browser</code> <code class="fm-code-in-text">=</code> <code class="fm-code-in-text">new</code> <code class="fm-code-in-text">SafariDriver()</code>, instantiates a Safari browser. <code class="fm-code-in-text">WebDriver</code> is the abstraction that all other browsers implement. If you would like to try a different browser, you can use <code class="fm-code-in-text">new</code> <code class="fm-code-in-text">FirefoxBrowser()</code> or <code class="fm-code-in-text">new</code> <code class="fm-code-in-text">ChromeBrowser()</code> instead. I am using Safari for two reasons:</p>
+
+      <p class="fm-list-body-abc">a) <a id="pgfId-1027530"></a>I am a Mac user, and Safari is often my browser of choice.</p>
+
+      <p class="fm-list-body-abc">b) <a id="pgfId-1027548"></a>Other browsers, such as Chrome, may require you to download an external application that enables Safari to communicate with it. In the case of Chrome, you need to download ChromeDriver (<a class="url" href="https://chromedriver.chromium.org/downloads">https://chromedriver.chromium.org/downloads</a>).</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1028518"></a>With an instantiated browser, we visit a URL by means of <code class="fm-code-in-text">browser.get("url");</code>. Whatever URL we pass, the browser will visit. Remember that Selenium is not simulating the browser: it is using the real browser.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1028537"></a>The test visits the home page of the Spring PetClinic web app (figure 9.3). This website is very simple and shows a brief message (“Welcome”) and a cute picture of a dog and a cat. To ensure that we can extract data from the page we are visiting, let’s ensure that the “Welcome” message is on the screen. To do that, we first must locate the element that contains the message. Knowledge of HTML and DOM is required here.</p>
+
+      <p class="fm-list-body"><a class="calibre13" id="pgfId-1028599"></a>If you inspect the HTML of the Spring PetClinic, you see that the message is within an <code class="fm-code-in-text">h2</code> tag. Later, we discuss the best ways to locate elements on the page; but for now, we locate the only <code class="fm-code-in-text">h2</code> element. To do so, we use Selenium’s <code class="fm-code-in-text">findElement()</code> function, which receives <a class="calibre13" id="marker-1028578"></a>a strategy that Selenium will use to find the element. We can find elements by their names, IDs, CSS classes, and tag name. <code class="fm-code-in-text">By.tagName("h2")</code> returns a <code class="fm-code-in-text">WebElement</code>, an abstraction representing an element on the web page.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1028634"></a>We extract some properties of this element: in particular, the text inside the <code class="fm-code-in-text">h2</code> tag. For that, we call <a class="calibre13" id="marker-1028623"></a>the <code class="fm-code-in-text">getText()</code> method. Because we expect it to return “Welcome”, we write an assertion the same way we are used to. Remember, this is an automated test. If the web element does not contain “Welcome”, the test will fail.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1028643"></a>We close the browser. This is an important step, as it disconnects Selenium from the browser. It is always a good practice to close any resources you use in your tests.</p>
+    </li>
+  </ol>
+
+  <p class="body"><a id="pgfId-1028653"></a>If you run the test, you should see Safari (or your browser of choice) open, be automatically controlled by Selenium, and then close. This will get more exciting when we start to fill out forms. <a id="marker-1028655"></a><a id="marker-1028658"></a><a id="marker-1028660"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_13"><a id="pgfId-1028666"></a>9.3.2 Designing page objects</h3>
+
+  <p class="body"><a id="pgfId-1028691"></a><a id="marker-1028677"></a><a id="marker-1028679"></a><a id="marker-1028681"></a>For web applications and system testing, we do not want to exercise just one unit of the system but the entire system. We want to do what we called <i class="fm-italics">system testing</i> in chapter 1. What should we test in a web application, with all the components working together and an infinite number of different paths to test?</p>
+
+  <p class="body"><a id="pgfId-1028716"></a>Following what we discussed in the testing pyramid, all the units of the web application are at this point (we hope) already tested at the unit or integration level. The entities in the Spring PetClinic, such as <code class="fm-code-in-text">Owner</code> or <code class="fm-code-in-text">Pet</code>, have been unit-tested, and all the queries that may exist in DAOs have also been tested via integration tests similar to what we just did.</p>
+
+  <p class="body"><a id="pgfId-1028725"></a>But if everything has already been tested, what is left for us to test? We can test the different <i class="fm-italics">user journeys</i> via web testing. Here is Fowler’s definition of a user journey test (2003): “User-journey tests are a form of business-facing test, designed to simulate a typical user’s journey through the system. Such a test will typically cover a user’s entire interaction with the system to achieve some goal. They act as one path in a use case.”</p>
+
+  <p class="body"><a id="pgfId-1028740"></a>Think of possible user journeys in the Spring PetClinic application. One possible journey is the user trying to find owners. Other possible journeys include the user adding a new owner, adding a pet to the owner, or adding a log entry of the pet after the pet visits the veterinarian.</p>
+
+  <p class="body"><a id="pgfId-1028746"></a>Let’s test one journey: the <i class="fm-italics">find owners</i> journey. We will code this test using a Page Object pattern. Page objects (POs) help us <a id="marker-1028757"></a><a id="marker-1028760"></a>write more maintainable and readable web tests. The idea of the Page Object pattern is to define a class that encapsulates all the (Selenium) logic involved in manipulating one page.</p>
+
+  <p class="body"><a id="pgfId-1028791"></a>For example, if the application has a List of Owners page that shows all the owners, we will create a <code class="fm-code-in-text">ListOfOwnersPage</code> class that <a id="marker-1028780"></a>will know how to handle it (such as extracting the names of the owners from the HTML). If the application has an Add Owner page, we will create an <code class="fm-code-in-text">AddOwnerPage</code> class that <a id="marker-1028796"></a>will know how to handle it (such as filling out the form with the name of the new owner and clicking the button that saves it). Later, we will put all these POs together in a JUnit test, simulate the whole journey, and assert that it went as expected.</p>
+
+  <p class="body"><a id="pgfId-1028806"></a>When I write Selenium web tests, I prefer to start by designing my POs. Let’s begin by modeling the first page of this journey: the Find Owners page. This page is shown in figure 9.5, and the page can be accessed by clicking the Find Owners link in the menu.</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/09-05.png" width="752" height="254"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1130268"></a>Figure 9.5 The Find Owners page</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1028822"></a>This page primarily contains one interesting thing to be modeled: the “find owners” functionality. For that to work, we need to fill in the Last Name input field and click the Find Owners button. Let’s start with that.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1028893"></a>Listing 9.25 FindOwners page object</p>
+  <pre class="programlisting"><a id="pgfId-1028842"></a>public class FindOwnersPage extends PetClinicPageObject {
+<a id="pgfId-1028937"></a> 
+<a id="pgfId-1028932"></a>  public FindOwnersPage(WebDriver driver) {                             <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1028949"></a>    super(driver);
+<a id="pgfId-1028955"></a>  }
+<a id="pgfId-1028966"></a> 
+<a id="pgfId-1028961"></a>  public ListOfOwnersPage findOwners(String ownerLastName) {            <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1028978"></a>    driver.findElement(By.id("lastName")).sendKeys(ownerLastName);      <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1028995"></a> 
+<a id="pgfId-1028990"></a>    WebElement findOwnerButton = driver
+<a id="pgfId-1029001"></a>      .findElement(By.id("search-owner-form"))
+<a id="pgfId-1029007"></a>      .findElement(By.tagName("button"));
+<a id="pgfId-1029013"></a>    findOwnerButton.click();                                            <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1029030"></a> 
+<a id="pgfId-1029025"></a>    ListOfOwnersPage listOfOwnersPage = new ListOfOwnersPage(driver);   <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1029042"></a>    listOfOwnersPage.isReady();                                         <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1029054"></a>    return listOfOwnersPage;
+<a id="pgfId-1029060"></a>  }
+<a id="pgfId-1029066"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1122249"></a><span class="fm-combinumeral">❶</span> The constructor of all our POs receives the Selenium driver. The PO needs it to manipulate the web page.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1122270"></a><span class="fm-combinumeral">❷</span> This method is responsible for finding an owner on this page based on their last name.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1122287"></a><span class="fm-combinumeral">❸</span> Finds the HTML element whose ID is lastName and types the last name of the owner we are looking for.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1122304"></a><span class="fm-combinumeral">❹</span> Clicks the Find Owner button. We find it on the page by its ID.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1122321"></a><span class="fm-combinumeral">❺</span> Takes us to another page. To represent that, we make the PO return the new page, also as a PO.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1122338"></a><span class="fm-combinumeral">❻</span> Waits for the page to be ready before returning it</p>
+
+  <p class="body"><a id="pgfId-1029172"></a>Let’s look at this code line by line:</p>
+
+  <ol class="calibre14">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1029202"></a>The newly created class <code class="fm-code-in-text">FindOwnersPage</code> represents the Find Owners page. It inherits from another class, <code class="fm-code-in-text">PetClinicPageObject</code>, which will serve as a common abstraction for our POs. I show its source code later.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1029237"></a>Our POs always have a constructor that receives a <code class="fm-code-in-text">WebDriver</code>. Everything we do with Selenium starts with <a class="calibre13" id="marker-1029226"></a>the <code class="fm-code-in-text">WebDriver</code> class, which we will instantiate later from a JUnit test method.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1029266"></a>Methods in this PO represent actions we can take with the page we are modeling. The first action we modeled is <code class="fm-code-in-text">findOwners()</code>, which fills the Last Name input with the value passed to the <code class="fm-code-in-text">ownerLastName</code> string parameter.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1029311"></a>The implementation of the method is straightforward. We first locate the HTML input element. By inspecting the Spring PetClinic web page, we see that the field has an ID. Elements with IDs are usually easy to find, as IDs are unique in the page. With the element in hand, we use the <code class="fm-code-in-text">sendKeys()</code> function to <a class="calibre13" id="marker-1029290"></a>fill in the input with <code class="fm-code-in-text">ownerLastName</code>. Selenium’s API is fluent, so we can chain the method calls: <code class="fm-code-in-text">findElement(...).sendKeys(...)</code>.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1029320"></a>We search for the Find Owner button. When inspecting the page, we see that this button does not have a specific ID. This means we need to find another way to locate it on the HTML page. My first instinct is to see if this button’s HTML form has an ID. It does: <code class="fm-code-in-text">search-owner-form</code>. We can locate the form and then locate a button inside it (as this form has one button).</p>
+
+      <p class="fm-list-body"><a class="calibre13" id="pgfId-1029424"></a>Note how we chain calls for <a class="calibre13" id="marker-1029341"></a>the <code class="fm-code-in-text">findElement</code> method. Remember that HTML elements may have other HTML elements inside them. Therefore, the first <code class="fm-code-in-text">findElement()</code> returns the form, and the second <code class="fm-code-in-text">findElement</code> searches only the elements inside the element returned by the first <code class="fm-code-in-text">findElement</code>. With the button available to us, we call the <code class="fm-code-in-text">click()</code> method, which clicks <a class="calibre13" id="marker-1029397"></a>the button. The form is now submitted.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1116136"></a>The website takes us to another page that shows the list of owners with the searched last name. This is no longer the Find Owners page, so we should now use another PO to represent the current page. That is why we make the <code class="fm-code-in-text">findOwners()</code> method return <a class="calibre13" id="marker-1029413"></a>a <code class="fm-code-in-text">ListOfOwnersPage</code>: one page takes you to another page.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1029459"></a>Before we return the newly instantiated <code class="fm-code-in-text">ListOfOwnersPage</code>, we call <a class="calibre13" id="marker-1029448"></a>an <code class="fm-code-in-text">isReady()</code> method. This method waits for the Owners page to be ready. Remember that this is a web application, so requests and responses may take some time. If we try to look for an element from the page, but the element is not there yet, the test will fail. Selenium has a set of APIs that enable us to wait for such things, which we will see soon.</p>
+    </li>
+  </ol>
+
+  <p class="body"><a id="pgfId-1029468"></a>We still have more POs to model before writing the test for the entire journey. Let’s model the Owners page, shown in figure 9.6. This page contains a table in which each row represents one owner.</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/09-06.png" width="752" height="250"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1130310"></a>Figure 9.6 The Owners page</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1029484"></a>Our <code class="fm-code-in-text">ListOfOwnersPage</code> PO models a single action that will be very important for our test later: getting the list of owners in this table. The following listing shows the source code.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1029564"></a>Listing 9.26 <code class="fm-code-in-text">ListOfOwners</code> PO</p>
+  <pre class="programlisting"><a id="pgfId-1029513"></a>public class ListOfOwnersPage extends PetClinicPageObject {
+<a id="pgfId-1029612"></a>  public ListOfOwnersPage(WebDriver driver) {                            <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1029624"></a>    super(driver);
+<a id="pgfId-1029630"></a>  }
+<a id="pgfId-1029641"></a> 
+<a id="pgfId-1029636"></a>  @Override
+<a id="pgfId-1029647"></a>  public void isReady() {                                                <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1029659"></a>    WebDriverWait wait = new WebDriverWait (driver, Duration.ofSeconds(3));
+<a id="pgfId-1029665"></a>    wait.until(
+<a id="pgfId-1029671"></a>      ExpectedConditions.visibilityOfElementLocated(
+<a id="pgfId-1029677"></a>      By.id("owners")));                                                 <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1029689"></a>  }
+<a id="pgfId-1029700"></a> 
+<a id="pgfId-1029695"></a>  public List&lt;OwnerInfo&gt; all() {
+<a id="pgfId-1029706"></a>    List&lt;OwnerInfo&gt; owners = new ArrayList&lt;&gt;();                          <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1029723"></a> 
+<a id="pgfId-1029718"></a>    WebElement table = driver.findElement(By.id("owners"));              <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1029735"></a>    List&lt;WebElement&gt; rows = table.findElement(By.tagName(
+<a id="pgfId-1029741"></a>      <span class="fm-code-continuation-arrow">➥</span> "tbody")).findElements(By.tagName("tr"));
+<a id="pgfId-1029763"></a> 
+<a id="pgfId-1029768"></a> 
+<a id="pgfId-1029758"></a>    for (WebElement row : rows) {                                        <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1029785"></a> 
+<a id="pgfId-1029780"></a>      List&lt;WebElement&gt; columns = row.findElements(By.tagName("td"));     <span class="fm-combinumeral">❼</span>
+<a id="pgfId-1029802"></a> 
+<a id="pgfId-1029797"></a>      String name = columns.get(0).getText().trim();                     <span class="fm-combinumeral">❽</span>
+<a id="pgfId-1029814"></a>      String address = columns.get(1).getText().trim();
+<a id="pgfId-1029820"></a>      String city = columns.get(2).getText().trim();
+<a id="pgfId-1029826"></a>      String telephone = columns.get(3).getText().trim();
+<a id="pgfId-1029832"></a>      String pets = columns.get(4).getText().trim();
+<a id="pgfId-1122241"></a> 
+<a id="pgfId-1029838"></a>      OwnerInfo ownerInfo = new OwnerInfo(
+<a id="pgfId-1029849"></a>        <span class="fm-code-continuation-arrow">➥</span> name, address, city, telephone, pets);                        <span class="fm-combinumeral">❾</span>
+<a id="pgfId-1029872"></a>      owners.add(ownerInfo);
+<a id="pgfId-1029878"></a>    }
+<a id="pgfId-1029889"></a> 
+<a id="pgfId-1029884"></a>    return owners;                                                       <span class="fm-combinumeral">❿</span>
+<a id="pgfId-1029901"></a>  }
+<a id="pgfId-1029907"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1121477"></a><span class="fm-combinumeral">❶</span> As we know, all POs receive the WebDriver in the constructor.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1121498"></a><span class="fm-combinumeral">❷</span> The isReady method lets us know whether the page is ready in the browser so we can start manipulating it. This is important, as some pages take more time than others to load.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1121515"></a><span class="fm-combinumeral">❸</span> The Owners page is considered ready when the list of owners is loaded. We find the table with owners by its ID. We wait up to three seconds for that to happen.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1121532"></a><span class="fm-combinumeral">❹</span> Creates a list to hold all the owners. For that, we create an OwnerInfo class.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1121552"></a><span class="fm-combinumeral">❺</span> Gets the HTML table and all its rows. The table’s ID is owners, which makes it easy to find.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1121569"></a><span class="fm-combinumeral">❻</span> For each row in the table ...</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1121586"></a><span class="fm-combinumeral">❼</span> ... gets the HTML row</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1121603"></a><span class="fm-combinumeral">❽</span> Gets the value of each HTML cell. The first column contains the name, the second the address, and so on.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1121620"></a><span class="fm-combinumeral">❾</span> Once all the information is collected from the HTML, we build an OwnerInfo class.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1121637"></a><span class="fm-combinumeral">❿</span> Returns a list of OwnerInfos. This object knows nothing about the HTML page.</p>
+
+  <p class="body"><a id="pgfId-1030077"></a>Let’s walk through this code:</p>
+
+  <ol class="calibre14">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1030117"></a>Our class is a PO, so it extends from <code class="fm-code-in-text">PetClinicPageObject</code>, which forces the class to have a constructor that receives a <code class="fm-code-in-text">WebDriver</code>. We still have not seen the <code class="fm-code-in-text">PetClinicPageObject</code> code, but we will soon.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1030172"></a>The <code class="fm-code-in-text">isReady()</code> method (which you can see by the <code class="fm-code-in-text">@Override</code> annotation is <a class="calibre13" id="marker-1030151"></a>also defined in the base class) knows when this page is loaded. How do we do this? The simplest way is to wait a few seconds for a specific element to appear on the page. In this case, we wait for the element with ID “owners” (the table with all the owners) to be on the page. We tell <code class="fm-code-in-text">WebDriverWait</code> to wait up to three seconds for the <code class="fm-code-in-text">owners</code> element to be visible. If the element is not there after three seconds, the method throws an exception. Why three seconds? That was a guess; in practice, you have to find the number that best fits your test.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1030271"></a>We return to our main action: the <code class="fm-code-in-text">all()</code> method. The objective is to extract the names of all the owners. Because this is an HTML table, we know that each row is in a <code class="fm-code-in-text">tr</code> element. The table has a header, which we want to ignore. So, we locate <code class="fm-code-in-text">#owners</code> <code class="fm-code-in-text">&gt;</code> <code class="fm-code-in-text">tbody</code> <code class="fm-code-in-text">&gt;</code> <code class="fm-code-in-text">tr</code> or, in other words, all <code class="fm-code-in-text">tr</code>s inside <code class="fm-code-in-text">tbody</code> that are inside the <code class="fm-code-in-text">owners</code> element. We do this using nested <code class="fm-code-in-text">findElement()</code> and <code class="fm-code-in-text">findElements()</code> calls. Note the difference between the two methods: one returns a single element, the other multiple elements (useful in this case, as we know there are many <code class="fm-code-in-text">tr</code>s to be returned).</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1030356"></a>With the list of rows ready, we iterate over each element. We know that <code class="fm-code-in-text">tr</code>s are composed of <code class="fm-code-in-text">td</code>s. We find all <code class="fm-code-in-text">td</code>s inside the current <code class="fm-code-in-text">tr</code> and extract the text inside each <code class="fm-code-in-text">td</code>, one by one. We know the first cell contains the name, the second cell contains the address, and so on. We then build an object to hold this information: the <code class="fm-code-in-text">OwnerInfo</code> class. This is <a class="calibre13" id="marker-1030345"></a>a simple class with getters only. We also <code class="fm-code-in-text">trim()</code> the string to get rid of any whitespaces in the HTML.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1030365"></a>We return the list of owners in the table.</p>
+    </li>
+  </ol>
+
+  <p class="body"><a id="pgfId-1030375"></a>Now, searching for an owner with their surname takes us to the next page, where we can extract the list of owners. Figure 9.7 illustrates the two POs we have implemented so far and which pages of the web application they model.</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/09-07.png" width="521" height="402"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1130352"></a>Figure 9.7 An illustration of web pages and their respective POs</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1030391"></a>We are only missing two things. First and foremost, to search for an owner, the owner must be in the application. How do we add a new owner? We use the Add Owner page. So, we need to model one more PO. Second we need a way to visit these pages for the first time.</p>
+
+  <p class="fm-callout"><a id="pgfId-1030411"></a><span class="fm-callout-head">Note</span> <i class="fm-italics">Much more work</i> is required to write a test for a single journey than we are used to when doing unit tests. System tests are naturally more expensive to create. But I also want you to recognize that adding a new test becomes easier once you have an initial structure with POs. The high cost comes now, when building this initial infrastructure.</p>
+
+  <p class="body"><a id="pgfId-1030434"></a>Let’s start with adding an owner. The next listing shows the <code class="fm-code-in-text">AddOwnerPage</code> PO.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1116184"></a>Listing 9.27 <code class="fm-code-in-text">.AddOwnerPage</code> page object</p>
+  <pre class="programlisting"><a id="pgfId-1030462"></a>public class AddOwnerPage extends PetClinicPageObject {
+<a id="pgfId-1030476"></a>  public AddOwnerPage(WebDriver driver) {                  <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1030488"></a>    super(driver);
+<a id="pgfId-1030494"></a>  }
+<a id="pgfId-1030505"></a> 
+<a id="pgfId-1030500"></a>  @Override
+<a id="pgfId-1030511"></a>  public void isReady() {
+<a id="pgfId-1030517"></a>    WebDriverWait wait = new WebDriverWait (driver, Duration.ofSeconds(3));
+<a id="pgfId-1030523"></a>    wait.until(
+<a id="pgfId-1030529"></a>      ExpectedConditions.visibilityOfElementLocated(
+<a id="pgfId-1030535"></a>      By.id("add-owner-form")));                           <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1030547"></a>  }
+<a id="pgfId-1030558"></a> 
+<a id="pgfId-1030553"></a>  public OwnerInformationPage add(AddOwnerInfo ownerToBeAdded) {
+<a id="pgfId-1030564"></a>    driver.findElement(By.id("firstName"))
+<a id="pgfId-1030570"></a>      .sendKeys(ownerToBeAdded.getFirstName());            <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1030582"></a>    driver.findElement(By.id("lastName"))
+<a id="pgfId-1030588"></a>      .sendKeys(ownerToBeAdded.getLastName());
+<a id="pgfId-1030594"></a>    driver.findElement(By.id("address"))
+<a id="pgfId-1030600"></a>      .sendKeys(ownerToBeAdded.getAddress());
+<a id="pgfId-1030606"></a>    driver.findElement(By.id("city"))
+<a id="pgfId-1030612"></a>      .sendKeys(ownerToBeAdded.getCity());
+<a id="pgfId-1030618"></a>    driver.findElement(By.id("telephone"))
+<a id="pgfId-1030624"></a>      .sendKeys(ownerToBeAdded.getTelephone());
+<a id="pgfId-1030630"></a>    driver.findElement(By.id("add-owner-form"))
+<a id="pgfId-1030641"></a>        .findElement(By.tagName("button"))
+<a id="pgfId-1030647"></a>        .click();                                          <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1030664"></a> 
+<a id="pgfId-1030659"></a>    OwnerInformationPage ownerInformationPage =
+<a id="pgfId-1030670"></a>      new OwnerInformationPage(driver);                    <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1030682"></a>    ownerInformationPage.isReady();
+<a id="pgfId-1030688"></a>    return ownerInformationPage;
+<a id="pgfId-1030694"></a>  }
+<a id="pgfId-1030700"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1121124"></a><span class="fm-combinumeral">❶</span> Again, the PO receives the WebDriver.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1121145"></a><span class="fm-combinumeral">❷</span> The HTML page is ready when the form appears on the screen.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1121162"></a><span class="fm-combinumeral">❸</span> Fills out all the HTML form elements with the data provided in AddOwnerInfo, a class created for that purpose. We find the form elements by their IDs.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1121179"></a><span class="fm-combinumeral">❹</span> Clicks the Add button</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1121196"></a><span class="fm-combinumeral">❺</span> When an owner is added, the web application redirects us to the Owner Information page. The method then returns the PO of the class we are redirected to.</p>
+
+  <p class="body"><a id="pgfId-1030822"></a>The implementation should not be a surprise. The <code class="fm-code-in-text">isReady()</code> method waits for the form to be ready. The <code class="fm-code-in-text">add()</code> method, which is <a id="marker-1030811"></a>the relevant method here, finds the input elements (which all have specific IDs, making our lives much easier), fills them in, finds the Add Owner button, and returns the PO that represents the page we go to after adding an owner: <code class="fm-code-in-text">OwnerInformationPage</code>. I do not show its code, to save space, but it is a PO much like the others we have seen.</p>
+
+  <p class="body"><a id="pgfId-1030853"></a>Finally, all we need is a way to visit the pages. I usually have a <code class="fm-code-in-text">visit()</code> method in <a id="marker-1030842"></a>my POs to take me directly to that page. Let’s add a <code class="fm-code-in-text">visit()</code> method to the POs we need to visit: the Find Owner page and the Add Owner page.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1030913"></a>Listing 9.28 Adding <code class="fm-code-in-text">visit()</code> methods to all the POs</p>
+  <pre class="programlisting"><a id="pgfId-1030862"></a>// FindOwnersPage
+<a id="pgfId-1030965"></a>public void visit() {
+<a id="pgfId-1030971"></a>  visit("/owners/find");
+<a id="pgfId-1030977"></a>}
+<a id="pgfId-1030988"></a> 
+<a id="pgfId-1030983"></a>// AddOwnersPage
+<a id="pgfId-1030994"></a>public void visit() {
+<a id="pgfId-1031000"></a>  visit("/owners/new");
+<a id="pgfId-1031006"></a>}</pre>
+
+  <p class="body"><a id="pgfId-1031028"></a>Note that these <code class="fm-code-in-text">visit()</code> methods call another <code class="fm-code-in-text">visit</code> method in the superclass.</p>
+
+  <p class="body"><a id="pgfId-1031037"></a>Now it is time to show the PO base class. This is where we put common behavior that all our POs have. Base classes like these support and simplify the development of our tests.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1031094"></a>Listing 9.29 Initial code of the PO base class</p>
+  <pre class="programlisting"><a id="pgfId-1031043"></a>public abstract class PetClinicPageObject {
+<a id="pgfId-1031138"></a> 
+<a id="pgfId-1031133"></a>  protected final WebDriver driver;                     <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1031155"></a> 
+<a id="pgfId-1031150"></a>  public PetClinicPageObject(WebDriver driver) {
+<a id="pgfId-1031161"></a>    this.driver = driver;
+<a id="pgfId-1031167"></a>  }
+<a id="pgfId-1031178"></a> 
+<a id="pgfId-1031173"></a>  public void visit() {                                 <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1031190"></a>    throw new RuntimeException("This page does not have a visit link");
+<a id="pgfId-1031196"></a>  }
+<a id="pgfId-1031202"></a>  protected void visit(String url) {                    <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1031219"></a>    driver.get("http:/ /localhost:8080" + url);          <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1031231"></a>    isReady();
+<a id="pgfId-1031237"></a>  }
+<a id="pgfId-1031248"></a> 
+<a id="pgfId-1031243"></a>  public abstract void isReady();                       <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1031260"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1120777"></a><span class="fm-combinumeral">❶</span> The base class keeps the reference to the WebDriver.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1120798"></a><span class="fm-combinumeral">❷</span> The visit method should be overridden by the child classes.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1120815"></a><span class="fm-combinumeral">❸</span> Provides a helper method for the base classes to help them visit the page</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1120835"></a><span class="fm-combinumeral">❹</span> The hard-coded URL can come from a configuration file.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1120852"></a><span class="fm-combinumeral">❺</span> All POs are forced to implement an isReady method. Making methods abstract is a nice way to force all POs to implement their minimum required behavior.</p>
+
+  <p class="body"><a id="pgfId-1031386"></a>You can make this PO base class as complex as you need. In more involved apps, the base class is more complex and full of helper methods. For now, we have a constructor that receives <code class="fm-code-in-text">WebDriver</code> (forcing all POs to have the same constructor), a <code class="fm-code-in-text">visit()</code> method that can be overridden by child POs, a helper <code class="fm-code-in-text">visit()</code> method that completes the URL with the localhost URL, and an abstract <code class="fm-code-in-text">isReady()</code> method that forces all POs to implement this functionality.</p>
+
+  <p class="body"><a id="pgfId-1031395"></a>We now have enough POs to model our first journey. The following listing shows a JUnit test.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1031452"></a>Listing 9.30 Our first journey: find owners</p>
+  <pre class="programlisting"><a id="pgfId-1031401"></a>public class FindOwnersFlowTest {
+<a id="pgfId-1031496"></a> 
+<a id="pgfId-1031491"></a>  protected static WebDriver driver = new SafariDriver();          <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1031513"></a> 
+<a id="pgfId-1031508"></a>  private FindOwnersPage page = new FindOwnersPage(driver);        <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1031530"></a> 
+<a id="pgfId-1031525"></a>  @AfterAll
+<a id="pgfId-1031536"></a>  static void close() {                                            <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1031548"></a>    driver.close();
+<a id="pgfId-1031554"></a>  }
+<a id="pgfId-1031565"></a> 
+<a id="pgfId-1031560"></a>  @Test
+<a id="pgfId-1031571"></a>  void findOwnersBasedOnTheirLastNames() {
+<a id="pgfId-1031577"></a>    AddOwnerInfo owner1 = new AddOwnerInfo(
+<a id="pgfId-1031583"></a>      <span class="fm-code-continuation-arrow">➥</span> "John", "Doe", "some address", "some city", "11111");     <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1031606"></a>    AddOwnerInfo owner2 = new AddOwnerInfo(
+<a id="pgfId-1031612"></a>      <span class="fm-code-continuation-arrow">➥</span> "Jane", "Doe", "some address", "some city", "11111");
+<a id="pgfId-1031629"></a>    AddOwnerInfo owner3 = new AddOwnerInfo(
+<a id="pgfId-1031635"></a>      <span class="fm-code-continuation-arrow">➥</span> "Sally", "Smith", "some address", "some city", "11111");
+<a id="pgfId-1031652"></a>    addOwners(owner1, owner2, owner3);
+<a id="pgfId-1031663"></a> 
+<a id="pgfId-1031658"></a>    page.visit();                                                  <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1031680"></a> 
+<a id="pgfId-1031675"></a>    ListOfOwnersPage listPage = page.findOwners("Doe");            <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1031692"></a>    List&lt;OwnerInfo&gt; all = listPage.all();
+<a id="pgfId-1031703"></a> 
+<a id="pgfId-1031698"></a>    assertThat(all).hasSize(2).
+<a id="pgfId-1031709"></a>        containsExactlyInAnyOrder(
+<a id="pgfId-1031715"></a>        owner1.toOwnerInfo(), owner2.toOwnerInfo());               <span class="fm-combinumeral">❼</span>
+<a id="pgfId-1031727"></a>  }
+<a id="pgfId-1031733"></a>  private void addOwners(AddOwnerInfo... owners) {                 <span class="fm-combinumeral">❽</span>
+<a id="pgfId-1031750"></a>    AddOwnerPage addOwnerPage = new AddOwnerPage(driver);
+<a id="pgfId-1031761"></a> 
+<a id="pgfId-1031756"></a>    for (AddOwnerInfo owner : owners) {
+<a id="pgfId-1031767"></a>      addOwnerPage.visit();
+<a id="pgfId-1031773"></a>      addOwnerPage.add(owner);
+<a id="pgfId-1031779"></a>    }
+<a id="pgfId-1031785"></a>  }
+<a id="pgfId-1031791"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1120246"></a><span class="fm-combinumeral">❶</span> Creates a concrete WebDriver, the SafariDriver. Later, we will make this more flexible so our tests can run in multiple browsers.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1120267"></a><span class="fm-combinumeral">❷</span> Creates the FindOwners PO, where the test should start</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1120284"></a><span class="fm-combinumeral">❸</span> When the test suite is done, we close the Selenium driver. This method is also a good candidate to move to a base class.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1120301"></a><span class="fm-combinumeral">❹</span> Creates a bunch of owners to be added. We need owners before testing the listing page.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1120318"></a><span class="fm-combinumeral">❺</span> Visits the Find Owners page</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1120335"></a><span class="fm-combinumeral">❻</span> Looks for all owners with Doe as their surname</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1120352"></a><span class="fm-combinumeral">❼</span> Asserts that we find John and Jane from the Doe family</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1120369"></a><span class="fm-combinumeral">❽</span> The addOwners helper method adds an owner via the Add Owner page.</p>
+
+  <p class="body"><a id="pgfId-1031929"></a>Let’s walk through this code:</p>
+
+  <ol class="calibre14">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1031975"></a>At the top of the class, we create a static instance of <code class="fm-code-in-text">SafariDriver</code>, which we enclose in <a class="calibre13" id="marker-1031954"></a>the <code class="fm-code-in-text">@AfterAll</code> method. To save some time (opening and closing the browser for every test), we only need one instance of <code class="fm-code-in-text">WebDriver</code> for all the tests in this class. For now, this means our test has the Safari browser hard-coded. Later we will discuss how to make it more flexible so you can run your test suite in multiple browsers.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1032020"></a>The <code class="fm-code-in-text">findOwnersBasedOnTheirLastNames()</code> method contains <a class="calibre13" id="marker-1031999"></a>our journey. We create two fake <code class="fm-code-in-text">AddOwnerInfo</code>s: two owners that will be added to the application. For each owner, we visit the Add Owner page, fill in the information, and save. (I created an <code class="fm-code-in-text">addOwners()</code> private helper method to increase the readability of the main test method.)</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1032029"></a>We visit the Owners page and get all the owners in the list. We expect both newly added owners to be there, so we assert that the list contains two items and they are the two owners we created.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1032097"></a><code class="fm-code-in-text">AddOwnerInfo</code>, the data structure used by <code class="fm-code-in-text">AddOwnerPage</code>, is different from <code class="fm-code-in-text">OwnerInfo</code>, the data structure returned by the <code class="fm-code-in-text">ListOfOwnersPage</code> page. In one, a name is the first name and last name together, and in the other, the first name and last name are separate. We could use a single data structure for both or design them separately. I chose to design them separately, so I needed to convert from one to another. So, I implemented <code class="fm-code-in-text">toOwnerInfo()</code> in the <code class="fm-code-in-text">AddOwnerInfo</code> class. It is <a class="calibre13" id="marker-1032102"></a>a simple method, as you see in the next listing.</p>
+    </li>
+  </ol>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1032163"></a>Listing 9.31 <code class="fm-code-in-text">toOwnerInfo converter</code> method</p>
+  <pre class="programlisting"><a id="pgfId-1032112"></a>public OwnerInfo toOwnerInfo() {
+<a id="pgfId-1032211"></a>  return new OwnerInfo(firstName + " " + lastName, address, city, telephone, "");
+<a id="pgfId-1032217"></a>}</pre>
+
+  <p class="body"><a id="pgfId-1032223"></a>Now, when we run the test, it looks almost like magic: the browser opens, the names of the owners are typed in the page, buttons are clicked, pages change, the browser closes, and JUnit shows us that the test passed. We are finished with our first web Selenium test.</p>
+
+  <p class="fm-callout"><a id="pgfId-1032229"></a><span class="fm-callout-head">Note</span> A good exercise for you is to write tests for other application journeys. This will require the development of more POs!</p>
+
+  <p class="body"><a id="pgfId-1032245"></a>If you run the test again, it will fail. The list of owners will return four people instead of two, as the test expects—we are running our entire web application, and data is persisted in the database. We need to make sure we can reset the web application whenever we run a test, and we discuss that in the next section. <a id="marker-1032247"></a><a id="marker-1032250"></a><a id="marker-1032252"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_14"><a id="pgfId-1032258"></a>9.3.3 Patterns and best practices</h3>
+
+  <p class="body"><a id="pgfId-1032275"></a><a id="marker-1032269"></a><a id="marker-1032271"></a>You probably noticed that the amount of code required to get our first system test working was much greater than in previous chapters. In this section, I introduce some patterns and best practices that will help you write maintainable web tests. These patterns come from my own experience after writing many such tests. Together with Guerra and Gerosa, I proposed some of these patterns at the PLoP conference in 2014.</p>
+
+  <p class="fm-head2"><a id="pgfId-1032280"></a>Provide a way to set the system to the state that the web test requires</p>
+
+  <p class="body"><a id="pgfId-1032290"></a><a id="marker-1032291"></a>To ensure that the Find Owners journey worked properly, we needed some owners in the database. We added them by repeatedly navigating to the Add Owner page, filling in the form, and saving it. This strategy works fine in simple cases. However, imagine a more complicated scenario where your test requires 10 different entities in the database. Visiting 10 different web pages in a specific order is too much work (and also slow, since the test would take a considerable amount of time to visit all the pages).</p>
+
+  <p class="body"><a id="pgfId-1032299"></a>In such cases, I suggest creating all the required data <i class="fm-italics">before</i> running the test. But how do you do that if the web application runs standalone and has its own database? You can provide web services (say, REST web services) that are easily accessible by the test. This way, whenever you need some data in the application, you can get it through simple requests. Imagine that instead of visiting the pages, we call the API. From the test side, we implement classes that abstract away all the complexity of calling a remote web service. The following listing shows how the previous test would look if it consumed a web service.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1032365"></a>Listing 9.32 Our test if we had a web service to add owners</p>
+  <pre class="programlisting"><a id="pgfId-1032314"></a>@Test
+<a id="pgfId-1032404"></a>void findOwnersBasedOnTheirLastNames() {
+<a id="pgfId-1032410"></a>  AddOwnerInfo owner1 = new AddOwnerInfo(
+<a id="pgfId-1032416"></a>    <span class="fm-code-continuation-arrow">➥</span> "John", "Doe", "some address", "some city", "11111");
+<a id="pgfId-1032433"></a>  AddOwnerInfo owner2 = new AddOwnerInfo(
+<a id="pgfId-1032439"></a>    <span class="fm-code-continuation-arrow">➥</span> "Jane", "Doe", "some address", "some city", "11111");
+<a id="pgfId-1032456"></a>  AddOwnerInfo owner3 = new AddOwnerInfo(
+<a id="pgfId-1032462"></a>    <span class="fm-code-continuation-arrow">➥</span> "Sally", "Smith", "some address", "some city", "11111");
+<a id="pgfId-1032484"></a> 
+<a id="pgfId-1032479"></a>  OwnersAPI api = new OwnersAPI();     <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1032496"></a>  api.add(owner1);
+<a id="pgfId-1032502"></a>  api.add(owner2);
+<a id="pgfId-1032508"></a>  api.add(owner3);
+<a id="pgfId-1032519"></a> 
+<a id="pgfId-1032514"></a>  page.visit();
+<a id="pgfId-1032525"></a>  ListOfOwnersPage listPage = page.findOwners("Doe");
+<a id="pgfId-1032531"></a>  List&lt;OwnerInfo&gt; all = listPage.all();
+<a id="pgfId-1032537"></a>  assertThat(all).hasSize(2).
+<a id="pgfId-1032548"></a>      containsExactlyInAnyOrder(owner1.toOwnerInfo(), owner2.toOwnerInfo());
+<a id="pgfId-1032554"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1120190"></a><span class="fm-combinumeral">❶</span> Calls the API. We no longer need to visit the Add Owner page. The OwnersAPI class hides the complexity of calling a web service.</p>
+
+  <p class="body"><a id="pgfId-1032580"></a>Creating simple REST web services is easy today, given the full support of the web frameworks. In Spring MVC (or Ruby, or Django, or Asp.Net Core), you can write one in a couple of lines. The same thing happens from the client side. Calling a REST web service is simple, and you don’t have to write much code.</p>
+
+  <p class="body"><a id="pgfId-1032586"></a>You may be thinking of security issues. What if you do not want the web services in production? If they are only for testing purposes, your software should hide the API when in production and allow the API only in the testing environment.</p>
+
+  <p class="body"><a id="pgfId-1032628"></a>Moreover, do not be afraid to write different functionalities for these APIs, if doing so makes the testing process easier. If your web page needs a combination of <code class="fm-code-in-text">Product</code>s, <code class="fm-code-in-text">Invoice</code>s, <code class="fm-code-in-text">Basket</code>s, and <code class="fm-code-in-text">Item</code>s, perhaps you can devise a web service solely to help the test build up complex data. <a id="marker-1032633"></a></p>
+
+  <p class="fm-head2"><a id="pgfId-1032640"></a>Make sure each test always runs in a clean environment</p>
+
+  <p class="body"><a id="pgfId-1032650"></a><a id="marker-1032651"></a>Similar to what we did earlier when testing SQL queries, we must make sure our tests always run in a clean version of the web application. Otherwise, the test may fail for reasons other than a bug. This means databases (and any other dependencies) must only contain the bare minimum amount of data for the test to start.</p>
+
+  <p class="body"><a id="pgfId-1032659"></a>We can reset the web application the same way we provide data to it: via web services. The application could provide an easy backdoor that resets it. It goes without saying that such a web service should never be deployed in production.</p>
+
+  <p class="body"><a id="pgfId-1032665"></a>Resetting the web application often means resetting the database. You can implement that in many different ways, such as truncating all the tables or dropping and re-creating them.</p>
+
+  <p class="fm-callout"><a id="pgfId-1032671"></a><span class="fm-callout-head">Warning</span> Be very careful. The reset backdoor is nice for tests, but if it is deployed into production, chaos may result. If you use this solution, make sure it is only available in the test environment!<a id="marker-1032683"></a></p>
+
+  <p class="fm-head2"><a id="pgfId-1032690"></a>Give meaningful names to your HTML elements</p>
+
+  <p class="body"><a id="pgfId-1032707"></a><a id="marker-1032701"></a><a id="marker-1032703"></a>Locating elements is a vital part of a web test, and we do that by, for example, searching for their name, class, tag, or XPath. In one of our examples, we first searched for the form the element was in and then found the element by its tag. But user interfaces change frequently during the life of a website. That is why web test suites are often highly unstable. We do not want a change in the presentation of a web page (such as moving a button from the left menu to the right menu) to break the test.</p>
+
+  <p class="body"><a id="pgfId-1032712"></a>Therefore, I suggest assigning proper (unique) names and IDs to elements that will play a role in the test. Even if the element does not need an ID, giving it one will simplify the test and make sure the test will not break if the presentation of the element changes.</p>
+
+  <p class="body"><a id="pgfId-1032718"></a>If for some reason an element has a very unstable ID (perhaps it is dynamically generated), we need to create any specific property for the testing. HTML5 allows us to create extra attributes on HTML tags, like the following example.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1032775"></a>Listing 9.33 HTML element with a property that makes it easy to find</p>
+  <pre class="programlisting"><a id="pgfId-1032724"></a>&lt;input type="text"
+<a id="pgfId-1032814"></a>id="customer_\${i}"
+<a id="pgfId-1032820"></a>name="customer"
+<a id="pgfId-1032826"></a>data-selenium="customer-name" /&gt;     <span class="fm-combinumeral">❶</span></pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1120133"></a><span class="fm-combinumeral">❶</span> It is easy to find the HTML element that has a data-selenium attribute with customer-name as its value.</p>
+
+  <p class="body"><a id="pgfId-1032858"></a>If you think this extra property may be a problem in the production environment, remove it during deployment. There are many tools that manipulate HTML pages before deploying them (minification is an example).</p>
+
+  <p class="fm-callout"><a id="pgfId-1032864"></a><span class="fm-callout-head">Note</span> Before applying this pattern to the project, you may want to talk to your team’s frontend lead. <a id="marker-1032876"></a><a id="marker-1032879"></a></p>
+
+  <p class="fm-head2"><a id="pgfId-1032885"></a>Visit every step of a journey only when that journey is under test</p>
+
+  <p class="body"><a id="pgfId-1032895"></a><a id="marker-1032896"></a>Unlike unit testing, building up scenarios on a system test can be complicated. We saw that some journeys may require the test to navigate through many different pages before getting to the page it wants to test.</p>
+
+  <p class="body"><a id="pgfId-1032904"></a>Imagine a specific page A that requires the test to visit pages B, C, D, E, and F before it can finally get to A and test it. A test for that page is shown here.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1032961"></a>Listing 9.34 A very long test that calls many POs</p>
+  <pre class="programlisting"><a id="pgfId-1032910"></a>@Test
+<a id="pgfId-1033000"></a>void longest() {
+<a id="pgfId-1033006"></a>  BPage b = new BPage();    <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1033018"></a>  b.action1(..);
+<a id="pgfId-1033024"></a>  b.action2(..);
+<a id="pgfId-1033035"></a> 
+<a id="pgfId-1033030"></a>  CPage c = new CPage();    <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1033047"></a>  c.action1(..);
+<a id="pgfId-1033058"></a> 
+<a id="pgfId-1033053"></a>  DPage d = new DPage();    <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1033070"></a>  d.action1(..);
+<a id="pgfId-1033076"></a>  d.action2(..);
+<a id="pgfId-1033087"></a> 
+<a id="pgfId-1033082"></a>  EPage e = new EPage();
+<a id="pgfId-1033093"></a>  e.action1(..);
+<a id="pgfId-1033104"></a> 
+<a id="pgfId-1033099"></a>  FPage e = new FPage();
+<a id="pgfId-1033110"></a>  f.action1(..);
+<a id="pgfId-1033121"></a> 
+<a id="pgfId-1033116"></a>  // finally!!
+<a id="pgfId-1033127"></a>  APage a = new APage();
+<a id="pgfId-1033133"></a>  a.action1();
+<a id="pgfId-1033144"></a> 
+<a id="pgfId-1033139"></a>  assertThat(a.confirmationAppears()).isTrue();
+<a id="pgfId-1033150"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1119991"></a><span class="fm-combinumeral">❶</span> Calls the first PO</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1120027"></a><span class="fm-combinumeral">❷</span> Calls a second PO</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1119992"></a><span class="fm-combinumeral">❸</span> Calls a third PO, and so on</p>
+
+  <p class="body"><a id="pgfId-1033208"></a>Note how long and complex the test is. We discussed a similar problem, and our solution was to provide a web service that enabled us to skip many of the page visits. But if visiting all these pages is part of the journey under test, the test should visit each one. If one or two of these steps are not part of the journey, you can use the web services. <a id="marker-1033210"></a></p>
+
+  <p class="fm-head2"><a id="pgfId-1033217"></a>Assertions should use data that comes from the POs</p>
+
+  <p class="body"><a id="pgfId-1033247"></a><a id="marker-1033228"></a>In the Find Owners test, our assertions focused on checking whether all the owners were on the list. In the code, the <code class="fm-code-in-text">FindOwnersPage</code> PO provided an <code class="fm-code-in-text">all()</code> method that returned the owners. The test code was only responsible for the assertion. This is a good practice. Whenever your tests require information from the page for the assertion, the PO provides this information. Your JUnit test should not locate HTML elements by itself. However, the assertions stay in the JUnit test code. <a id="marker-1033252"></a></p>
+
+  <p class="fm-head2"><a id="pgfId-1033259"></a>Pass important configurations to the test suite</p>
+
+  <p class="body"><a id="pgfId-1033269"></a><a id="marker-1033270"></a>The example test suite has some hard-coded details, such as the local URL of the application (right now, it is localhost:8080) and the browser to run the tests (currently Safari). However, you may need to change these configurations dynamically. For example, your continuous integration may need to run the web app on a different port, or you may want to run your test suite on Chrome.</p>
+
+  <p class="body"><a id="pgfId-1033333"></a>There are many different ways to pass configuration to Java tests, but I usually opt for the simplest approach: everything that is a configuration is provided by a method in <a id="marker-1033280"></a> my <code class="fm-code-in-text">PageObject</code> base class. For example, a <code class="fm-code-in-text">String</code> <code class="fm-code-in-text">baseUrl()</code> method returns <a id="marker-1033306"></a>the base URL of the application, and a <code class="fm-code-in-text">WebDriver</code> <code class="fm-code-in-text">browser()</code> method returns <a id="marker-1033322"></a>the concrete instance of <code class="fm-code-in-text">WebDriver</code>. These methods then read from a configuration file or an environment variable, as those are easy to pass via build scripts. <a id="marker-1033338"></a></p>
+
+  <p class="fm-head2"><a id="pgfId-1033345"></a>Run your tests in multiple browsers</p>
+
+  <p class="body"><a id="pgfId-1033355"></a><a id="marker-1033356"></a>You should run your tests in multiple browsers to be sure everything works everywhere. But I don’t do this on my machine, because it takes too much time. Instead, my continuous integration (CI) tool has a multiple-stage process that runs the web test suite multiple times, each time passing a different browser. If configuring such a CI is an issue, consider using a service such as SauceLabs (<a class="url" href="https://saucelabs.com">https://saucelabs.com</a>), which automates this process for you. <a id="marker-1033361"></a><a id="marker-1033364"></a><a id="marker-1033366"></a><a id="marker-1033368"></a><a id="marker-1033370"></a></p>
+
+  <h2 class="fm-head" id="heading_id_15"><a id="pgfId-1033376"></a>9.4 Final notes on larger tests</h2>
+
+  <p class="body"><a id="pgfId-1033386"></a>I close this chapter with some points I have not yet mentioned regarding larger tests.</p>
+
+  <h3 class="fm-head1" id="heading_id_16"><a id="pgfId-1033392"></a>9.4.1 How do all the testing techniques fit?</h3>
+
+  <p class="body"><a id="pgfId-1033402"></a>In the early chapters of this book, our goal was to explore techniques that would help you engineer test cases systematically. In this chapter, we discuss a more orthogonal topic: how large should our tests be? I have shown you examples of larger component tests, integration tests, and system tests. But regardless of the test level, engineering good test cases should still be the focus.</p>
+
+  <p class="body"><a id="pgfId-1033408"></a>When you write a larger test, use the requirement and its boundaries, the structure of the code, and the properties it should uphold to engineer good test cases. The challenge is that an entire component has a much larger requirement and a much larger code base, which means many more tests to engineer.</p>
+
+  <p class="body"><a id="pgfId-1033414"></a>I follow this rule of thumb: exercise everything at the unit level (you can easily cover entire requirements and structures at the unit level), and exercise the most important behavior in larger tests (so you have more confidence that the program will work when the pieces are put together). It may help to reread about the testing pyramid in section 1.4 in chapter 1.</p>
+
+  <h3 class="fm-head1" id="heading_id_17"><a id="pgfId-1033421"></a>9.4.2 Perform cost/benefit analysis</h3>
+
+  <p class="body"><a id="pgfId-1033431"></a><a id="marker-1033432"></a>One of the testing mantras is that a good test is cheap to write but can capture important bugs. Unit tests are cheap to write, so we do not have to think much about cost.</p>
+
+  <p class="body"><a id="pgfId-1033440"></a>Larger tests may not be cheap to write, run, or maintain. I have seen integration test suites that take hours to run—and cases where developers spend hours writing a single integration test.</p>
+
+  <p class="body"><a id="pgfId-1033446"></a>Therefore, it is fundamental to perform a simple cost/benefit analysis. Questions like “How much will it cost me to write this test?” “How much will it cost to run?” “What is the benefit of this test? What bugs will it catch?” and “Is this functionality already covered by unit tests? If so, do I need to cover it via integration tests, too?” may help you understand whether this is a fundamental test.</p>
+
+  <p class="body"><a id="pgfId-1033452"></a>The answer will be “yes” in many cases. The benefits outweigh the costs, so you should write the test. If the cost is too high, consider simplifying your test. Can you stub parts of the test without losing too much? Can you write a more focused test that exercises a smaller part of the system? As always, there is no single good answer or golden rule to follow. <a id="marker-1033454"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_18"><a id="pgfId-1033461"></a>9.4.3 Be careful with methods that are covered but not tested</h3>
+
+  <p class="body"><a id="pgfId-1033471"></a><a id="marker-1033472"></a>Larger tests exercise more classes, methods, and behaviors together. In addition to all the trade-offs discussed in this chapter, with larger tests, the chances of covering a method but not testing it are much higher.</p>
+
+  <p class="body"><a id="pgfId-1033512"></a>Vera-Pérez and colleagues (2019) coined the term <i class="fm-italics">pseudo-tested methods</i>. These methods <a id="marker-1033491"></a>are tested, but if we replace their entire implementation with a simple <code class="fm-code-in-text">return</code> <code class="fm-code-in-text">null</code>, tests still pass. And believe it or not, Vera-Pérez and colleagues show that pseudo-tested methods happen in the wild, even in important open source projects. This is another reason I defend both unit tests <i class="fm-italics">and</i> larger tests, used together to ensure that everything works. <a id="marker-1033517"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_19"><a id="pgfId-1033524"></a>9.4.4 Proper code infrastructure is key</h3>
+
+  <p class="body"><a id="pgfId-1033534"></a><a id="marker-1033535"></a>Integration and system tests both require a decent infrastructure behind the scenes. Without it, we may spend too much time setting up the environment or asserting that behavior was as expected. My key advice here is to invest in test infrastructure. Your infrastructure should help developers set up the environment, clean up the environment, retrieve complex data, assert complex data, and perform whatever other complex tasks are required to write tests. <a id="marker-1033539"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_20"><a id="pgfId-1033546"></a>9.4.5 DSLs and tools for stakeholders to write tests</h3>
+
+  <p class="body"><a id="pgfId-1033556"></a><a id="marker-1033557"></a>In this chapter, we wrote the system tests ourselves with lots of Java code. At this level, it is also common to see more automation. Some tools, such as the Robot framework (<a class="url" href="https://robotframework.org">https://robotframework.org</a>) and Cucumber (<a class="url" href="https://cucumber.io">https://cucumber.io</a>), even allow you to write tests in language that is almost completely natural. These tools make a lot of sense if you want others to write tests, too, such as (non-technical) stakeholders. <a id="marker-1033563"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_21"><a id="pgfId-1033570"></a>9.4.6 Testing other types of web systems</h3>
+
+  <p class="body"><a id="pgfId-1033580"></a><a id="marker-1033581"></a>The higher we go in levels of testing, such as web testing, the more we start to think about the frameworks and environment our application runs in. Our web application is responsive; how do we test for that? If we use Angular or React, how do we test it? Or, if we use a non-relational database like Mongo, how do we test it?</p>
+
+  <p class="body"><a id="pgfId-1033589"></a>Testing these specific technologies is far beyond the scope of this book. My suggestion is that you visit those communities and explore their state-of-the-art tools and bodies of knowledge. All the test case engineering techniques you learn in this book will apply to your software, regardless of the technology.</p>
+
+  <p class="fm-head2"><a id="pgfId-1033595"></a>System tests in software other than web applications</p>
+
+  <p class="body"><a id="pgfId-1033605"></a>I used web applications to exemplify system tests because I have a lot of experience with them. But the idea of system testing can be applied to any type of software you develop. If your software is a library or framework, your system tests will exercise the entire library as the clients would. If your software is a mobile application, your system tests will exercise the mobile app as the clients would.</p>
+
+  <p class="body"><a id="pgfId-1033611"></a>The best practices I discussed still apply. Engineering system tests will be harder than engineering unit tests, and you may need some infrastructure code (like the POs we created) to make you more productive. There are probably also specific best practices for your type of software—be sure to do some research. <a id="marker-1033613"></a></p>
+
+  <h2 class="fm-head" id="heading_id_22"><a id="pgfId-1033620"></a>Exercises</h2>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1033630"></a>9.1 Which of the following recommendations should you follow to keep a web application testable? Select all that apply.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1033636"></a>A) Use TypeScript instead of JavaScript.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1033650"></a>B) Make sure the HTML elements can be found easily from the tests.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1033660"></a>C) Make sure requests to web servers are performed asynchronously.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1033670"></a>D) Avoid inline JavaScript in an HTML page.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1033680"></a>9.2 Which of the following statements is true about end-to-end/system testing?</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1033686"></a>A) End-to-end testing cannot be automated for web applications and therefore has to be performed manually.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1033700"></a>B) In web testing, end-to-end testing is more important than unit testing.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1033710"></a>C) End-to-end testing can be used to verify whether the frontend and backend work together well.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1033720"></a>D) End-to-end tests are, like unit tests, not very realistic.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1033730"></a>9.3 Which of the following is true about page objects?</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1033736"></a>A) POs abstract the HTML page to facilitate the engineering of end-to-end tests.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1033750"></a>B) POs cannot be used in highly complex web applications.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1033760"></a>C) By introducing a PO, we no longer need libraries like Selenium.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1033770"></a>D) POs usually make the test code more complex.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1033780"></a>9.4 Which of the following are important recommendations for developers who are engineering integration and system test suites? Choose all that apply.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1033786"></a>A) What can be tested via unit testing should be tested via unit testing. Use integration and system tests for bugs that can only be caught at that level.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1033800"></a>B) It is fundamental for developers to have a solid infrastructure to write such tests, as otherwise, they would feel unproductive.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1033810"></a>C) If something is already covered via unit testing, you should not cover it (again) via integration testing.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1033820"></a>D) Too many integration tests may mean your application is badly designed. Focus on unit tests.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1033830"></a>9.5 Which of the following can cause web tests to be flaky (that is, sometimes pass, sometimes fail)? Choose all that apply.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1033836"></a>A) AJAX requests that take longer than expected</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1033850"></a>B) The use of LESS and SASS instead of pure CSS</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1033860"></a>C) The database of the web app under test is not being cleaned up after every test run</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1033870"></a>D) Some components of the web app were unavailable at the time</p>
+
+  <h2 class="fm-head" id="heading_id_23"><a id="pgfId-1033880"></a>Summary</h2>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1033890"></a>Developers benefit from writing larger tests, ranging from testing entire components together, to integrating with external parties, to entire systems.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1033904"></a>Engineering larger tests is more challenging than writing unit tests, because the component under test is probably much bigger and more complex than a single unit of the system.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1033914"></a>All the test case engineering techniques we have discussed—specification-based testing, boundary testing, structural testing, and property-based testing—apply to larger tests.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1033924"></a>Investing in a good test infrastructure for large tests is a requirement. Without it, you will spend too much time writing a single test case.</p>
+    </li>
+  </ul>
+</div>
+</div>
+</body>
+</html>

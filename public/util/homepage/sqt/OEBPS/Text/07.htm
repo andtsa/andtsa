@@ -1,0 +1,945 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xml:lang="en"
+      lang="en"
+      xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:epub="http://www.idpf.org/2007/ops">
+<head>
+<title>Effective Software Testing</title>
+<link rel="stylesheet" type="text/css" href="../../override_v1.css"/>
+<link rel="stylesheet" type="text/css" href="../../stylesheet.css"/><link rel="stylesheet" type="text/css" href="../../page_styles.css"/>
+</head>
+<body>
+<div id="book-content">
+<div id="sbo-rt-content" class="calibre"><h1 class="tochead" id="heading_id_2"><a id="pgfId-998407"></a><a id="pgfId-1020533"></a>7 Designing for testability</h1>
+
+  <p class="co-summary-head"><a id="pgfId-1011754"></a>This chapter covers</p>
+
+  <ul class="calibre12">
+    <li class="co-summary-bullet"><a class="calibre13" id="pgfId-1011760"></a>Designing testable code at the architectural, design, and implementation levels</li>
+
+    <li class="co-summary-bullet"><a class="calibre13" id="pgfId-1011774"></a>Understanding the Hexagonal Architecture, dependency injection, observability, and controllability</li>
+
+    <li class="co-summary-bullet"><a class="calibre13" id="pgfId-1011784"></a>Avoiding testability pitfalls</li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1011794"></a>I usually say that every software system can be tested. However, <i class="fm-italics">some systems are more testable than others</i>. Imagine that for a single test case, we need to set up three different web services, create five different files in different folders, and put the database in a specific state. After all that, we exercise the feature under test and, to assert the correct behavior, again need to see if the three web services were invoked, the five files were consumed correctly, and the database is now in a different state. All those steps are doable. But couldn’t this process be simpler?</p>
+
+  <p class="body"><a id="pgfId-1011809"></a>Software systems are sometimes not ready for or designed to be tested. In this chapter, we discuss some of the main ideas behind systems that have high testability. <i class="fm-italics">Testability</i> is how easy it is to write automated tests for the system, class, or method under test. In chapter 6, we saw that by allowing dependencies to be injected, we could stub the dependency. This chapter is about other strategies you can use to make testing easier.</p>
+
+  <p class="body"><a id="pgfId-1011824"></a>The topic of design for testability deserves an entire book. In this chapter, I cover several design principles that solve most of the problems I face. When presenting these principles, I will discuss the underlying ideas so you can apply them even if the code changes you must make differ from my examples.</p>
+
+  <p class="body"><a id="pgfId-1011830"></a>Design for testability is fundamental if our goal is to achieve systematic testing—if your code is hard to test, you probably won’t test it. When do I design for testability? What is the right moment to think about testability? <i class="fm-italics">All the time.</i> Much of it happens while I am implementing a feature.</p>
+
+  <p class="body"><a id="pgfId-1011845"></a>You should design for testability from the very beginning, which is why I put it in the “testing to guide development” part of the flow back in chapter 1, figure 1.4. Sometimes I cannot see the untestable part during the implementation phase, and it haunts me during the test phase. When that happens, I go back to my code and refactor it.</p>
+
+  <p class="body"><a id="pgfId-1011851"></a>Some developers argue that designing for testability is harder and costs too many extra lines of code. This may be true. Writing spaghetti code is easier than developing cohesive classes that collaborate and are easily tested. One of the goals of this chapter is to convince you that the extra effort of designing for testability <i class="fm-italics">will</i> pay off. Good, testable code costs more than bad code, but it is the only way to ensure quality.</p>
+
+  <h2 class="fm-head" id="heading_id_3"><a id="pgfId-1011866"></a>7.1 Separating infrastructure code from domain code</h2>
+
+  <p class="body"><a id="pgfId-1011891"></a><a id="marker-1011877"></a><a id="marker-1011879"></a><a id="marker-1011881"></a>I could spend pages discussing architectural patterns that enable testability. Instead, I will focus on what I consider the most important advice: <i class="fm-italics">separate infrastructure code from domain code</i>.</p>
+
+  <p class="body"><a id="pgfId-1011952"></a>The <i class="fm-italics">domain</i> is where the core of the system lies: that is, where all the business rules, logic, entities, services, and similar elements reside. Entities like <code class="fm-code-in-text">Invoice</code> and services such as <code class="fm-code-in-text">ChristmasDiscount</code> are examples of domain classes. <i class="fm-italics">Infrastructure</i> relates to all code that handles an external dependency: for example, pieces of code that handle database queries (in this case, the database is an external dependency) or web service calls or file reads and writes. In our previous examples, all of our data <a id="marker-1011941"></a>access objects (DAOs) are part of the <i class="fm-italics">infrastructure</i> code.</p>
+
+  <p class="body"><a id="pgfId-1011961"></a>In practice, when domain code and infrastructure code are mixed, the system becomes harder to test. You should separate them as much as possible so the infrastructure does not get in the way of testing. Let’s start with <code class="fm-code-in-text">InvoiceFilter</code> example, now containing the SQL logic instead of depending on a DAO.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1012033"></a>Listing 7.1 <code class="fm-code-in-text">InvoiceFilter</code> that mixes domain and infrastructure</p>
+  <pre class="programlisting"><a id="pgfId-1011982"></a>public class InvoiceFilter {
+<a id="pgfId-1012086"></a> 
+<a id="pgfId-1012081"></a>  private List&lt;Invoice&gt; all() {                            <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1012098"></a>    try {
+<a id="pgfId-1012104"></a>      Connection connection =
+<a id="pgfId-1012110"></a>        DriverManager.getConnection("db", "root", "");     <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1012122"></a>      PreparedStatement ps =
+<a id="pgfId-1012128"></a>        connection.prepareStatement("select * from invoice"));
+<a id="pgfId-1012134"></a>      Result rs = ps.executeQuery();
+<a id="pgfId-1012145"></a> 
+<a id="pgfId-1012140"></a>      List&lt;Invoice&gt; allInvoices = new ArrayList&lt;&gt;();
+<a id="pgfId-1012151"></a>      while (rs.next()) {
+<a id="pgfId-1012157"></a>        allInvoices.add(new Invoice(
+<a id="pgfId-1012163"></a>          rs.getString("name"), rs.getInt("value")));
+<a id="pgfId-1012169"></a>      }
+<a id="pgfId-1012180"></a> 
+<a id="pgfId-1012175"></a>      ps.close();
+<a id="pgfId-1012186"></a>      connection.close();
+<a id="pgfId-1012197"></a> 
+<a id="pgfId-1012192"></a>      return allInvoices;
+<a id="pgfId-1012208"></a> 
+<a id="pgfId-1012203"></a>    } catch(Exception e) {                                 <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1012220"></a>      // handle the exception
+<a id="pgfId-1012226"></a>    }
+<a id="pgfId-1012232"></a>  }
+<a id="pgfId-1012238"></a>}
+<a id="pgfId-1012249"></a> 
+<a id="pgfId-1012244"></a>public List&lt;Invoice&gt; lowValueInvoices() {                  <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1012261"></a>  List&lt;Invoice&gt; issuedInvoices = all();
+<a id="pgfId-1012272"></a> 
+<a id="pgfId-1012267"></a>  return issuedInvoices.all().stream()
+<a id="pgfId-1012278"></a>    .filter(invoice -&gt; invoice.value &lt; 100)
+<a id="pgfId-1012284"></a>    .collect(toList());
+<a id="pgfId-1012290"></a> }
+<a id="pgfId-1012296"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1033335"></a><span class="fm-combinumeral">❶</span> This method gets all the invoices directly from the database. Note that it resides in the InvoiceFilter class, unlike in previous examples.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1033356"></a><span class="fm-combinumeral">❷</span> JDBC code to execute a simple SELECT query. If you are not a Java developer, there is no need to know what PreparedStatement and Result are.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1033373"></a><span class="fm-combinumeral">❸</span> Database APIs often throw exceptions that we need to handle.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1033390"></a><span class="fm-combinumeral">❹</span> The same lowValueInvoices method we’ve seen before, but now it calls a method in the same class to get the invoices from the database.</p>
+
+  <p class="body"><a id="pgfId-1012370"></a>We can make the following observations about this class:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012376"></a><i class="fm-italics1">Domain code and infrastructure code are mixed.</i> This means we will not be able to avoid database access when testing the low-value invoices rule. How would you stub the private method while exercising the public method? Because we cannot easily stub the database part, we must consider it when writing the tests. As we have seen many times already, this is more complex.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012397"></a><i class="fm-italics1">The more responsibilities, the more complexity, and the more chances for bugs.</i> Classes that are less cohesive contain more code. More code means more opportunities for bugs. This example class may have bugs related to SQL and the business logic, for example. Empirical research shows that longer methods and classes are more prone to defects (see the 2006 paper by Shatnawi and Li).</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1012414"></a>Infrastructure is not the only external influence our code may suffer from. User interfaces are often mixed with domain code, which is usually a bad idea for testability. You should not need the user interface to exercise your system’s business rules.</p>
+
+  <p class="body"><a id="pgfId-1012420"></a>Besides the hassle of handling infrastructure when writing tests, extra cognitive effort is often required to engineer the test cases. Speaking from experience, it is much easier to test a class that has a single responsibility and no infrastructure than it is to test a non-cohesive class that handles business rules and, for example, database access. Simpler code also has fewer possibilities and corner cases to see and explore. On the other hand, the more complex the code is, or the more responsibilities it has, the more we must think about test cases and possible interactions between features that are implemented in one place. In the example, the interaction between the infrastructure code and the business rule is simple: the method returns invoices from the database. But classes that do more complex things and handle more complex infrastructure can quickly become a nightmare during testing and maintenance.</p>
+
+  <p class="body"><a id="pgfId-1012484"></a>The architecture of the software system under development needs to enforce a <i class="fm-italics">clear separation of responsibilities</i>. The simplest way to describe it is by explaining <a id="marker-1012437"></a>the <i class="fm-italics">Ports and Adapters</i> (or <i class="fm-italics">Hexagonal Architecture</i>) pattern. As Alistair Cockburn <a id="marker-1012463"></a>proposed (2005), the domain (business logic) depends on <i class="fm-italics">ports</i> rather than directly on the infrastructure. These ports are interfaces that define what the infrastructure can do and enable the application to get information from or send information to something else. They are completely separated from the implementation of the infrastructure. On the other hand, the <i class="fm-italics">adapters</i> are very close to the infrastructure. They are the implementations of the ports that talk to the database, web service, and so on. They know how the infrastructure works and how to communicate with it.</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/07-01.png" width="611" height="367"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1034375"></a>Figure 7.1 An illustration of the Hexagonal Architecture (or Ports and Adapters) pattern</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1012493"></a>Figure 7.1 illustrates a hexagonal architecture. The inside of the hexagon represents the application and all its business logic. The code is related to the application’s business logic and functional requirements. It knows nothing about external systems or required infrastructure. However, the application will require information or interaction with the external world at some point. For that, the application does not interact directly with the external system: instead, it communicates with a port. The port should be agnostic of the technology and, from the application’s perspective, abstract away details of how communication happens. Finally, the adapter is coupled to the external infrastructure. The adapter knows how to send or retrieve messages from the external infrastructure and sends them back to the application in the format defined by the port.</p>
+
+  <p class="body"><a id="pgfId-1012509"></a>Let’s cook up a simple example that illustrates these concepts in practice. Suppose an online web shop has the following requirements:</p>
+
+  <p class="fm-callout"><a id="pgfId-1012539"></a>For all the shopping carts that were paid today, the system should</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-bullet-callout">
+      <p class="list-s"><a id="pgfId-1012545"></a>Set the status of the shopping cart as ready for delivery, and persist its new state in the database.</p>
+    </li>
+
+    <li class="fm-list-bullet-callout">
+      <p class="list-s"><a id="pgfId-1012559"></a>Notify the delivery center, and let them know they should send the goods to the customer.</p>
+    </li>
+
+    <li class="fm-list-bullet-callout">
+      <p class="list-s"><a id="pgfId-1012569"></a>Notify the SAP system.</p>
+    </li>
+
+    <li class="fm-list-bullet-callout">
+      <p class="list-s"><a id="pgfId-1012579"></a>Send an e-mail to the customer confirming that the payment was successful. The e-mail should contain an estimate of when delivery will happen. The information is available via the delivery center API.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1012589"></a>The first step is identifying what belongs to the application (the hexagon) and what does not. It is clear that any business rule related to <code class="fm-code-in-text">ShoppingCart</code>, such as changing its state, as well as the entire workflow the shopping cart goes through once it’s paid, belongs inside the hexagon. However, a service that provides e-mail capabilities, a service that communicates with the SAP, a service that communicates with the delivery center API (which is probably offered as a web service), and a service that can communicate with the database are all handled by external systems. For those, we need to devise a clear interface for the application to communicate with (the ports) together with a concrete implementation that can handle communication with the external system (the adapters). Figure 7.2 illustrates the concrete application of the Ports and Adapters pattern to this example.</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/07-02.png" width="827" height="605"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1034432"></a>Figure 7.2 A concrete implementation of the Hexagonal Architecture (or Ports and Adapters) pattern for the shopping carts example</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1012676"></a>A natural implementation for the <code class="fm-code-in-text">PaidShoppingCartsBatch</code> class would <a id="marker-1034415"></a>be the code in listing 7.2. It does not contain a single detail regarding infrastructure. This entire class could easily be unit-tested if we stubbed its dependencies. Does it need a list of paid shopping carts, normally returned by <code class="fm-code-in-text">cartsPaidToday()</code>? We stub it. Does it notify the SAP <a id="marker-1034417"></a>via the <code class="fm-code-in-text">cartReadyForDelivery()</code> method? We mock <code class="fm-code-in-text">SAP</code> and later assert the interaction with this method.</p>
+
+  <p class="body"><a id="pgfId-1012701"></a>When we put everything together in production, the method will communicate with databases and web services. But at unit testing time, we do not care about that. The same testing philosophy we discussed in chapter 6 applies here: when (unit) testing the <code class="fm-code-in-text">PaidShoppingCartsBatch</code> class, we should focus on <code class="fm-code-in-text">PaidShoppingCartsBatch</code> and not its dependencies. This is possible here because (1) we receive its dependencies via the constructor (which enables us to pass mocks and stubs to the class), and (2) this class is only about business and has no lines of infrastructure code.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1012761"></a>Listing 7.2 <code class="fm-code-in-text">PaidShoppingCartsBatch</code> implementation</p>
+  <pre class="programlisting"><a id="pgfId-1012710"></a>public class PaidShoppingCartsBatch {
+<a id="pgfId-1012814"></a> 
+<a id="pgfId-1012809"></a>  private ShoppingCartRepository db;
+<a id="pgfId-1012820"></a>  private DeliveryCenter deliveryCenter;
+<a id="pgfId-1012826"></a>  private CustomerNotifier notifier;
+<a id="pgfId-1012832"></a>  private SAP sap;
+<a id="pgfId-1012843"></a> 
+<a id="pgfId-1012838"></a>  public PaidShoppingCartsBatch(ShoppingCartRepository db,
+<a id="pgfId-1012849"></a>    <span class="fm-code-continuation-arrow">➥</span> DeliveryCenter deliveryCenter,
+<a id="pgfId-1012866"></a>                 CustomerNotifier notifier, SAP sap) {                   <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1012878"></a>    this.db = db;
+<a id="pgfId-1012884"></a>    this.deliveryCenter = deliveryCenter;
+<a id="pgfId-1012890"></a>    this.notifier = notifier;
+<a id="pgfId-1012896"></a>    this.sap = sap;
+<a id="pgfId-1012902"></a>  }
+<a id="pgfId-1012913"></a> 
+<a id="pgfId-1012908"></a>  public void processAll() {
+
+<a id="pgfId-1012919"></a>    List&lt;ShoppingCart&gt; paidShoppingCarts = db.cartsPaidToday();
+<a id="pgfId-1012935"></a> 
+<a id="pgfId-1012930"></a>    for (ShoppingCart cart : paidShoppingCarts) {                        <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1012952"></a> 
+<a id="pgfId-1012947"></a>      LocalDate estimatedDayOfDelivery = deliveryCenter.deliver(cart);   <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1012969"></a> 
+<a id="pgfId-1012964"></a>      cart.markAsReadyForDelivery(estimatedDayOfDelivery);               <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1012981"></a>      db.persist(cart);                                                  <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1012998"></a> 
+<a id="pgfId-1012993"></a>      notifier.sendEstimatedDeliveryNotification(cart);                  <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1013015"></a> 
+<a id="pgfId-1013010"></a>      sap.cartReadyForDelivery(cart);                                    <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1013027"></a>    }
+<a id="pgfId-1013033"></a>  }
+<a id="pgfId-1013039"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1032884"></a><span class="fm-combinumeral">❶</span> All dependencies are injected, which means we can pass stubs and mocks during testing.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1032905"></a><span class="fm-combinumeral">❷</span> For each paid cart ...</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1032922"></a><span class="fm-combinumeral">❸</span> ... notify the delivery system about the delivery</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1032939"></a><span class="fm-combinumeral">❹</span> ... mark it as ready for delivery and persist that to the database</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1032956"></a><span class="fm-combinumeral">❺</span> ... send a notification to the customer</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1032973"></a><span class="fm-combinumeral">❻</span> ... and notify the SAP.</p>
+
+  <p class="body"><a id="pgfId-1013201"></a>Look at the class’s four dependencies: <code class="fm-code-in-text">ShoppingCartRepository</code>, <code class="fm-code-in-text">DeliveryCenter</code>, <code class="fm-code-in-text">CustomerNotifier</code>, and <code class="fm-code-in-text">SAP</code>. These are interfaces and, in the Hexagonal Architecture, ports. They establish a protocol for communication between the application and the external world. These interfaces are completely agnostic of technology and infrastructure details. In other words, they abstract all the complexity of the infrastructure away from the domain code. As a result, the interfaces do not depend on anything strange, such as database or web service classes. They <i class="fm-italics">do</i> depend on other domain classes, such as <code class="fm-code-in-text">ShoppingCart</code>, and that is fine. The following listing contains the interface declarations of all the ports.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1013261"></a>Listing 7.3 Interface declarations of all the ports</p>
+  <pre class="programlisting"><a id="pgfId-1013210"></a>public interface DeliveryCenter {               <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1013306"></a>  LocalDate deliver(ShoppingCart cart);
+<a id="pgfId-1013312"></a>}
+<a id="pgfId-1013323"></a> 
+<a id="pgfId-1013318"></a>public interface CustomerNotifier {             <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1013335"></a>  void sendEstimatedDeliveryNotification(ShoppingCart cart);
+<a id="pgfId-1013341"></a>}
+<a id="pgfId-1013352"></a> 
+<a id="pgfId-1013347"></a>public interface SAP {
+<a id="pgfId-1013358"></a>  void cartReadyForDelivery(ShoppingCart cart);
+<a id="pgfId-1013364"></a>}
+<a id="pgfId-1013375"></a> 
+<a id="pgfId-1013370"></a>public interface ShoppingCartRepository {       <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1013387"></a>  List&lt;ShoppingCart&gt; cartsPaidToday();
+<a id="pgfId-1013393"></a>  void persist(ShoppingCart cart);
+<a id="pgfId-1013399"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1032665"></a><span class="fm-combinumeral">❶</span> The DeliveryCenter interface’s concrete implementation will probably consume a very complex web service, but the port abstracts this away. Ports speak business language and do not let infrastructure details leak.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1032686"></a><span class="fm-combinumeral">❷</span> The same thing happens for CustomerNotifier and all other interfaces/ports.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1032703"></a><span class="fm-combinumeral">❸</span> This one does not even have “database” in the name. “Repository” is a more business-like term.</p>
+
+  <p class="body"><a id="pgfId-1013457"></a>We are now only missing the implementation of the adapters. This code is out of the scope of this book, but in terms of implementation, these adapters are classes that implement the ports’ interfaces. The next listing provides some skeleton code to give you an idea what the adapters will look like.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1013514"></a>Listing 7.4 Simplified implementation of the adapters</p>
+  <pre class="programlisting"><a id="pgfId-1013463"></a>public class DeliveryCenterRestApi implements DeliveryCenter {
+<a id="pgfId-1013553"></a>  @Override
+<a id="pgfId-1013559"></a>  public LocalDate deliver(ShoppingCart cart) {
+<a id="pgfId-1013565"></a>    // all the code required to communicate
+<a id="pgfId-1013571"></a>    // with the delivery API
+<a id="pgfId-1013577"></a>    // and returns a LocalDate
+<a id="pgfId-1013589"></a>  }
+<a id="pgfId-1013595"></a>}
+<a id="pgfId-1013606"></a> 
+<a id="pgfId-1013601"></a>public class SMTPCustomerNotifier implements CustomerNotifier {
+<a id="pgfId-1013612"></a>  @Override
+<a id="pgfId-1013618"></a>  public void sendEstimatedDeliveryNotification(ShoppingCart cart) {
+<a id="pgfId-1013624"></a>    // all the required code to
+<a id="pgfId-1013630"></a>    // send an email via SMTP
+<a id="pgfId-1013636"></a>  }
+<a id="pgfId-1013642"></a>}
+<a id="pgfId-1013653"></a> 
+<a id="pgfId-1013648"></a>public class SAPSoapWebService implements SAP {
+<a id="pgfId-1013659"></a>  @Override
+<a id="pgfId-1013665"></a>  public void cartReadyForDelivery(ShoppingCart cart) {
+<a id="pgfId-1013671"></a>    // all the code required to send the
+<a id="pgfId-1013677"></a>    // cart to SAP's SOAP web service
+<a id="pgfId-1013683"></a>  }
+<a id="pgfId-1013689"></a>}
+<a id="pgfId-1013700"></a> 
+<a id="pgfId-1013695"></a>public class ShoppingCartHibernateDao
+<a id="pgfId-1013706"></a> implements ShoppingCartRepository {
+<a id="pgfId-1013712"></a>  @Override
+<a id="pgfId-1013718"></a>  public List&lt;ShoppingCart&gt; cartsPaidToday() {
+<a id="pgfId-1013724"></a>    // a Hibernate query to get the list of all
+<a id="pgfId-1013730"></a>    // invoices that were paid today
+<a id="pgfId-1013736"></a>  }
+<a id="pgfId-1013747"></a> 
+<a id="pgfId-1013742"></a>  @Override
+<a id="pgfId-1013753"></a>  public void persist(ShoppingCart cart) {
+<a id="pgfId-1013759"></a>    // a hibernate code to persist the cart
+<a id="pgfId-1013765"></a>    // in the database
+<a id="pgfId-1013771"></a>  }
+<a id="pgfId-1013777"></a>}</pre>
+
+  <p class="body"><a id="pgfId-1013849"></a>Why does this pattern improve testability? If our domain classes depend only on ports, we can easily exercise all the behavior of the domain logic by stubbing and mocking the ports. In the <code class="fm-code-in-text">PaidShoppingCartsBatch</code> example, we can stub and mock the <code class="fm-code-in-text">ShoppingCartRepository</code>, <code class="fm-code-in-text">DeliveryCenter</code>, <code class="fm-code-in-text">CustomerNotifier</code>, and <code class="fm-code-in-text">SAP</code> ports and focus on testing the main behavior of the <code class="fm-code-in-text">PaidShoppingCartsBatch</code> class. Again, we do not care if the <code class="fm-code-in-text">DeliveryCenter</code> adapter does <a id="marker-1013854"></a>its job properly. That one will be exercised in its own test suite.</p>
+
+  <p class="body"><a id="pgfId-1013864"></a>Listing 7.5 shows an example test of <code class="fm-code-in-text">PaidShoppingCartsBatch</code>. This is a single test. As a developer, you should apply all the testing techniques and devise several test cases for any behavior and corner cases you see. Even exceptional behaviors can be easily exercised.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1013930"></a>Listing 7.5 Test for <code class="fm-code-in-text">PaidShoppingCartsBatchTest</code>, mocking the ports</p>
+  <pre class="programlisting"><a id="pgfId-1013879"></a>import static org.mockito.Mockito.*;
+<a id="pgfId-1013987"></a> 
+<a id="pgfId-1013982"></a>@ExtendWith(MockitoExtension.class)                               <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1013999"></a>public class PaidShoppingCartsBatchTest {
+<a id="pgfId-1014010"></a> 
+<a id="pgfId-1014005"></a>  @Mock ShoppingCartRepository db;
+<a id="pgfId-1014016"></a>  @Mock private DeliveryCenter deliveryCenter;
+<a id="pgfId-1014022"></a>  @Mock private CustomerNotifier notifier;
+<a id="pgfId-1014028"></a>  @Mock private SAP sap;
+<a id="pgfId-1014039"></a> 
+<a id="pgfId-1014034"></a>  @Test
+<a id="pgfId-1014045"></a>  void theWholeProcessHappens() {
+<a id="pgfId-1014051"></a>    PaidShoppingCartsBatch batch = new PaidShoppingCartsBatch(db,
+<a id="pgfId-1014057"></a>      <span class="fm-code-continuation-arrow">➥</span> deliveryCenter, notifier, sap);                          <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1014085"></a> 
+<a id="pgfId-1014080"></a>    ShoppingCart someCart = spy(new ShoppingCart());              <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1014097"></a>    LocalDate someDate = LocalDate.now();
+<a id="pgfId-1014108"></a> 
+<a id="pgfId-1014103"></a>    when(db.cartsPaidToday()).thenReturn(Arrays.asList(someCart));
+<a id="pgfId-1014114"></a>    when(deliveryCenter.deliver(someCart)).thenReturn(someDate);
+<a id="pgfId-1014125"></a> 
+<a id="pgfId-1014120"></a>    batch.processAll();
+<a id="pgfId-1014136"></a> 
+<a id="pgfId-1014131"></a>    verify(deliveryCenter).deliver(someCart);                     <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1014148"></a>    verify(notifier).sendEstimatedDeliveryNotification(someCart);
+<a id="pgfId-1014154"></a>    verify(db).persist(someCart);
+<a id="pgfId-1014160"></a>    verify(sap).cartReadyForDelivery(someCart);
+<a id="pgfId-1014166"></a>    verify(someCart).markAsReadyForDelivery(someDate);
+<a id="pgfId-1014172"></a>  }
+<a id="pgfId-1014178"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1024750"></a><span class="fm-combinumeral">❶</span> The @ExtendWith and @Mock annotations are extensions provided by Mockito. We do not even need to write Mockito.mock(...). The framework instantiates a mock for us in these fields.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1032408"></a><span class="fm-combinumeral">❷</span> Instantiates the class under test and passes the mocks as dependencies</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1032425"></a><span class="fm-combinumeral">❸</span> The ShoppingCart is a simple entity, so we do not need to mock it. Nevertheless, let’s spy on it to assert its interactions later.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1032444"></a><span class="fm-combinumeral">❹</span> Verifies that interactions with the dependencies happened as expected</p>
+
+  <p class="body"><a id="pgfId-1014278"></a>Although we only tested the application code, the code from the adapters should also be tested. The real implementation of the <code class="fm-code-in-text">ShoppingCartRepository</code>—let’s call it <code class="fm-code-in-text">ShoppingCartHibernateDao</code> (because it uses the Hibernate framework)—will contain SQL queries that are complex and prone to bugs, so it deserves a dedicated test suite. The real <code class="fm-code-in-text">SAPSoapWebService</code> class will <a id="marker-1014283"></a>have complex code to call the SOAP-like web service and should also be exercised. Those classes require integration testing, following our discussion of the testing pyramid in chapter 1. Later in this book, I show how to write some of those integration tests.</p>
+
+  <p class="fm-callout"><a id="pgfId-1014293"></a><span class="fm-callout-head">Note</span> Although I could also have mocked <a id="marker-1014305"></a>the <code class="fm-code-in-text">ShoppingCart</code> class, I followed the advice I gave in chapter 6: do not mock entities unless they are complex. I preferred to spy on them rather than mock them.</p>
+
+  <p class="body"><a id="pgfId-1014354"></a>This idea of separating infrastructure from domain code appears not only in Cockburn’s Hexagonal Architecture but also in many other interesting works on software design, such as <a id="marker-1014327"></a>the <a id="marker-1014333"></a>well-known <i class="fm-italics">Domain-Driven Design</i> by Evans (2004) and Martin’s <i class="fm-italics">Clean Architecture</i> (2018). This principle <a id="marker-1014359"></a>is pervasive among those who talk about software design and testability. I agree with all these authors.</p>
+
+  <p class="body"><a id="pgfId-1014369"></a>A common question for those new to the Hexagonal Architecture (or domain-driven design, or clean architecture) is, “Do I need to create interfaces for every port?” I hope to convince you that there are no rights and wrongs, that everything depends, and that being pragmatic is key. Of course you do not have to create interfaces for everything in your software system. I create interfaces for ports where I see more than one implementation. Even if I do not create an interface to represent an abstract behavior, I make sure the concrete implementation does not leak any of its implementation details. Context and pragmatism are kings.</p>
+
+  <p class="body"><a id="pgfId-1014375"></a>To sum up, the main “design for testability” principle I follow at the architectural level is to separate infrastructure from business code. Do not be tempted to think, for instance, “This is a simple call to the database. Look how easy it is to implement here!” It is always easier to write untestable code, but doing so will bite you in the future. <a id="marker-1014377"></a><a id="marker-1014380"></a><a id="marker-1014382"></a></p>
+
+  <h2 class="fm-head" id="heading_id_4"><a id="pgfId-1014388"></a>7.2 Dependency injection and controllability</h2>
+
+  <p class="body"><a id="pgfId-1014421"></a><a id="marker-1014399"></a><a id="marker-1014401"></a>At the architectural level, we saw that an important concern is to ensure that application (or domain) code is fully separated from the infrastructure code. At the class level, the most important recommendation I can give you is to ensure that classes are fully <i class="fm-italics">controllable</i> (that is, you can easily control what the class under test does) and <i class="fm-italics">observable</i> (you can see what is going on with the class under test and inspect its outcome).</p>
+
+  <p class="body"><a id="pgfId-1014456"></a>For controllability, the most common implementation strategy I apply is the one we used in chapter 6: if a class depends on another class, make it so the dependency can easily be replaced by a mock, fake, or stub. Look back at the <code class="fm-code-in-text">PaidShoppingCartsBatch</code> class (listing 7.2). It depends on four other classes. The <code class="fm-code-in-text">PaidShoppingCartsBatch</code> class receives all its dependencies via constructor, so we can easily inject mocks. The version of <code class="fm-code-in-text">PaidShoppingCartsBatch</code> in listing 7.6 does not receive its dependencies but instead instantiates them directly. How can we test this class without depending on databases, web services, and so on? It is almost the same implementation but much harder to test. It is that easy to write untestable code.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1014516"></a>Listing 7.6 A badly implemented <code class="fm-code-in-text">PaidShoppingCartsBatch</code></p>
+  <pre class="programlisting"><a id="pgfId-1014465"></a>public class VeryBadPaidShoppingCartsBatch {
+<a id="pgfId-1014568"></a> 
+<a id="pgfId-1014563"></a>  public void processAll() {
+<a id="pgfId-1014579"></a> 
+<a id="pgfId-1014574"></a>    ShoppingCartHibernateDao db = new ShoppingCartHibernateDao();        <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1014591"></a>    List&lt;ShoppingCart&gt; paidShoppingCarts = db.cartsPaidToday();
+<a id="pgfId-1014597"></a>    for (ShoppingCart cart : paidShoppingCarts) {
+<a id="pgfId-1014603"></a>      DeliveryCenterRestApi deliveryCenter =
+<a id="pgfId-1014614"></a>        new DeliveryCenterRestApi();                                     <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1014626"></a>      LocalDate estimatedDayOfDelivery = deliveryCenter.deliver(cart);
+<a id="pgfId-1014637"></a> 
+<a id="pgfId-1014632"></a>      cart.markAsReadyForDelivery(estimatedDayOfDelivery);               <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1014649"></a>      db.persist(cart);                                                  <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1014666"></a> 
+<a id="pgfId-1014661"></a>      SMTPCustomerNotifier notifier = new SMTPCustomerNotifier();        <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1014678"></a>      notifier.sendEstimatedDeliveryNotification(cart);
+<a id="pgfId-1014689"></a> 
+<a id="pgfId-1014684"></a>      SAPSoapWebService sap = new SAPSoapWebService();                   <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1014701"></a>      sap.cartReadyForDelivery(cart);
+<a id="pgfId-1014707"></a>    }
+<a id="pgfId-1014713"></a>  }
+<a id="pgfId-1014719"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1032004"></a><span class="fm-combinumeral">❶</span> Instantiates the database adapter. Bad for testability!</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1032025"></a><span class="fm-combinumeral">❷</span> Notifies the delivery system about the delivery. But first, we need to instantiate its adapter. Bad for testability!</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1032042"></a><span class="fm-combinumeral">❸</span> Marks as ready for delivery and persist</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1032059"></a><span class="fm-combinumeral">❹</span> Sends a notification using the adapter directly. Bad for testability!</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1032076"></a><span class="fm-combinumeral">❺</span> Notifies SAP using the adapter directly. Bad for testability!</p>
+
+  <p class="body"><a id="pgfId-1014809"></a>Traditional code tends to be responsible for instantiating its dependencies. But this hinders our ability to control the internals of the class and use mocks to write unit tests. For our classes to be testable, we must allow their dependencies (especially the ones we plan to stub during testing) to be injected.</p>
+
+  <p class="body"><a id="pgfId-1014815"></a>In the implementation, this can be as simple as receiving the dependencies via constructor or, in more complex cases, via setters. Making sure dependencies can be injected (the term <i class="fm-italics">dependency injection</i> is commonly used to refer to this idea; I also describe it in chapter 6) improves our code in many ways:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1014830"></a>It enables us to mock or stub the dependencies during testing, increasing our productivity during the testing phase.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1014844"></a>It makes all the dependencies more explicit. They all need to be injected (via constructor, for example).</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1014854"></a>It offers better separation of concerns: classes do not need to worry about how to build their dependencies, as the dependencies are injected into them.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1014864"></a>The class becomes more extensible. This point is not related to testing, but as a client of the class, you can pass any dependency via the constructor.</p>
+    </li>
+  </ul>
+
+  <p class="fm-callout"><a id="pgfId-1014874"></a><span class="fm-callout-head">Note</span> A Java developer may recognize several frameworks and libraries connected to dependency injection, such as the well-known Spring framework and Google Guice. If your classes allow dependencies to be injected, Spring and Guice will automatically help you instantiate those classes and their tree of dependencies. While such frameworks are not needed at testing time (we usually pass the mocked dependencies manually to the classes under test), this approach is particularly useful to instantiate classes and their dependencies at production time. I suggest learning more about such frameworks!</p>
+
+  <p class="body"><a id="pgfId-1014916"></a>By devising interfaces that represent the abstract interactions that domains and infrastructure classes will have with each other (the ports), we better separate the concerns, reduce the coupling between layers, and devise simpler flows of interactions between layers. In our example, the <code class="fm-code-in-text">PaidShoppingCartsBatch</code> domain class does not depend on the adapters directly. Rather, it depends on an interface that defines what the adapters should do abstractly. The <code class="fm-code-in-text">SAP</code> port interface knows nothing about how the real SAP works. It provides a <code class="fm-code-in-text">cartReadyForDelivery</code> method to <a id="marker-1014921"></a>the domain classes. This completely decouples the domain code from details of how the external infrastructure works.</p>
+
+  <p class="body"><a id="pgfId-1014957"></a>The <i class="fm-italics">dependency inversion</i> principle (note the word <i class="fm-italics">inversion</i>, not <i class="fm-italics">injection</i>) helps us formalize these concepts:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1014966"></a>High-level modules (such as our business classes) should not depend on low-level modules. Both should depend on abstractions (such as interfaces).</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1014980"></a>Abstractions should not depend on details. Details (concrete implementations) should depend on abstractions.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1014990"></a>Figure 7.3 illustrates the principle. The domain objects, which are considered high-level classes, do not depend on low-level details such as a database or web service communication. Instead, they depend on abstractions of those low-level details. In the figure, the abstractions are represented by the interfaces.</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/07-03.png" width="652" height="342"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1034484"></a>Figure 7.3 An illustration of the dependency inversion principle</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1015006"></a>Note the pattern: our code should always depend as much as possible on abstractions and as little as possible on details. The advantage of always depending on abstractions and not on low-level details is that abstractions are less fragile and less prone to change than low-level details. You probably do not want to change your code whenever a low-level detail changes.</p>
+
+  <p class="body"><a id="pgfId-1015026"></a>Again, coming up with interfaces for everything is too much work. I prefer to make sure all of my classes offer a clear interface to their consumers—one that does not leak internal details. For those more familiar with object-oriented programming concepts, I am talking about proper encapsulation.</p>
+
+  <p class="body"><a id="pgfId-1015032"></a>How does depending on an abstraction help with testing? When you unit-test a class, you probably mock and stub its dependencies. When you mock, you naturally depend on what the mocked class offers as a contract. The more complex the class you are mocking, the harder it is to write the test. When you have ports, adapters, and the dependency inversion principle in mind, the interface of a port is naturally simple. The methods that ports offer are usually cohesive and straight to the point.</p>
+
+  <p class="body"><a id="pgfId-1015077"></a>In the <a id="marker-1015040"></a>example, the <code class="fm-code-in-text">ShoppingCartRepository</code> class has a <code class="fm-code-in-text">List&lt;ShoppingCart&gt;</code> <code class="fm-code-in-text">cartsPaidToday()</code> method. It is <a id="marker-1015066"></a>clear what this method does: it returns a list of shopping carts that were paid today. Mocking this method is trivial. Its concrete adapter implementation is probably complicated, full of database-related code and SQL queries. The interface removes all this complexity from testing the <code class="fm-code-in-text">PaidShoppingCartsBatch</code> class. Therefore, designing the ports in a simple way also makes your code easier to test. Complex ports and interfaces require more work.</p>
+
+  <p class="body"><a id="pgfId-1015086"></a>When things become more complicated, making sure dependencies are always injected may not be as straightforward as I have made it seem. It is much easier not to do this. But you must convince yourself that the extra effort will pay off later during testing.</p>
+
+  <p class="fm-callout"><a id="pgfId-1015092"></a><span class="fm-callout-head">Note</span> This chapter is a quick introduction to the Hexagonal Architecture and to the Dependency Inversion Priniciple. I suggest you dive into the related literature, including the books by Martin (2014) and Freeman and Pryce (2009), for more details. I also recommend Schuchert’s guest post on dependency inversion in the wild in Fowler’s wiki (2013); he explains the difference between dependency inversion and dependency injection and gives lots of examples of how he applied the principle in real-world situations. <a id="marker-1015104"></a><a id="marker-1015107"></a></p>
+
+  <h2 class="fm-head" id="heading_id_5"><a id="pgfId-1015113"></a>7.3 Making your classes and methods observable</h2>
+
+  <p class="body"><a id="pgfId-1015148"></a><a id="marker-1015124"></a><a id="marker-1015126"></a><a id="marker-1015128"></a>Observability, at the class level, is about how easy it is to assert that the behavior of the functionality went as expected. My main advice is to ensure that your classes provide developers with simple and easy ways to assert their state. Does a class produce a list of objects you need to assert one by one? Create a <code class="fm-code-in-text">getListOfSomething</code> in that class, which the test can use to get the generated list of objects. Does a class make calls to other classes? Make sure these dependencies can be mocked and your test can assert their interaction. Does a class make internal changes in its attributes, but the class cannot or does not offer getters to each of them? Make the class offer a simple <code class="fm-code-in-text">isValid</code> method that <a id="marker-1015153"></a>returns whether the class is in a valid state.</p>
+
+  <p class="body"><a id="pgfId-1015163"></a>It has to be easy for the test code to inspect the class behavior. Whenever it is difficult to observe whether the program behaves as expected, reflect on how observable the classes are. Do not be afraid to introduce simple getters or simple solutions to facilitate your testing. Behavior that is easy to observe will make the test code much easier! Let’s look at two pragmatic changes I make in my code so it is more observable.</p>
+
+  <h3 class="fm-head1" id="heading_id_6"><a id="pgfId-1015175"></a>7.3.1 Example 1: Introducing methods to facilitate assertions</h3>
+
+  <p class="body"><a id="pgfId-1015236"></a><a id="marker-1015186"></a><a id="marker-1015188"></a><a id="marker-1015190"></a>Take another look at the <code class="fm-code-in-text">processAll()</code> method and <a id="marker-1015205"></a>its test, in listings 7.2 and 7.5. Most of what its test asserts is the interaction with the ports. Such assertions are easily done, and we did not need much more than basic Mockito. Now, let’s look closer at one specific assertion: <code class="fm-code-in-text">verify(someCart).markAsReadyForDelivery(someDate);</code>. The <code class="fm-code-in-text">someCart</code> instance of <code class="fm-code-in-text">ShoppingCart</code> is not a mock but a spy. To ensure that the cart was marked as ready for delivery, we had to spy on the object. Mockito’s API enables us to spy objects with a single line of code. However, whenever we need a spy to assert the behavior, we must ask ourselves why we need a spy. Isn’t there an easier way?</p>
+
+  <p class="body"><a id="pgfId-1015271"></a>In this particular case, we need to check whether <code class="fm-code-in-text">ShoppingCart</code> is marked as ready for delivery after processing (listing 7.7). We can increase the observability of the <code class="fm-code-in-text">ShoppingCart</code> class (in other words, we can make it simpler to observe the expected behavior of the shopping cart) by making it provide a method that indicates whether it is ready for delivery: <code class="fm-code-in-text">isReadyForDelivery</code>.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1015331"></a>Listing 7.7 Improving the observability of the <code class="fm-code-in-text">ShoppingCart</code> class</p>
+  <pre class="programlisting"><a id="pgfId-1015280"></a>public class ShoppingCart {
+<a id="pgfId-1015383"></a>    private boolean readyForDelivery = false;
+<a id="pgfId-1015389"></a>    // more info about the shopping cart...
+<a id="pgfId-1015400"></a> 
+<a id="pgfId-1015395"></a>    public void markAsReadyForDelivery(Calendar estimatedDayOfDelivery) {
+<a id="pgfId-1015406"></a>        this.readyForDelivery = true;
+<a id="pgfId-1015412"></a>        // ...
+<a id="pgfId-1015418"></a>    }
+<a id="pgfId-1015429"></a> 
+<a id="pgfId-1015424"></a>    public boolean isReadyForDelivery() {   <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1015441"></a>        return readyForDelivery;
+<a id="pgfId-1015447"></a>    }
+<a id="pgfId-1015453"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1031949"></a><span class="fm-combinumeral">❶</span> The new isReadyForDelivery method is here to improve the observability of the class.</p>
+
+  <p class="body"><a id="pgfId-1015479"></a>Because we can now easily ask <code class="fm-code-in-text">ShoppingCart</code> whether it is ready for delivery, our test no longer requires a spy. A vanilla assertion should do. Here is the new test.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1015545"></a>Listing 7.8 Avoiding the spy when testing <code class="fm-code-in-text">PaidShoppingCartsBatch</code></p>
+  <pre class="programlisting"><a id="pgfId-1015494"></a>@Test
+<a id="pgfId-1015592"></a>void theWholeProcessHappens() {
+<a id="pgfId-1015598"></a>  PaidShoppingCartsBatch batch = new PaidShoppingCartsBatch(db,
+<a id="pgfId-1015604"></a>    <span class="fm-code-continuation-arrow">➥</span> deliveryCenter, notifier, sap);
+<a id="pgfId-1015626"></a> 
+<a id="pgfId-1015621"></a>  ShoppingCart someCart = new ShoppingCart();             <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1015638"></a>  assertThat(someCart.isReadyForDelivery()).isFalse();
+<a id="pgfId-1015649"></a> 
+<a id="pgfId-1015644"></a>  Calendar someDate = Calendar.getInstance();
+<a id="pgfId-1015655"></a>  when(db.cartsPaidToday()).thenReturn(Arrays.asList(someCart));
+<a id="pgfId-1015661"></a>  when(deliveryCenter.deliver(someCart)).thenReturn(someDate);
+<a id="pgfId-1015672"></a> 
+<a id="pgfId-1015667"></a>  batch.processAll();
+<a id="pgfId-1015683"></a> 
+<a id="pgfId-1015678"></a>  verify(deliveryCenter).deliver(someCart);
+<a id="pgfId-1015689"></a>  verify(notifier).sendEstimatedDeliveryNotification(someCart);
+<a id="pgfId-1015695"></a>  verify(db).persist(someCart);
+<a id="pgfId-1015701"></a>  verify(sap).cartReadyForDelivery(someCart);
+<a id="pgfId-1015712"></a> 
+<a id="pgfId-1015707"></a>  assertThat(someCart.isReadyForDelivery()).isTrue();     <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1015724"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1031830"></a><span class="fm-combinumeral">❶</span> No need for a spy anymore, as it is now easy to observe the behavior.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1031851"></a><span class="fm-combinumeral">❷</span> Uses a simple vanilla assertion instead of a Mockito assertion</p>
+
+  <p class="body"><a id="pgfId-1015766"></a>I urge you not to take this particular code change (the addition of a getter) as the solution for all observability issues. Rather, abstract away what we did here: we noticed that asserting that the shopping cart was marked as ready for delivery was not straightforward, as it required a spy. We then re-evaluated our code and looked for a simple way to let the test know that the shopping cart was marked as ready for delivery. In this case, a getter was the easy implementation. <a id="marker-1015768"></a><a id="marker-1015771"></a><a id="marker-1015773"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_7"><a id="pgfId-1015779"></a>7.3.2 Example 2: Observing the behavior of void methods</h3>
+
+  <p class="body"><a id="pgfId-1015806"></a><a id="marker-1015790"></a><a id="marker-1015792"></a><a id="marker-1015794"></a><a id="marker-1015796"></a>When a method returns an object, it is natural to think that assertions will check whether the returned object is as expected. However, this does not happen naturally in <code class="fm-code-in-text">void</code> methods. If your method does not return anything, what will you assert? It is even more complicated if what you need to assert stays within the method. As an example, the following method creates a set of <code class="fm-code-in-text">Installment</code>s based on a <code class="fm-code-in-text">ShoppingCart</code>.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1015891"></a>Listing 7.9 <code class="fm-code-in-text">InstallmentGenerator</code></p>
+  <pre class="programlisting"><a id="pgfId-1015840"></a>public class InstallmentGenerator {
+<a id="pgfId-1015939"></a> 
+<a id="pgfId-1015934"></a>  private InstallmentRepository repository;
+<a id="pgfId-1015950"></a> 
+<a id="pgfId-1015945"></a>  public InstallmentGenerator(InstallmentRepository repository) {          <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1015962"></a>    this.repository = repository;
+<a id="pgfId-1015968"></a>  }
+<a id="pgfId-1015979"></a> 
+<a id="pgfId-1015974"></a>  public void generateInstallments(ShoppingCart cart,
+<a id="pgfId-1015985"></a>    <span class="fm-code-continuation-arrow">➥</span> int numberOfInstallments) {
+<a id="pgfId-1016002"></a>    LocalDate nextInstallmentDueDate = LocalDate.now();                    <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1016019"></a> 
+<a id="pgfId-1016014"></a>    double amountPerInstallment = cart.getValue() / numberOfInstallments;  <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1016036"></a> 
+<a id="pgfId-1016031"></a>    for(int i = 1; i &lt;= numberOfInstallments; i++) {                       <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1016048"></a>      nextInstallmentDueDate =
+<a id="pgfId-1016054"></a>        nextInstallmentDueDate.plusMonths(1);                              <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1016071"></a> 
+<a id="pgfId-1016066"></a>      Installment newInstallment =
+<a id="pgfId-1016077"></a>        new Installment(nextInstallmentDueDate, amountPerInstallment);
+<a id="pgfId-1016083"></a>      repository.persist(newInstallment);                                   <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1016095"></a>    }
+<a id="pgfId-1016101"></a>  }
+<a id="pgfId-1016107"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1031395"></a><span class="fm-combinumeral">❶</span> We can inject a stub of InstallmentRepository.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1031416"></a><span class="fm-combinumeral">❷</span> Creates a variable to store the last installment date</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1031433"></a><span class="fm-combinumeral">❸</span> Calculates the amount per installment</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1031457"></a><span class="fm-combinumeral">❹</span> Creates a sequence of installments, one month apart</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1031474"></a><span class="fm-combinumeral">❺</span> Adds 1 to the month</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1031491"></a><span class="fm-combinumeral">❻</span> Creates and persists the installment</p>
+
+  <p class="body"><a id="pgfId-1016279"></a>To test this method, we need to check whether the newly created <code class="fm-code-in-text">Installment</code>s are set with the right value and date. The question is, how can we get the <code class="fm-code-in-text">Installment</code>s easily? The <code class="fm-code-in-text">Installment</code> classes are instantiated within the method and sent to the repository for persistence, and that is it. If you know Mockito well, you know there is a way to get all the instances passed to a mock: an <code class="fm-code-in-text">ArgumentCaptor</code>. The overall idea is that we ask the mock, “Can you give me all the instances passed to you during the test?” We then make assertions about them. In this case, we can ask the <code class="fm-code-in-text">repository</code> mock whether all the <code class="fm-code-in-text">Installment</code>s were passed to the <code class="fm-code-in-text">persist</code> method.</p>
+
+  <p class="body"><a id="pgfId-1016314"></a>The test in listing 7.10 creates a shopping cart with value 100 and asks the generator for 10 installments. Therefore, it should create 10 installments of 10.0 each. That is what we want to assert. After the method under test is executed, we collect all the installments using an <code class="fm-code-in-text">ArgumentCaptor</code>. See the calls for <code class="fm-code-in-text">capture()</code> and <code class="fm-code-in-text">getAllValues()</code>. With the list available, we use traditional AssertJ assertions.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1016413"></a>Listing 7.10 Tests for <code class="fm-code-in-text">InstallmentGenerator</code> using <code class="fm-code-in-text">ArgumentCaptor</code></p>
+  <pre class="programlisting"><a id="pgfId-1016323"></a>public class InstallmentGeneratorTest {
+<a id="pgfId-1016438"></a> 
+<a id="pgfId-1016433"></a>    @Mock private InstallmentRepository repository;                 <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1016455"></a> 
+<a id="pgfId-1016450"></a>    @Test
+<a id="pgfId-1016461"></a>    void checkInstallments() {
+<a id="pgfId-1016472"></a> 
+<a id="pgfId-1016467"></a>      InstallmentGenerator generator =
+<a id="pgfId-1016478"></a>        new InstallmentGenerator(repository);                       <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1016495"></a> 
+<a id="pgfId-1016490"></a>      ShoppingCart cart = new ShoppingCart(100.0);
+<a id="pgfId-1016501"></a>      generator.generateInstallments(cart, 10);                     <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1016518"></a> 
+<a id="pgfId-1016513"></a>      ArgumentCaptor&lt;Installment&gt; captor =
+<a id="pgfId-1016524"></a>        ArgumentCaptor.forClass(Installment.class);                 <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1016541"></a> 
+<a id="pgfId-1016546"></a> 
+<a id="pgfId-1016536"></a>      verify(repository,times(10)).persist(captor.capture());       <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1016558"></a>      List&lt;Installment&gt; allInstallments = captor.getAllValues();    <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1016575"></a> 
+<a id="pgfId-1016570"></a>      assertThat(allInstallments)
+<a id="pgfId-1016581"></a>          .hasSize(10)
+<a id="pgfId-1016587"></a>          .allMatch(i -&gt; i.getValue() == 10);                       <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1016604"></a> 
+<a id="pgfId-1016599"></a>      for(int month = 1; month &lt;= 10; month++) {                    <span class="fm-combinumeral">❼</span>
+<a id="pgfId-1016616"></a>        final LocalDate dueDate = LocalDate.now().plusMonths(month);
+<a id="pgfId-1016622"></a>        assertThat(allInstallments)
+<a id="pgfId-1016628"></a>            .anyMatch(i -&gt; i.getDate().equals(dueDate));
+<a id="pgfId-1016634"></a>      }
+<a id="pgfId-1016640"></a>    }
+<a id="pgfId-1016646"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1030897"></a><span class="fm-combinumeral">❶</span> Creates a mock of the repository</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1030918"></a><span class="fm-combinumeral">❷</span> Instantiates the class under test, passing the mock as a dependency</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1030935"></a><span class="fm-combinumeral">❸</span> Calls the method under test. Note that the method returns void, so we need something smarter to assert its behavior.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1030952"></a><span class="fm-combinumeral">❹</span> Creates an ArgumentCaptor</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1030969"></a><span class="fm-combinumeral">❺</span> Using the captor, we get all the installments passed to the repository.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1030989"></a><span class="fm-combinumeral">❻</span> Asserts that the installments are correct. All of them should have a value of 10.0.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1031006"></a><span class="fm-combinumeral">❼</span> Also asserts that the installments should be one month apart</p>
+
+  <p class="body"><a id="pgfId-1016794"></a>The <code class="fm-code-in-text">ArgumentCaptor</code> makes writing the test possible. <code class="fm-code-in-text">ArgumentCaptor</code>s are handy whenever we test methods that return <code class="fm-code-in-text">void</code>.</p>
+
+  <p class="body"><a id="pgfId-1016845"></a>If we apply the idea of simplicity, you may wonder if there is a way to avoid the <code class="fm-code-in-text">ArgumentCaptor</code>. It would be much simpler if there were a “get all generated installments” method. If we make the <code class="fm-code-in-text">generateInstallments</code> method return <a id="marker-1016824"></a>the list of all newly generated <code class="fm-code-in-text">Installment</code>s, the test becomes even simpler. The change required in <code class="fm-code-in-text">InstallmentGenerator</code> is small: as all we need to do is keep track of the installments in a list. The following listing shows the new implementation.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1016905"></a>Listing 7.11 <code class="fm-code-in-text">InstallmentGenerator</code> returning the list of installments</p>
+  <pre class="programlisting"><a id="pgfId-1016854"></a>public List&lt;Installment&gt; generateInstallments(ShoppingCart cart,
+<a id="pgfId-1016953"></a>  <span class="fm-code-continuation-arrow">➥</span> int numberOfInstallments) {
+<a id="pgfId-1016975"></a> 
+<a id="pgfId-1016970"></a>  List&lt;Installment&gt; generatedInstallments = new ArrayList&lt;Installment&gt;(); <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1016992"></a> 
+<a id="pgfId-1016987"></a>  LocalDate nextInstallmentDueDate = LocalDate.now();
+<a id="pgfId-1017003"></a> 
+<a id="pgfId-1016998"></a>  double amountPerInstallment = cart.getValue() / numberOfInstallments;
+<a id="pgfId-1017014"></a> 
+<a id="pgfId-1017009"></a>  for(int i = 1; i &lt;= numberOfInstallments; i++) {
+<a id="pgfId-1017020"></a>    nextInstallmentDueDate = nextInstallmentDueDate.plusMonths(1);
+<a id="pgfId-1017031"></a> 
+<a id="pgfId-1017026"></a>    Installment newInstallment =
+<a id="pgfId-1017037"></a>      new Installment(nextInstallmentDueDate, amountPerInstallment);
+<a id="pgfId-1017043"></a>    repository.persist(newInstallment);
+<a id="pgfId-1017054"></a> 
+<a id="pgfId-1017049"></a>    generatedInstallments.add(newInstallment);                            <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1017071"></a> 
+<a id="pgfId-1017066"></a>  }
+<a id="pgfId-1017082"></a> 
+<a id="pgfId-1017077"></a>  return generatedInstallments;                                           <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1017094"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1030676"></a><span class="fm-combinumeral">❶</span> Creates a list that will keep track of all the generated installments</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1030697"></a><span class="fm-combinumeral">❷</span> Stores each of the generated installments</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1030716"></a><span class="fm-combinumeral">❸</span> Returns the list of installments</p>
+
+  <p class="body"><a id="pgfId-1017152"></a>Now we can avoid the <code class="fm-code-in-text">ArgumentCaptor</code> completely in the test code.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1017255"></a>Listing 7.12 <code class="fm-code-in-text">InstallmentGeneratorTest</code> without the <code class="fm-code-in-text">ArgumentCaptor</code></p>
+  <pre class="programlisting"><a id="pgfId-1017167"></a>public class InstallmentGeneratorTest {
+<a id="pgfId-1017278"></a> 
+<a id="pgfId-1017273"></a>    @Mock
+<a id="pgfId-1017284"></a>    private InstallmentRepository repository;
+<a id="pgfId-1017295"></a> 
+<a id="pgfId-1017290"></a>    @Test
+<a id="pgfId-1017301"></a>    void checkInstallments() {
+<a id="pgfId-1017312"></a> 
+<a id="pgfId-1017307"></a>      ShoppingCart cart = new ShoppingCart(100.0);
+<a id="pgfId-1017318"></a>      InstallmentGenerator generator =
+<a id="pgfId-1017324"></a>        new InstallmentGenerator(repository);
+<a id="pgfId-1017335"></a> 
+<a id="pgfId-1017330"></a>      List&lt;Installment&gt; allInstallments =
+<a id="pgfId-1017341"></a>        generator.generateInstallments(cart, 10);   <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1017358"></a> 
+<a id="pgfId-1017353"></a>      assertThat(allInstallments)
+<a id="pgfId-1017364"></a>          .hasSize(10)
+<a id="pgfId-1017370"></a>          .allMatch(i -&gt; i.getValue() == 10);       <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1017387"></a> 
+<a id="pgfId-1017382"></a>      for(int month = 1; month &lt;= 10; month++) {
+<a id="pgfId-1017393"></a>        final LocalDate dueDate = LocalDate.now().plusMonths(month);
+<a id="pgfId-1017399"></a>        assertThat(allInstallments)
+<a id="pgfId-1017405"></a>            .anyMatch(i -&gt; i.getDate().equals(dueDate));
+<a id="pgfId-1017411"></a>      }
+<a id="pgfId-1017417"></a>    }
+<a id="pgfId-1017423"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1030565"></a><span class="fm-combinumeral">❶</span> The method under test returns the list of installments. No need for ArgumentCaptor.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1030586"></a><span class="fm-combinumeral">❷</span> Same assertions as before</p>
+
+  <p class="body"><a id="pgfId-1017465"></a>Again, do not take this example literally. Just remember that small design changes that improve your testability are fine. Sometimes it can be hard to tell whether a change will make the code design bad. Try it, and if you don’t like it, discard it. Pragmatism is key. <a id="marker-1017467"></a><a id="marker-1017470"></a><a id="marker-1017472"></a><a id="marker-1017474"></a><a id="marker-1017476"></a><a id="marker-1017478"></a><a id="marker-1017480"></a></p>
+
+  <h2 class="fm-head" id="heading_id_8"><a id="pgfId-1017486"></a>7.4 Dependency via class constructor or value via method parameter?</h2>
+
+  <p class="body"><a id="pgfId-1017505"></a><a id="marker-1017497"></a><a id="marker-1017499"></a><a id="marker-1017501"></a>A very common design decision is whether to pass a dependency to the class via constructor (so the class uses the dependency to get a required value) or pass that value directly to the method. As always, there is no right or wrong way. However, there is a trade-off you must understand to make the best decision.</p>
+
+  <p class="body"><a id="pgfId-1017510"></a>Let’s use the <code class="fm-code-in-text">ChristmasDiscount</code> example, as it fits this discussion perfectly. The following listing shows the code again.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1017576"></a>Listing 7.13 <code class="fm-code-in-text">ChristmasDiscount</code> class, one more time</p>
+  <pre class="programlisting"><a id="pgfId-1017525"></a>public class ChristmasDiscount {
+<a id="pgfId-1017629"></a> 
+<a id="pgfId-1017624"></a>  private final Clock clock;
+<a id="pgfId-1017640"></a> 
+<a id="pgfId-1017635"></a>  public ChristmasDiscount(Clock clock) {           <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1017652"></a>    this.clock = clock;
+<a id="pgfId-1017658"></a>  }
+<a id="pgfId-1017669"></a> 
+<a id="pgfId-1017664"></a>  public double applyDiscount(double rawAmount) {
+<a id="pgfId-1017675"></a>    LocalDate today = clock.now();                  <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1017692"></a> 
+<a id="pgfId-1017687"></a>    double discountPercentage = 0;
+<a id="pgfId-1017698"></a>    boolean isChristmas = today.getMonth()== Month.DECEMBER
+<a id="pgfId-1017704"></a>                &amp;&amp; today.getDayOfMonth()==25;
+<a id="pgfId-1017715"></a> 
+<a id="pgfId-1017710"></a>    if(isChristmas)
+<a id="pgfId-1017721"></a>      discountPercentage = 0.15;
+<a id="pgfId-1017732"></a> 
+<a id="pgfId-1017727"></a>    return rawAmount - (rawAmount * discountPercentage);
+<a id="pgfId-1017738"></a>  }
+<a id="pgfId-1017744"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1030435"></a><span class="fm-combinumeral">❶</span> We can inject a stubbed version of Clock here.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1030456"></a><span class="fm-combinumeral">❷</span> Calls the now() method to get the current date</p>
+
+  <p class="body"><a id="pgfId-1017834"></a>The <code class="fm-code-in-text">ChristmasDiscount</code> class needs <a id="marker-1017797"></a>the current date so it knows whether it is Christmas and whether to apply the Christmas discount. To get the date, the class uses another dependency, which knows how to get the current <a id="marker-1017803"></a>date: the <code class="fm-code-in-text">Clock</code> class. Testing <code class="fm-code-in-text">ChristmasDiscount</code> is easy because we can stub <code class="fm-code-in-text">Clock</code> and simulate any date we want.</p>
+
+  <p class="body"><a id="pgfId-1017885"></a>But having to stub one class is more complex than not having to stub one class. Another way to model this class and its expected behavior is to avoid the dependency on <code class="fm-code-in-text">Clock</code> and receive the data as a parameter of the method. This other implementation is shown in listing 7.14. Now the <code class="fm-code-in-text">applyDiscount()</code> method receives <a id="marker-1017864"></a>two parameters: <code class="fm-code-in-text">rawAmount</code> and <code class="fm-code-in-text">today</code>, which is today’s date.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1017982"></a>Listing 7.14 <code class="fm-code-in-text">ChristmasDiscount</code> without depending on <code class="fm-code-in-text">Clock</code></p>
+  <pre class="programlisting"><a id="pgfId-1017894"></a>public class ChristmasDiscount {
+<a id="pgfId-1018005"></a> 
+<a id="pgfId-1018000"></a>  public double applyDiscount(double rawAmount, LocalDate today) {   <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1018017"></a>    double discountPercentage = 0;
+<a id="pgfId-1018023"></a>    boolean isChristmas = today.getMonth()== Month.DECEMBER
+<a id="pgfId-1018029"></a>                &amp;&amp; today.getDayOfMonth()==25;
+<a id="pgfId-1018040"></a> 
+<a id="pgfId-1018035"></a>    if(isChristmas)
+<a id="pgfId-1018046"></a>      discountPercentage = 0.15;
+<a id="pgfId-1018057"></a> 
+<a id="pgfId-1018052"></a>    return rawAmount - (rawAmount * discountPercentage);
+<a id="pgfId-1018063"></a>  }
+<a id="pgfId-1018069"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1030380"></a><span class="fm-combinumeral">❶</span> The method receives one more parameter: a LocalDate.</p>
+
+  <p class="body"><a id="pgfId-1018095"></a>This method is also easily testable. We do not even need mocks to test it, as we can pass any <code class="fm-code-in-text">LocalDate</code> object to <a id="marker-1018106"></a>this method. So, if it is easier to pass the value via method parameter rather than a dependency via its constructor, why do we do it?</p>
+
+  <p class="body"><a id="pgfId-1026176"></a>First, let’s explore the pros and cons of passing the value we want directly via a method parameter, avoiding all the dependencies. This is often the simplest solution in terms of both implementation (no need for dependencies via constructor) and testing (passing different values via method calls). But the downside is that all the callers of this class will need to provide this parameter. In this example, <code class="fm-code-in-text">ChristmasDiscount</code> expects <code class="fm-code-in-text">today</code> to be passed as a parameter. This means the clients of the <code class="fm-code-in-text">applyDiscount()</code> method must pass the current date. How do we get the current date in this code base? Using the <code class="fm-code-in-text">Clock</code> class. So, while <code class="fm-code-in-text">ChristmasDiscount</code> no longer depends on <code class="fm-code-in-text">Clock</code>, its callers will depend on it. In a way, we pushed the <code class="fm-code-in-text">Clock</code> dependency up one level. The question is, is this dependency better in the class we are modeling now or in its callers?</p>
+
+  <p class="body"><a id="pgfId-1018227"></a>Now, let’s explore the idea of passing a dependency that knows how to get the required parameter. We did this in the first implementation of the <code class="fm-code-in-text">ChristmasDiscount</code> class, which depends on <code class="fm-code-in-text">Clock</code>; the <code class="fm-code-in-text">applyDiscount()</code> method invokes <code class="fm-code-in-text">clock.now()</code> whenever it needs the current date. While this solution is more complicated than the previous one, it enables us to easily stub the dependency as we did in chapter 6.</p>
+
+  <p class="body"><a id="pgfId-1018282"></a>It is also simple to write tests for the classes that depend on <code class="fm-code-in-text">ChristmasDiscount</code>. These classes will mock <code class="fm-code-in-text">ChristmasDiscount</code>’s <code class="fm-code-in-text">applyDiscount(double</code> <code class="fm-code-in-text">rawAmount)</code> method without requiring the <code class="fm-code-in-text">Clock</code>. The next listing shows a generic consumer that receives the <code class="fm-code-in-text">ChristmasDiscount</code> class via the constructor, so you can stub it during testing.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1018342"></a>Listing 7.15 Generic consumer of the <code class="fm-code-in-text">ChristmasDiscount</code> class</p>
+  <pre class="programlisting"><a id="pgfId-1018291"></a>public class SomeBusinessService {
+<a id="pgfId-1018399"></a> 
+<a id="pgfId-1018394"></a>  private final ChristmasDiscount discount;
+<a id="pgfId-1018410"></a> 
+<a id="pgfId-1018405"></a>  public SomeBusinessService(ChristmasDiscount discount) {    <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1018422"></a>    this.discount = discount;
+<a id="pgfId-1018428"></a>  }
+<a id="pgfId-1018434"></a>  public void doSomething() {
+<a id="pgfId-1018445"></a>    // ... some business logic here ...
+<a id="pgfId-1018456"></a> 
+<a id="pgfId-1018451"></a>    discount.applyDiscount(100.0);
+<a id="pgfId-1018467"></a> 
+<a id="pgfId-1018462"></a>    // continue the logic here...
+<a id="pgfId-1018473"></a>  }
+<a id="pgfId-1018479"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1030324"></a><span class="fm-combinumeral">❶</span> We inject a ChristmasDiscount stub here.</p>
+
+  <p class="body"><a id="pgfId-1018568"></a>Listing 7.16 shows the tests for <a id="marker-1018507"></a>this <code class="fm-code-in-text">SomeBusinessService</code> class. We stub the <code class="fm-code-in-text">ChristmasDiscount</code> class. Note that this test does not need to handle <code class="fm-code-in-text">Clock</code>. Although <code class="fm-code-in-text">Clock</code> is a dependency of the concrete implementation of <code class="fm-code-in-text">ChristmasDiscount</code>, we do not care about that when stubbing. So, in a way, the <code class="fm-code-in-text">ChristmasDiscount</code> class gets more complicated, but we simplify testing its consumers.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1018628"></a>Listing 7.16 Example of the test for the generic consumer class</p>
+  <pre class="programlisting"><a id="pgfId-1018577"></a>@Test
+<a id="pgfId-1018667"></a>void test() {
+<a id="pgfId-1018673"></a>  ChristmasDiscount discount = Mockito.mock(ChristmasDiscount.class);   <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1018685"></a>  SomeBusinessService service = new SomeBusinessService(discount);
+<a id="pgfId-1018696"></a> 
+<a id="pgfId-1018691"></a>  service.doSomething();
+<a id="pgfId-1018707"></a> 
+<a id="pgfId-1018702"></a>  // ... test continues ...
+<a id="pgfId-1018713"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1030256"></a><span class="fm-combinumeral">❶</span> Mocks ChristmasDiscount. Note that we do not need to mock or do anything with Clock.</p>
+
+  <p class="body"><a id="pgfId-1018739"></a>Receiving a dependency via constructor adds a little complexity to the overall class and its tests but simplifies its client classes. Receiving the data via method parameter simplifies the class and its tests but adds a little complexity to the clients. Software engineering is all about trade-offs.</p>
+
+  <p class="body"><a id="pgfId-1018771"></a>As a rule of thumb, I try to simplify the work of the callers of my class. If I must choose between simplifying the class I am testing now (such as making <code class="fm-code-in-text">ChristmasDiscount</code> receive the date via parameter) but complicating the life of all its callers (they all must get the date of today themselves) or the other way around (<code class="fm-code-in-text">ChristmasDiscount</code> gets more complicated and depends on <code class="fm-code-in-text">Clock</code>, but the callers do not need anything else), I always pick the latter. <a id="marker-1027432"></a><a id="marker-1027433"></a><a id="marker-1027434"></a></p>
+
+  <h2 class="fm-head" id="heading_id_9"><a id="pgfId-1018787"></a>7.5 Designing for testability in the real world</h2>
+
+  <p class="body"><a id="pgfId-1018797"></a>Writing tests offers a significant advantage during development: if you pay attention to them (or <i class="fm-italics">listen</i> to them, as many developers say), they may give you hints about the design of the code you are testing. Achieving good class design is a challenge in complex object-oriented systems. The more help we get, the better.</p>
+
+  <p class="body"><a id="pgfId-1018812"></a>The buzz about tests giving feedback about the design of the code comes from the fact that all your test code does is exercise the production class:</p>
+
+  <ol class="calibre14">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1018842"></a>It instantiates the class under test. It can be as simple as a <code class="fm-code-in-text">new</code> <code class="fm-code-in-text">A()</code> or as complicated as <code class="fm-code-in-text">A(dependency1,</code> <code class="fm-code-in-text">dependency2,</code> <code class="fm-code-in-text">...)</code>. If a class needs dependencies, the test should also instantiate them.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1018871"></a>It invokes the method under test. It can be as simple as <code class="fm-code-in-text">a.method()</code> or as complicated as <code class="fm-code-in-text">a.precall1();</code> <code class="fm-code-in-text">a.precall2();</code> <code class="fm-code-in-text">a.method(param1,</code> <code class="fm-code-in-text">param2,</code> <code class="fm-code-in-text">...);</code>. If a method has pre-conditions before being invoked and/or receiving parameters, the test should also be responsible for those.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1018880"></a>It asserts that the method behaves as expected. It can be as simple as <code class="fm-code-in-text">assertThat(return).isEqualTo(42);</code> or as complicated as dozens of lines to observe what has happened in the system. Again, your test code is responsible for all the assertions.</p>
+    </li>
+  </ol>
+
+  <p class="body"><a id="pgfId-1018899"></a>You should constantly monitor how hard it is to perform each of these steps. Is it difficult to instantiate the class under test? Maybe there is a way to design it with fewer dependencies. Is it hard to invoke the method under test? Maybe there is a way to design it so its pre-conditions are easier to handle. Is it difficult to assert the outcome of the method? Maybe there is a way to design it so it is easier to observe what the method does.</p>
+
+  <p class="body"><a id="pgfId-1018905"></a>Next, I will describe some things I pay attention to when writing tests. They give me feedback about the design and testability of the class I am testing.</p>
+
+  <h3 class="fm-head1" id="heading_id_10"><a id="pgfId-1018911"></a>7.5.1 The cohesion of the class under test</h3>
+
+  <p class="body"><a id="pgfId-1018928"></a><a id="marker-1018922"></a><a id="marker-1018924"></a>Cohesion is about a module, a class, a method, or any element in your architecture having only a single responsibility. Classes with multiple responsibilities are naturally more complex and harder to comprehend than classes with fewer responsibilities. So, strive for classes and methods that do one thing. Defining what a single responsibility means is tricky and highly context-dependent. Nevertheless, sometimes it can be easy to detect multiple responsibilities in a single element, such as a method that calculates a specific tax and updates the values of all its invoices.</p>
+
+  <p class="body"><a id="pgfId-1018933"></a>Let’s give you some ideas about what you can observe in a test. Note that these tips are symptoms or indications that something <i class="fm-italics">may</i> be wrong with the production code. It is up to you to make the final decision. Also, note that these tips are solely based on my experience as a developer and are not scientifically validated:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1018948"></a><i class="fm-italics1">Non-cohesive classes have very large test suites.</i> They contain a lot of behavior that needs to be tested. Pay attention to the number of tests you write for a single class and/or method. If the number of tests grows beyond what you consider reasonable, maybe it is time to re-evaluate the responsibilities of that class or method. A common refactoring strategy is to break the class in two.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1018969"></a><i class="fm-italics1">Non-cohesive classes have test suites that never stop growing.</i> You expect the class to reach a more stable status at some point. However, if you notice that you are always going back to the same test class and adding new tests, this may be a bad design. It is usually related to the lack of a decent abstraction.</p>
+
+      <ul class="calibre15">
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1018986"></a>A class that never stops growing breaks both the Single <a class="calibre13" id="marker-1018988"></a><a class="calibre13" id="marker-1018991"></a>Responsibility (SRP) and the Open Closed (OCP) principles from <a class="calibre13" id="marker-1018996"></a>the SOLID guidelines. A common refactoring strategy is to create an abstraction to represent the different roles and move each calculation rule to its own class. Google the Strategy design pattern to see code examples. <a class="calibre13" id="marker-1019002"></a><a class="calibre13" id="marker-1019005"></a></li>
+      </ul>
+    </li>
+  </ul>
+
+  <h3 class="fm-head1" id="heading_id_11"><a id="pgfId-1019011"></a>7.5.2 The coupling of the class under test</h3>
+
+  <p class="body"><a id="pgfId-1019028"></a><a id="marker-1019022"></a><a id="marker-1019024"></a>In a world of cohesive classes, we combine different classes to build large behaviors. But doing so may lead to a highly coupled design. Excessive coupling may harm evolution, as changes in one class may propagate to other classes in ways that are not clear. Therefore, we should strive for classes that are coupled as little as possible.</p>
+
+  <p class="body"><a id="pgfId-1019033"></a>Your test code can help you detect highly coupled classes:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019039"></a>If the production class requires you to instantiate many dependencies in your test code, this may be a sign. Consider redesigning the class. There are different refactoring strategies you can employ. Maybe the large behavior that the class implements can be broken into two steps.</p>
+
+      <ul class="calibre15">
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1019053"></a>Sometimes coupling is unavoidable, and the best we can do is manage it better. Breaking a class enables developers to test it more easily. I will give more concrete examples of such cases in the following chapters.</li>
+      </ul>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019109"></a>Another sign is if you observe a test failing in class <code class="fm-code-in-text">ATest</code> (supposedly testing the behavior of class <code class="fm-code-in-text">A</code>), but when you debug it, you find the problem in class <code class="fm-code-in-text">B</code>. This is a clear issue with dependencies: a problem in class <code class="fm-code-in-text">B</code> somehow leaked to class <code class="fm-code-in-text">A</code>. It is time to re-evaluate how these classes are coupled and how they interact and see if such leakages can be prevented in future versions of the system. <a class="calibre13" id="marker-1019114"></a><a class="calibre13" id="marker-1019117"></a></p>
+    </li>
+  </ul>
+
+  <h3 class="fm-head1" id="heading_id_12"><a id="pgfId-1019123"></a>7.5.3 Complex conditions and testability</h3>
+
+  <p class="body"><a id="pgfId-1019146"></a><a id="marker-1019134"></a><a id="marker-1019136"></a>We have seen in previous chapters that very complex conditions (such as an <code class="fm-code-in-text">if</code> statement composed of multiple boolean operations) require considerable effort from testers. For example, we may devise too many tests after applying boundary testing or condition + branch coverage criteria. Reducing the complexity of such conditions by, for example, breaking them into multiple smaller conditions will not reduce the overall complexity of the problem but will at least spread it out. <a id="marker-1019151"></a><a id="marker-1019154"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_13"><a id="pgfId-1019160"></a>7.5.4 Private methods and testability</h3>
+
+  <p class="body"><a id="pgfId-1019177"></a><a id="marker-1019171"></a><a id="marker-1019173"></a>A common question among developers is whether to test private methods. In principle, testers should test private methods only through their public methods. However, testers often feel the urge to test a particular private method in isolation.</p>
+
+  <p class="body"><a id="pgfId-1019182"></a>A common reason for this feeling is the lack of cohesion or the complexity of the private method. In other words, this method does something so different from the public method, and/or its task is so complicated, that it must be tested separately. This is a good example of the test speaking to us. In terms of design, this may mean the private method does not belong in its current place. A common refactoring is to extract the method, perhaps to a brand new class. There, the former private method, now a public method, can be tested normally. The original class, where the private method used to be, should now depend on this new class. <a id="marker-1019184"></a><a id="marker-1019187"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_14"><a id="pgfId-1019193"></a>7.5.5 Static methods, singletons, and testability</h3>
+
+  <p class="body"><a id="pgfId-1019218"></a><a id="marker-1019204"></a><a id="marker-1019206"></a><a id="marker-1019208"></a>As we have seen, static methods adversely affect testability. Therefore, a good rule of thumb is to avoid creating static methods whenever possible. Exceptions to this rule are utility methods, which are often not mocked. If your system has to depend on a specific static method, perhaps because it comes with the framework your software depends on, adding an abstraction on top of it—similar to what we did with the <code class="fm-code-in-text">LocalDate</code> class in <a id="marker-1019223"></a>the previous chapter—may be a good decision to facilitate testability.</p>
+
+  <p class="body"><a id="pgfId-1019233"></a>The same recommendation applies when your system needs code from others or external dependencies. Again, creating layers and classes that abstract away the dependency may help you increase testability. Don’t be afraid to create these extra layers: although it may seem that they will increase the overall complexity of the design, the increased testability pays off.</p>
+
+  <p class="body"><a id="pgfId-1019239"></a>Using the Singleton design pattern also harms testability. This approach ensures that there is only one instance of a class throughout the entire system. Whenever you need an instance of that class, you ask the singleton, and the singleton returns the same one. A singleton makes testing difficult because it is like having a global variable that is persistent throughout the program’s life cycle. When testing software systems that use singletons, we often have to write extra code in the test suite to reset or replace the singleton in the different test cases. Singletons also bring other disadvantages to maintainability in general. If you are not familiar with this pattern, I suggest reading about it. <a id="marker-1019241"></a><a id="marker-1019244"></a><a id="marker-1019246"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_15"><a id="pgfId-1019252"></a>7.5.6 The Hexagonal Architecture and mocks as a design technique</h3>
+
+  <p class="body"><a id="pgfId-1019269"></a><a id="marker-1019263"></a><a id="marker-1019265"></a>Now that you know about the Hexagonal Architecture and the idea of ports and adapters, we can talk about mocks as a design technique. In a nutshell, whenever mockists develop a feature (or a domain object) and notice that they need something from another place, they let a port emerge. As we saw, the port is an interface that allows the mockist to develop the remainder of the feature without being bothered by the concrete implementation of the adapter. The mockist takes this as a design activity: they reflect on the contract that the port should offer to the core of the application and model the best interface possible.</p>
+
+  <p class="body"><a id="pgfId-1019274"></a>Whenever I am coding a class (or set of classes) and notice that I need something else, I let an interface emerge that represents this “something else.” I reflect on what the class under development needs from it, model the best interface, and continue developing the class. Only later do I implement the concrete adapter. I enjoy this approach as it lets me focus on the class I am implementing by giving me a way to abstract things that I do not care about right now, like the implementation of adapters. <a id="marker-1019276"></a><a id="marker-1019279"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_16"><a id="pgfId-1019285"></a>7.5.7 Further reading about designing for testability</h3>
+
+  <p class="body"><a id="pgfId-1019305"></a><a id="marker-1019296"></a>Entire books can be written about this topic. In fact, entire books <i class="fm-italics">have</i> been written about it:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019314"></a>Michael Feathers’s <i class="fm-italics1">Working Effectively with Legacy Code</i> (2004) is about <a class="calibre13" id="marker-1019333"></a>working <a class="calibre13" id="marker-1019339"></a>with legacy systems, but a huge part of it is about untestable code (common in legacy) and how to make it testable. Feathers also has a nice talk on YouTube about the “deep synergy between well-designed production code and testability,” as he calls it (2013).</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019372"></a>Steve Freeman <a class="calibre13" id="marker-1019355"></a>and <a class="calibre13" id="marker-1019361"></a>Nat Pryce’s book <i class="fm-italics1">Growing-Object Oriented Systems Guided by Tests</i> (2009) is also <a class="calibre13" id="marker-1019377"></a>a primer for writing classes that are easy to test.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019387"></a>Robert Martin’s <i class="fm-italics1">Clean Architecture</i> ideas (2018) align with the <a class="calibre13" id="marker-1019402"></a>ideas discussed here. <a class="calibre13" id="marker-1019408"></a></p>
+    </li>
+  </ul>
+
+  <h2 class="fm-head" id="heading_id_17"><a id="pgfId-1019415"></a>Exercises</h2>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1019425"></a>7.1 Observability and controllability are two important concepts of software testing. Three developers could benefit from improving either the observability or the controllability of the system/class they are testing, but each developer encounters a problem.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1019431"></a>State whether each of the problems relates to observability or controllability.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1019437"></a>A) Developer 1: “I can’t assert whether the method under test worked well.”</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1019451"></a>B) Developer 2: “I need to make sure this class starts with a boolean set to false, but I can’t do it.”</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1019461"></a>C) Developer 3: “I instantiated the mock object, but there’s no way to inject it into the class.”</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1019471"></a>7.2 Sarah has joined a mobile app team that has been trying to write automated tests for a while. The team wants to write unit tests for part of their code, but they tell Sarah, “It’s hard.” After some code review, the developers list the following problems in their code base:</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1019477"></a>A) Many classes mix infrastructure and business rules.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1019491"></a>B) The database has large tables and no indexes.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1019501"></a>C) There are lots of calls to libraries and external APIs.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1019511"></a>D) Some classes have too many attributes/fields.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1019521"></a>To increase testability, the team has a budget to work on two of these four issues. Which items should Sarah recommend that they tackle first?</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1019527"></a>Note: All four issues should be fixed, but try to prioritize the two most important ones. Which influences testability the most?</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1019533"></a>7.3 How can you improve the testability of the following <code class="fm-code-in-text">OrderDeliveryBatch</code> class?</p>
+  <pre class="programlistinge"><a id="pgfId-1019548"></a>public class OrderDeliveryBatch {
+<a id="pgfId-1019567"></a> 
+<a id="pgfId-1019562"></a>  public void runBatch() {
+<a id="pgfId-1019578"></a> 
+<a id="pgfId-1019573"></a>    OrderDao dao = new OrderDao();
+<a id="pgfId-1019584"></a>    DeliveryStartProcess delivery = new DeliveryStartProcess();
+<a id="pgfId-1019595"></a> 
+<a id="pgfId-1019590"></a>    List&lt;Order&gt; orders = dao.paidButNotDelivered();
+<a id="pgfId-1019606"></a> 
+<a id="pgfId-1019601"></a>    for (Order order : orders) {
+<a id="pgfId-1019612"></a>      delivery.start(order);
+<a id="pgfId-1019623"></a> 
+<a id="pgfId-1019618"></a>      if (order.isInternational()) {
+<a id="pgfId-1019629"></a>        order.setDeliveryDate("5 days from now");
+<a id="pgfId-1019635"></a>      } else {
+<a id="pgfId-1019641"></a>        order.setDeliveryDate("2 days from now");
+<a id="pgfId-1019647"></a>      }
+<a id="pgfId-1019653"></a>    }
+<a id="pgfId-1019659"></a>  }
+<a id="pgfId-1019665"></a>}
+<a id="pgfId-1019676"></a> 
+<a id="pgfId-1019671"></a>class OrderDao {
+<a id="pgfId-1019682"></a>  // accesses a database
+<a id="pgfId-1019688"></a>}
+<a id="pgfId-1019699"></a> 
+<a id="pgfId-1019694"></a>class DeliveryStartProcess {
+<a id="pgfId-1019705"></a>  // communicates with a third-party web service
+<a id="pgfId-1019711"></a>}</pre>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1019717"></a>7.4 Consider the <code class="fm-code-in-text">KingsDayDiscount</code> class below:</p>
+  <pre class="programlistinge"><a id="pgfId-1019732"></a>public class KingsDayDiscount {
+<a id="pgfId-1019751"></a> 
+<a id="pgfId-1019746"></a>  public double discount(double value) {
+<a id="pgfId-1019762"></a> 
+<a id="pgfId-1019757"></a>    Calendar today = Calendar.getInstance();
+<a id="pgfId-1019773"></a> 
+<a id="pgfId-1019768"></a>    boolean isKingsDay = today.get(MONTH) == Calendar.APRIL
+<a id="pgfId-1019779"></a>        &amp;&amp; today.get(DAY_OF_MONTH) == 27;
+<a id="pgfId-1019790"></a> 
+<a id="pgfId-1019785"></a>    return isKingsDay ? value * 0.15 : 0;
+<a id="pgfId-1019801"></a> 
+<a id="pgfId-1019796"></a>  }
+<a id="pgfId-1019807"></a>}</pre>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1028120"></a>What would you do to make this class more testable?</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1019813"></a>7.5 Think about your current project. Are parts of it hard to test? Can you explain why? What can you do to make it more testable?</p>
+
+  <h2 class="fm-head" id="heading_id_18"><a id="pgfId-1019819"></a>Summary</h2>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019829"></a>Writing tests can be easy or hard. Untestable code makes our lives harder. Strive for code that is easy (or at least easier) to test.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019843"></a>Separate infrastructure from domain code. Infrastructure makes it harder to write tests. Separating domain from infrastructure enables us to write unit tests for the domain logic much more cheaply.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019853"></a>Ensure that classes are easily controllable and observable. Controllability is usually achieved by ensuring that we can control the dependencies of the class under test. Observability is achieved by ensuring that the class provides easy ways for the test to assert expected behavior.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019873"></a>While you should not change your code in ways you do not believe in, you should also be pragmatic. I am all in favor of changing the production code to facilitate testing.</p>
+    </li>
+  </ul>
+</div>
+</div>
+</body>
+</html>

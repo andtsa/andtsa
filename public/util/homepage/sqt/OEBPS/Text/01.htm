@@ -1,0 +1,858 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xml:lang="en"
+      lang="en"
+      xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:epub="http://www.idpf.org/2007/ops">
+<head>
+<title>Effective Software Testing</title>
+<link rel="stylesheet" type="text/css" href="../../override_v1.css"/>
+<link rel="stylesheet" type="text/css" href="../../stylesheet.css"/><link rel="stylesheet" type="text/css" href="../../page_styles.css"/>
+</head>
+<body>
+<div id="book-content">
+<div id="sbo-rt-content" class="calibre"><h1 class="tochead" id="heading_id_2"><a id="pgfId-998407"></a><a id="pgfId-1039349"></a>1 Effective and systematic software testing</h1>
+
+  <p class="co-summary-head"><a id="pgfId-1011754"></a>This chapter covers</p>
+
+  <ul class="calibre12">
+    <li class="co-summary-bullet"><a class="calibre13" id="pgfId-1011760"></a>Understanding the importance of effective, systematic testing</li>
+
+    <li class="co-summary-bullet"><a class="calibre13" id="pgfId-1011774"></a>Recognizing why testing software is difficult and why bug-free systems do not exist</li>
+
+    <li class="co-summary-bullet"><a class="calibre13" id="pgfId-1011784"></a>Introducing the testing pyramid</li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1011794"></a>The developer community no longer needs to argue about the importance of software testing. Every software developer understands that software failures may cause severe damage to businesses, people, or even society as a whole. And although software developers once were primarily responsible for building software systems, today they are also responsible for the quality of the software systems they produce.</p>
+
+  <p class="body"><a id="pgfId-1011800"></a>Our community has produced several world-class tools to help developers test, including JUnit, AssertJ, Selenium, and jqwik. We have learned to use the process of writing tests to reflect on what programs need to do and get feedback about the code design (or class design, if you are using an object-oriented language). We have also learned that writing test code is challenging, and paying attention to test code quality is fundamental for the graceful evolution of the test suite. And finally, we know what the common bugs are and how to look for them.</p>
+
+  <p class="body"><a id="pgfId-1011806"></a>But while developers have become very good at using testing tools, they rarely apply systematic testing techniques to explore and find bugs. Many practitioners argue that tests are a feedback tool and should be used mostly to help you develop. Although this is true (and I will show throughout this book how to listen to your test code), tests can also help you find bugs. After all, that is what software testing is all about: <i class="fm-italics">finding bugs</i>!</p>
+
+  <p class="body"><a id="pgfId-1011821"></a>Most developers do not enjoy writing tests. I have heard many reasons: writing production code is more fun and challenging, software testing is too time-consuming, we are paid to write production code, and so on. Developers also overestimate how much time they spend on testing, as Beller and colleagues found in a nice empirical study with hundreds of developers in 2019. My goal with this book is to convince you that (1) as a developer, it is <i class="fm-italics">your</i> responsibility to ensure the quality of what you produce; (2) that tests are the only tools to help you with that responsibility; and (3) that if you follow a collection of techniques, you can test your code in an effective and systematic way.</p>
+
+  <p class="body"><a id="pgfId-1011852"></a>Note the words I used: <i class="fm-italics">effective</i> and <i class="fm-italics">systematic</i>. Soon you will understand what I mean. But first, let me convince you of the necessity of tests.</p>
+
+  <h2 class="fm-head" id="heading_id_3"><a id="pgfId-1011861"></a>1.1 Developers who test vs. developers who do not</h2>
+
+  <p class="body"><a id="pgfId-1011871"></a>It is late on Friday afternoon, and John is about to implement the last feature of the sprint. He is developing an agile software management system, and this final feature supports developers during planning poker.</p>
+
+  <div class="fm-sidebar-block">
+    <p class="fm-sidebar-title"><a class="calibre13" id="pgfId-1011877"></a>Planning poker</p>
+
+    <p class="fm-sidebar-text"><a id="pgfId-1011887"></a><i class="fm-italics">Planning poker</i> is a popular agile estimation technique. In a planning poker session, developers estimate the effort required to build a specific feature of the backlog. After the team discusses the feature, each developer gives an estimate: a number ranging from one to any number the team defines. Higher numbers mean more effort to implement the feature. For example, a developer who estimates that a feature is worth eight points expects it to take four times more effort than a developer who estimates the feature to be worth two points.</p>
+
+    <p class="fm-sidebar-text"><a id="pgfId-1011913"></a>The developer with the smallest estimate and the developer with the highest estimate explain their points of view to the other members of the team. After more discussion, the planning poker repeats until the team members agree about how much effort the feature will take. You can read more about the planning poker technique in <i class="fm-italics">Kanban in Action</i> by Marcus Hammarberg <a id="marker-1043493"></a>and Joakim Sundén (2014).</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1011934"></a>John is about to implement the feature’s core method. This method receives a list of estimates and produces, as output, the names of the two developers who should explain their points of view. This is what he plans to do:</p>
+
+  <p class="fm-callout"><a id="pgfId-1011964"></a><i class="fm-italics">Method</i>: <code class="fm-code-in-text">identifyExtremes</code></p>
+
+  <p class="fm-callout"><a id="pgfId-1011970"></a>The method <a id="marker-1046616"></a>should receive a list of developers and their respective estimates and return the two developers with the most extreme estimates.</p>
+
+  <p class="fm-callout"><a id="pgfId-1012016"></a><i class="fm-italics">Input</i>: A list of <code class="fm-code-in-text">Estimate</code>s, each containing the name of the developer and their estimate</p>
+
+  <p class="fm-callout"><a id="pgfId-1046650"></a><i class="fm-italics">Output</i>: A list of <code class="fm-code-in-text">String</code>s containing the name of the developer with the lowest estimate and the name of the developer with the highest estimate</p>
+
+  <p class="body"><a id="pgfId-1012025"></a>After a few minutes, John ends up with the code in the following listing.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1012082"></a>Listing 1.1 The first <code class="fm-code-in-text">PlanningPoker</code> implementation</p>
+  <pre class="programlisting"><a id="pgfId-1012031"></a>public class PlanningPoker {
+<a id="pgfId-1012134"></a>  public List&lt;String&gt; identifyExtremes(List&lt;Estimate&gt; estimates) {
+<a id="pgfId-1012145"></a> 
+<a id="pgfId-1012140"></a>    Estimate lowestEstimate = null;                                <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1012157"></a>    Estimate highestEstimate = null;                               <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1012174"></a> 
+<a id="pgfId-1012169"></a>    for(Estimate estimate: estimates) {
+<a id="pgfId-1012185"></a> 
+<a id="pgfId-1012180"></a>      if(highestEstimate == null ||
+<a id="pgfId-1012191"></a>       estimate.getEstimate() &gt; highestEstimate.getEstimate()) {   <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1012203"></a>        highestEstimate = estimate;
+<a id="pgfId-1012209"></a>      }
+<a id="pgfId-1012215"></a>      else if(lowestEstimate == null ||
+<a id="pgfId-1012221"></a>       estimate.getEstimate() &lt; lowestEstimate.getEstimate()) {    <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1012233"></a>        lowestEstimate = estimate;
+<a id="pgfId-1012239"></a>      }
+<a id="pgfId-1012250"></a> 
+<a id="pgfId-1012245"></a>    }
+<a id="pgfId-1012261"></a> 
+<a id="pgfId-1012256"></a>    return Arrays.asList(                                          <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1012273"></a>        lowestEstimate.getDeveloper(),
+<a id="pgfId-1012279"></a>        highestEstimate.getDeveloper()
+<a id="pgfId-1012285"></a>    );
+<a id="pgfId-1012291"></a>  }
+<a id="pgfId-1012297"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1050966"></a><span class="fm-combinumeral">❶</span> Defines placeholder variables for the lowest and highest estimates</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1050987"></a><span class="fm-combinumeral">❷</span> If the current estimate is higher than the highest estimate seen so far, we replace the previous highest estimate with the current one.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1051004"></a><span class="fm-combinumeral">❸</span> If the current estimate is lower than the lowest estimate seen so far, we replace the previous lowest estimate with the current one.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1051021"></a><span class="fm-combinumeral">❹</span> Returns the developers with the lowest and the highest estimates</p>
+
+  <p class="body"><a id="pgfId-1012407"></a>The logic is straightforward: the algorithm loops through all the developers in the list and keeps track of the highest and lowest estimates. It returns the names of the developers with the lowest and highest estimates. Both <code class="fm-code-in-text">lowestEstimate</code> and <code class="fm-code-in-text">highestEstimate</code> are initialized with <code class="fm-code-in-text">null</code> and later replaced by the first estimate within the <code class="fm-code-in-text">for</code> loop.</p>
+
+  <div class="fm-sidebar-block">
+    <p class="fm-sidebar-title"><a class="calibre13" id="pgfId-1012416"></a>Generalizing from the code examples</p>
+
+    <p class="fm-sidebar-text"><a id="pgfId-1012448"></a>Experienced developers may question some of my coding decisions. Maybe this <code class="fm-code-in-text">Estimate</code> class is <a id="marker-1043550"></a>not the best way to represent developers and their estimates. Maybe the logic to find the smallest and highest estimates is not the best. Maybe the <code class="fm-code-in-text">if</code> statements could <a id="marker-1051284"></a>be simpler. I agree. But my focus in this book is not object-oriented design or the best ways to write code: rather, I want to focus on how to test the code once it’s written.</p>
+
+    <p class="fm-sidebar-text"><a id="pgfId-1044445"></a>The techniques I show you throughout this book will work regardless of how you implement your code. So, bear with me when you see a piece of code that you think you could do better. Try to generalize from my examples to your own code. In terms of complexity, I am sure you have encountered code like that in listing 1.1.</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1012469"></a>John is not a fan of (automated) software testing. As is commonly done by developers who do not automate their tests, John runs the finished application and tries a few inputs. You can see one of these trials in figure 1.1. John sees that given the input in the figure (the estimates of Ted, Barney, Lily, and Robin), the program produces the correct output.</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/01-01.png" width="423" height="185"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1052437"></a>Figure 1.1 John does some manual testing before releasing the application.</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1012485"></a>John is happy with the results: his implementation worked from the beginning. He pushes his code, and the new feature is deployed automatically to customers. John goes home, ready for the weekend—but not even an hour later, the help desk starts to get e-mails from furious customers. The software is producing incorrect outputs!</p>
+
+  <p class="body"><a id="pgfId-1012505"></a>John goes back to work, looks at the logs, and quickly identifies a case where the code fails. Can you find the input that makes the program crash? As illustrated in figure 1.2, if the developers’ estimates are (by chance) in ascending order, the program throws a null pointer exception.</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/01-02.png" width="410" height="183"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1052479"></a>Figure 1.2 John finds a case where his implementation crashes.</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1012587"></a>It does not take John long to find the bug in his code: the extra <code class="fm-code-in-text">else</code> in listing 1.1. In the case of ascending estimates, that innocent <code class="fm-code-in-text">else</code> causes the program to never replace the <code class="fm-code-in-text">lowestEstimate</code> variable with <a id="marker-1012566"></a>the lowest estimate in the list, because the previous <code class="fm-code-in-text">if</code> is always evaluated to <code class="fm-code-in-text">true</code>.</p>
+
+  <p class="body"><a id="pgfId-1012612"></a>John changes the <code class="fm-code-in-text">else</code> <code class="fm-code-in-text">if</code> to an <code class="fm-code-in-text">if</code>, as shown in listing 1.2. He then runs the program and tries it with the same inputs. Everything seems to work. The software is deployed again, and John returns home, finally ready to start the weekend.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1012672"></a>Listing 1.2 The bug fix in the <code class="fm-code-in-text">PlanningPoker</code> implementation</p>
+  <pre class="programlisting"><a id="pgfId-1012621"></a>if(highestEstimate == null ||
+<a id="pgfId-1012724"></a>    estimate.getEstimate() &gt; highestEstimate.getEstimate()) {
+<a id="pgfId-1012730"></a>  highestEstimate = estimate;
+<a id="pgfId-1012736"></a>}
+<a id="pgfId-1012747"></a> 
+<a id="pgfId-1012742"></a>if(lowestEstimate == null ||                                  <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1012759"></a>    estimate.getEstimate() &lt; lowestEstimate.getEstimate()) {
+<a id="pgfId-1012765"></a>  lowestEstimate = estimate;
+<a id="pgfId-1012771"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1050883"></a><span class="fm-combinumeral">❶</span> We fixed the bug here by replacing the “else if” with an “if”.</p>
+
+  <p class="body"><a id="pgfId-1012797"></a>You may be thinking, “This was a very easy bug to spot! I would never make such a mistake!” That may be true. But in practice, it is hard to keep tabs on everything that may happen in our code. And, of course, it is even more difficult when the code is complex. Bugs happen not because we are bad programmers but because we program complicated things (and because computers are more precise than humans can be).</p>
+
+  <p class="body"><a id="pgfId-1012819"></a>Let’s generalize from John’s case. John is a very good and experienced developer. But as a human, he makes mistakes. John performed some manual testing before releasing his code, but manual testing can only go so far, and it takes too long if we need to explore many cases. Also, John did not follow a systematic approach to testing—he just tried the first few inputs that came to mind. Ad hoc methods like “follow your instincts” may lead us to forget corner cases. John would greatly benefit from (1) a more <i class="fm-italics">systematic</i> approach for deriving tests, to reduce the chances of forgetting a case; and (2) <i class="fm-italics">test automation</i>, so he does not have to spend time running tests manually.</p>
+
+  <p class="body"><a id="pgfId-1012828"></a>Now, let’s replay the same story, but with Eleanor instead of John. Eleanor is also a very good and experienced software developer. She is highly skilled in software testing and only deploys once she has developed a strong test suite for all the code she writes.</p>
+
+  <p class="body"><a id="pgfId-1012834"></a>Suppose Eleanor writes the same code as John (listing 1.1). She does not do test-driven development (TDD), but she <a id="marker-1012836"></a>does proper testing after writing her code.</p>
+
+  <p class="fm-callout"><a id="pgfId-1012846"></a><span class="fm-callout-head">Note</span> In a nutshell, TDD means writing the tests before the implementation. Not using TDD is not a problem, as we discuss in chapter 8.</p>
+
+  <p class="body"><a id="pgfId-1012878"></a>Eleanor thinks about what the <code class="fm-code-in-text">identifyExtremes</code> method does. Let’s say her reasoning is the same as John’s. She first focuses on the inputs of this method: a list of <code class="fm-code-in-text">Estimate</code>s. She knows that whenever a method receives a list, there are several cases to try: a null list, an empty list, a list with one element, and a list with multiple elements. How does she know that? She read this book!</p>
+
+  <p class="body"><a id="pgfId-1012887"></a>Eleanor reflects on the first three cases (null, empty, single element), considering how this method will fit in with the rest of the system. The current implementation would crash in these cases! So, she decides the method should reject such inputs. She goes back to the production code and adds some validation code as follows.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1012944"></a>Listing 1.3 Adding validation to prevent invalid inputs</p>
+  <pre class="programlisting"><a id="pgfId-1012893"></a>public List&lt;String&gt; identifyExtremes(List&lt;Estimate&gt; estimates) {
+<a id="pgfId-1012988"></a> 
+<a id="pgfId-1012983"></a>  if(estimates == null) {                                             <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1013000"></a>    throw new IllegalArgumentException("estimates cannot be null");
+<a id="pgfId-1013006"></a>  }
+<a id="pgfId-1013012"></a>  if(estimates.size() &lt;= 1) {                                         <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1013024"></a>    throw new IllegalArgumentException("there has to be more than 1
+<a id="pgfId-1013030"></a>    <span class="fm-code-continuation-arrow">➥</span> estimate in the list");
+<a id="pgfId-1013047"></a>  }
+<a id="pgfId-1013058"></a> 
+<a id="pgfId-1013053"></a>  // continues here...
+<a id="pgfId-1013064"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1050701"></a><span class="fm-combinumeral">❶</span> The list of estimates cannot be null.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1050722"></a><span class="fm-combinumeral">❷</span> The list of estimates should contain more than one element.</p>
+
+  <p class="body"><a id="pgfId-1013106"></a>Although Eleanor is sure that the method now handles these invalid inputs correctly (it is clear in the code), she decides to write an automated test that formalizes the test case. This test will also prevent future regressions: later, if another developer does not understand why the assertions are in the code and removes them, the test will ensure that the mistake is noticed. The following listing shows the three test cases (note that, for now, I am making the tests verbose so they are easy to understand).</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1013163"></a>Listing 1.4 Test cases for null, an empty list, and a one-element list</p>
+  <pre class="programlisting"><a id="pgfId-1013112"></a>public class PlanningPokerTest {
+<a id="pgfId-1013202"></a>  @Test
+<a id="pgfId-1013208"></a>  void rejectNullInput() {
+<a id="pgfId-1013214"></a>    assertThatThrownBy(                                                  <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1013226"></a>      () -&gt; new PlanningPoker().identifyExtremes(null)
+<a id="pgfId-1013237"></a>    ).isInstanceOf(IllegalArgumentException.class);                      <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1013249"></a>  }
+<a id="pgfId-1013260"></a> 
+<a id="pgfId-1013255"></a>  @Test
+<a id="pgfId-1013266"></a>  void rejectEmptyList() {
+<a id="pgfId-1013277"></a> 
+<a id="pgfId-1013272"></a>    assertThatThrownBy(() -&gt; {                                           <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1013289"></a>      List&lt;Estimate&gt; emptyList = Collections.emptyList();                <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1013301"></a>      new PlanningPoker().identifyExtremes(emptyList);                   <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1013313"></a>    }).isInstanceOf(IllegalArgumentException.class);                     <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1013325"></a>  }
+<a id="pgfId-1013336"></a> 
+<a id="pgfId-1013331"></a>  @Test
+<a id="pgfId-1013342"></a>  void rejectSingleEstimate() {
+<a id="pgfId-1013348"></a>    assertThatThrownBy(() -&gt; {                                           <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1013365"></a>      List&lt;Estimate&gt; list = Arrays.asList(new Estimate("Eleanor", 1));   <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1013377"></a>      new PlanningPoker().identifyExtremes(list);                        <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1013389"></a>    }).isInstanceOf(IllegalArgumentException.class);                     <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1013401"></a>  }
+<a id="pgfId-1013407"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1050293"></a><span class="fm-combinumeral">❶</span> Asserts that an exception happens when we call the method</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1050314"></a><span class="fm-combinumeral">❷</span> Asserts that this assertion is an IllegalArgumentException</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1050331"></a><span class="fm-combinumeral">❸</span> Similar to the earlier test, ensures that the program throws an exception if an empty list of estimates is passed as input</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1050348"></a><span class="fm-combinumeral">❹</span> Ensures that the program throws an exception if a list with a single estimate is passed</p>
+
+  <p class="body"><a id="pgfId-1013497"></a>The three test cases have the same structure. They all invoke the method under test with an invalid input and check that the method throws an <code class="fm-code-in-text">IllegalArgumentException</code>. This is common assertion behavior in Java. The <code class="fm-code-in-text">assertThatThrownBy</code> method provided <a id="marker-1013502"></a>by the AssertJ library (<a class="url" href="https://assertj.github.io/doc/">https://assertj.github.io/doc/</a>) enables us to assert that the method throws an exception. Also note <a id="marker-1034102"></a>the <code class="fm-code-in-text">isInstanceOf</code> method, which allows us to assert that a specific type of exception is thrown.</p>
+
+  <p class="body"><a id="pgfId-1034158"></a>If you are not familiar with Java, the lambda syntax <code class="fm-code-in-text">()</code> <code class="fm-code-in-text">-&gt;</code> is basically an inline code block. This may be clearer in the second test, <code class="fm-code-in-text">rejectEmptyList()</code>, where <code class="fm-code-in-text">{</code> and <code class="fm-code-in-text">}</code> delimit the block. The testing framework will run this block of code and, if an exception happens, will check the type of the exception. If the exception type matches, the test will pass. Note that this test fails if the exception is not thrown—after all, having an exception is the behavior we expect in this case.</p>
+
+  <p class="fm-callout"><a id="pgfId-1034167"></a><span class="fm-callout-head">Note</span> If you are new to automated tests, this code may make you nervous. Testing exceptions involves some extra code, and it is also an “upside-down” test that passes if the exception is thrown! Don’t worry—the more you see test methods, the better you will understand them.</p>
+
+  <p class="body"><a id="pgfId-1034199"></a>With the invalid inputs handled, Eleanor now focuses on the <i class="fm-italics">good weather</i> tests: that is, tests that exercise the valid behavior of the program. Looking back at Eleanor’s test cases, this means passing lists of estimates with more than one element. Deciding how many elements to pass is always challenging, but Eleanor sees at least two cases: a list with exactly two elements and a list with more than two elements. Why two? A list with two elements is the smallest for which the method should work. There is a boundary between a list with one element (which does not work) and two elements (which does work). Eleanor knows that <i class="fm-italics">bugs love boundaries</i>, so she decides to also have a dedicated test for it, illustrated in listing 1.5.</p>
+
+  <p class="body"><a id="pgfId-1034208"></a>This resembles a more traditional test case. We define the input value we want to pass to the method under test (in this case, a list with two estimates); we invoke the method under test with that input; and, finally, we assert that the list returns the two developers we expect.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1034265"></a>Listing 1.5 Test case for a list with two elements</p>
+  <pre class="programlisting"><a id="pgfId-1034214"></a>@Test
+<a id="pgfId-1034304"></a>void twoEstimates() {
+<a id="pgfId-1034310"></a>  List&lt;Estimate&gt; list = Arrays.asList(             <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1034322"></a>      new Estimate("Mauricio", 10),
+<a id="pgfId-1034328"></a>      new Estimate("Frank", 5)
+<a id="pgfId-1034334"></a>  );
+<a id="pgfId-1034340"></a>  List&lt;String&gt; devs = new PlanningPoker()          <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1034362"></a>    .identifyExtremes(list);
+<a id="pgfId-1034373"></a> 
+<a id="pgfId-1034368"></a>  assertThat(devs)                                 <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1034385"></a>      .containsExactlyInAnyOrder("Mauricio", "Frank");
+<a id="pgfId-1034391"></a>}
+<a id="pgfId-1034402"></a> 
+<a id="pgfId-1034397"></a>@Test
+<a id="pgfId-1034408"></a>void manyEstimates() {
+<a id="pgfId-1034414"></a>  List&lt;Estimate&gt; list = Arrays.asList(             <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1034426"></a>      new Estimate("Mauricio", 10),
+<a id="pgfId-1034432"></a>      new Estimate("Arie", 5),
+<a id="pgfId-1034438"></a>      new Estimate("Frank", 7)
+<a id="pgfId-1034444"></a>  );
+<a id="pgfId-1034455"></a> 
+<a id="pgfId-1034450"></a>  List&lt;String&gt; devs = new PlanningPoker()
+<a id="pgfId-1034461"></a>    .identifyExtremes(list);                       <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1034478"></a> 
+<a id="pgfId-1034473"></a>  assertThat(devs)                                 <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1034490"></a>      .containsExactlyInAnyOrder("Mauricio", "Arie");
+<a id="pgfId-1034496"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1049950"></a><span class="fm-combinumeral">❶</span> Declares a list with two estimates</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1049971"></a><span class="fm-combinumeral">❷</span> Calls the method we want to test: identifyExtremes</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1049988"></a><span class="fm-combinumeral">❸</span> Asserts that the method correctly returns the two developers</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1050005"></a><span class="fm-combinumeral">❹</span> Declares another list of estimates, now with three developers</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1050022"></a><span class="fm-combinumeral">❺</span> Again calls the method under test</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1050039"></a><span class="fm-combinumeral">❻</span> Asserts that it returns the two correct developers: Mauricio and Arie</p>
+
+  <p class="body"><a id="pgfId-1034602"></a>Before we continue, I want to highlight that Eleanor has five passing tests, but the <code class="fm-code-in-text">else</code> <code class="fm-code-in-text">if</code> bug is still there. Eleanor does not know about it yet (or, rather, has not found it). However, she knows that whenever lists are given as input, the order of the elements may affect the algorithm. Therefore, she decides to write a test that provides the method with estimates in random order. For this test, Eleanor does not use example-based testing (tests that pick one specific input out of many possible inputs). Rather, she goes for a property-based test, as shown in the following listing.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1034674"></a>Listing 1.6 Property-based testing for multiple estimates</p>
+  <pre class="programlisting"><a id="pgfId-1034623"></a>@Property                                                                <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1034719"></a>void inAnyOrder(@ForAll("estimates") List&lt;Estimate&gt; estimates) {         <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1034736"></a> 
+<a id="pgfId-1034731"></a>  estimates.add(new Estimate("MrLowEstimate", 1));                       <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1034748"></a>  estimates.add(new Estimate("MsHighEstimate", 100));                    <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1034765"></a> 
+<a id="pgfId-1034760"></a>  Collections.shuffle(estimates);                                        <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1034782"></a> 
+<a id="pgfId-1034777"></a>  List&lt;String&gt; dev = new PlanningPoker().identifyExtremes(estimates);
+<a id="pgfId-1034793"></a> 
+<a id="pgfId-1034788"></a>  assertThat(dev)                                                        <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1034805"></a>      .containsExactlyInAnyOrder("MrLowEstimate", "MsHighEstimate");
+<a id="pgfId-1034811"></a>}
+<a id="pgfId-1034822"></a> 
+<a id="pgfId-1034817"></a>@Provide                                                                 <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1034834"></a>Arbitrary&lt;List&lt;Estimate&gt;&gt; estimates() {
+<a id="pgfId-1034845"></a> 
+<a id="pgfId-1034840"></a>  Arbitrary&lt;String&gt; names = Arbitraries.strings()
+<a id="pgfId-1034851"></a>      .withCharRange('a', 'z').ofLength(5);                              <span class="fm-combinumeral">❼</span>
+<a id="pgfId-1034868"></a> 
+<a id="pgfId-1034863"></a>  Arbitrary&lt;Integer&gt; values = Arbitraries.integers().between(2, 99);     <span class="fm-combinumeral">❽</span>
+<a id="pgfId-1034885"></a> 
+<a id="pgfId-1034880"></a>  Arbitrary&lt;Estimate&gt; estimates = Combinators.combine(names, values)
+<a id="pgfId-1034891"></a>      .as((name, value) -&gt; new Estimate(name, value));                   <span class="fm-combinumeral">❾</span>
+<a id="pgfId-1034908"></a> 
+<a id="pgfId-1034903"></a>  return estimates.list().ofMinSize(1);                                  <span class="fm-combinumeral">❿</span>
+<a id="pgfId-1034920"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1049096"></a><span class="fm-combinumeral">❶</span> Makes this method a property-based test instead of a traditional JUnit test</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1049117"></a><span class="fm-combinumeral">❷</span> The list that the framework provides will contain randomly generated estimates. This list is generated by the method with the name that matches the string "estimates" (declared later in the code).</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1049137"></a><span class="fm-combinumeral">❸</span> Ensures that the generated list contains the known lowest and highest estimates</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1049154"></a><span class="fm-combinumeral">❹</span> Shuffles the list to ensure that the order does not matter</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1049171"></a><span class="fm-combinumeral">❺</span> Asserts that regardless of the list of estimates, the outcome is always MrLowEstimate and MsHighEstimate</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1049188"></a><span class="fm-combinumeral">❻</span> Method that provides a random list of estimates for the property-based test</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1049205"></a><span class="fm-combinumeral">❼</span> Generates random names of length five, composed of only lowercase letters</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1049222"></a><span class="fm-combinumeral">❽</span> Generates random values for the estimates, ranging from 2 to 99</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1049239"></a><span class="fm-combinumeral">❾</span> Combines them, thus generating random estimates</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1049256"></a><span class="fm-combinumeral">❿</span> Returns a list of estimates with a minimum size of 1 (and no constraint for how big the list can be)</p>
+
+  <p class="body"><a id="pgfId-1035142"></a>In property-based testing, our goal is to assert a specific property. We discuss this in more detail later in chapter 5, but here is a short explanation. The <code class="fm-code-in-text">estimates()</code> method returns <a id="marker-1035101"></a>random <code class="fm-code-in-text">Estimate</code>s. We define that an estimate has a random name (for simplicity, of length five) and a random estimate that varies from 2 to 99. The method feeds lists of <code class="fm-code-in-text">Estimate</code>s back to the test method. The lists all have at least one element. The test method then adds two more estimates: the lowest and the highest. Since our list only has values between 2 and 99, we ensure the lowest and highest by using the values 1 and 100, respectively. We then shuffle the list so order does not matter. Finally, we assert that no matter what the list of estimates contains, <code class="fm-code-in-text">MrLowEstimate</code> and <code class="fm-code-in-text">MsHighEstimate</code> are always returned.</p>
+
+  <p class="body"><a id="pgfId-1035151"></a>The property-based testing framework runs the same test 100 times, each time with a different combination of estimates. If the test fails for one of the random inputs, the framework stops the test and reports the input that broke the code. In this book, we use the jqwik library (<a class="url" href="https://jqwik.net">https://jqwik.net</a>), but you can easily find a property-based testing framework for your language.</p>
+
+  <p class="body"><a id="pgfId-1035174"></a>To Eleanor’s surprise, when she runs this property-based test, it fails! Based on the example provided by the test, she finds that the <code class="fm-code-in-text">else</code> <code class="fm-code-in-text">if</code> is wrong and replaces it with a simple <code class="fm-code-in-text">if</code>. The test now passes.</p>
+
+  <p class="body"><a id="pgfId-1035183"></a>Eleanor decides to delete the <code class="fm-code-in-text">manyEstimates</code> test, as the new property-based testing replaces it. Whether to delete a duplicate test is a personal decision; you could argue that the simple example-based test is easier to understand than the property-based test. And having simple tests that quickly explain the behavior of the production code is always beneficial, even if it means having a little duplication in your test suite.</p>
+
+  <p class="body"><a id="pgfId-1035198"></a>Next, Eleanor remembers that in lists, duplicate elements can also break the code. In this case, this would mean developers with the same estimate. She did not consider this case in her implementation. She reflects on how this will affect the method, consults with the product owner, and decides that the program should return the duplicate developer who appears first in the list.</p>
+
+  <p class="body"><a id="pgfId-1035204"></a>Eleanor notices that the program already has this behavior. Still, she decides to formalize it in the test shown in listing 1.7. The test is straightforward: it creates a list of estimates in which two developers give the same lowest estimate and two other developers give the same highest estimate. The test then calls the method under test and ensures that the two developers who appear earlier in the list are returned.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1035261"></a>Listing 1.7 Ensuring that the first duplicate developer is returned</p>
+  <pre class="programlisting"><a id="pgfId-1035210"></a>@Test
+<a id="pgfId-1035300"></a>void developersWithSameEstimates() {
+<a id="pgfId-1035306"></a>  List&lt;Estimate&gt; list = Arrays.asList(    <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1035318"></a>      new Estimate("Mauricio", 10),
+<a id="pgfId-1035324"></a>      new Estimate("Arie", 5),
+<a id="pgfId-1035330"></a>      new Estimate("Andy", 10),
+<a id="pgfId-1035336"></a>      new Estimate("Frank", 7),
+<a id="pgfId-1035342"></a>      new Estimate("Annibale", 5)
+<a id="pgfId-1035348"></a>  );
+<a id="pgfId-1035354"></a>  List&lt;String&gt; devs = new PlanningPoker().identifyExtremes(list);
+<a id="pgfId-1035365"></a> 
+<a id="pgfId-1035360"></a>  assertThat(devs)                        <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1035377"></a>    .containsExactlyInAnyOrder("Mauricio", "Arie");
+<a id="pgfId-1035383"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1048980"></a><span class="fm-combinumeral">❶</span> Declares a list of estimates with repeated estimate values</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1049001"></a><span class="fm-combinumeral">❷</span> Asserts that whenever there are repeated estimates, the developer who appears earlier in the list is returned by the method</p>
+
+  <p class="body"><a id="pgfId-1035425"></a>But, Eleanor thinks, what if the list only contains developers with the same estimates? This is another corner case that emerges when we systematically reflect on inputs that are lists. Lists with zero elements, one element, many elements, different values, and identical values are all common test cases to engineer whenever lists are used as inputs.</p>
+
+  <p class="body"><a id="pgfId-1035431"></a>She talks to the product owner again. They are surprised that they did not see this corner case coming, and they request that in this case, the code should return an empty list. Eleanor changes the implementation to reflect the new expected behavior by adding an <code class="fm-code-in-text">if</code> statement near the end of the method, as in the following listing.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1035497"></a>Listing 1.8 Returning an empty list if all estimates are the same</p>
+  <pre class="programlisting"><a id="pgfId-1035446"></a>public List&lt;String&gt; identifyExtremes(List&lt;Estimate&gt; estimates) {
+<a id="pgfId-1035541"></a> 
+<a id="pgfId-1035536"></a>  if(estimates == null) {
+<a id="pgfId-1035547"></a>    throw new IllegalArgumentException("Estimates
+<a id="pgfId-1035553"></a>    <span class="fm-code-continuation-arrow">➥</span> cannot be null");
+<a id="pgfId-1035570"></a>  }
+<a id="pgfId-1035576"></a>  if(estimates.size() &lt;= 1) {
+<a id="pgfId-1035582"></a>    throw new IllegalArgumentException("There has to be
+<a id="pgfId-1035588"></a>    <span class="fm-code-continuation-arrow">➥</span> more than 1 estimate in the list");
+<a id="pgfId-1035605"></a>  }
+<a id="pgfId-1035616"></a> 
+<a id="pgfId-1035611"></a>  Estimate lowestEstimate = null;
+<a id="pgfId-1035622"></a>  Estimate highestEstimate = null;
+<a id="pgfId-1035633"></a> 
+<a id="pgfId-1035628"></a>  for(Estimate estimate: estimates) {
+<a id="pgfId-1035639"></a>    if(highestEstimate == null ||
+<a id="pgfId-1035645"></a>        estimate.getEstimate() &gt; highestEstimate.getEstimate()) {
+<a id="pgfId-1035651"></a>      highestEstimate = estimate;
+<a id="pgfId-1035657"></a>    }
+<a id="pgfId-1035663"></a>    if(lowestEstimate == null ||
+<a id="pgfId-1035669"></a>        estimate.getEstimate() &lt; lowestEstimate.getEstimate()) {
+<a id="pgfId-1035675"></a>      lowestEstimate = estimate;
+<a id="pgfId-1035681"></a>    }
+<a id="pgfId-1035687"></a>  }
+<a id="pgfId-1035698"></a> 
+<a id="pgfId-1035693"></a>  if(lowestEstimate.equals(highestEstimate))    <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1035710"></a>    return Collections.emptyList();
+<a id="pgfId-1035721"></a> 
+<a id="pgfId-1035716"></a>  return Arrays.asList(
+<a id="pgfId-1035727"></a>      lowestEstimate.getDeveloper(),
+<a id="pgfId-1035733"></a>      highestEstimate.getDeveloper()
+<a id="pgfId-1035739"></a>  );
+<a id="pgfId-1035745"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1048922"></a><span class="fm-combinumeral">❶</span> If the lowest and highest estimate objects are the same, all developers have the same estimate, and therefore we return an empty list.</p>
+
+  <p class="body"><a id="pgfId-1035771"></a>Eleanor then writes a test to ensure that her implementation is correct.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1035828"></a>Listing 1.9 Testing for an empty list if the estimates are all the same</p>
+  <pre class="programlisting"><a id="pgfId-1035777"></a>@Test
+<a id="pgfId-1035867"></a>void allDevelopersWithTheSameEstimate() {
+<a id="pgfId-1035873"></a>  List&lt;Estimate&gt; list = Arrays.asList(    <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1035885"></a>      new Estimate("Mauricio", 10),
+<a id="pgfId-1035891"></a>      new Estimate("Arie", 10),
+<a id="pgfId-1035897"></a>      new Estimate("Andy", 10),
+<a id="pgfId-1035903"></a>      new Estimate("Frank", 10),
+<a id="pgfId-1035909"></a>      new Estimate("Annibale", 10)
+<a id="pgfId-1035915"></a>  );
+<a id="pgfId-1035921"></a>  List&lt;String&gt; devs = new PlanningPoker().identifyExtremes(list);
+<a id="pgfId-1035932"></a> 
+<a id="pgfId-1035927"></a>  assertThat(devs).isEmpty();             <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1035949"></a> 
+<a id="pgfId-1035944"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1048817"></a><span class="fm-combinumeral">❶</span> Declares a list of estimates, this time with all the developers having the same estimate</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1048818"></a><span class="fm-combinumeral">❷</span> Asserts that the resulting list is empty</p>
+
+  <p class="body"><a id="pgfId-1035991"></a>Eleanor is now satisfied with the test suite she has engineered from the requirements. As a next step, she decides to focus on the code itself. Maybe there is something that no tests are exercising. To help her in this analysis, she runs the code coverage tool that comes with her IDE (figure 1.3).</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/01-03.png" width="836" height="442"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1052521"></a>Figure 1.3 The result of the code coverage analysis done by my IDE, IntelliJ. All lines are covered.</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1036007"></a>All the lines and branches of the code are covered. Eleanor knows that tools are not perfect, so she examines the code for other cases. She cannot find any, so she concludes that the code is tested enough. She pushes the code and goes home for the weekend. The code goes directly to the customers. On Monday morning, Eleanor is happy to see that monitoring does not report a single crash.</p>
+
+  <h2 class="fm-head" id="heading_id_4"><a id="pgfId-1036027"></a>1.2 Effective software testing for developers</h2>
+
+  <p class="body"><a id="pgfId-1036136"></a><a id="marker-1036038"></a><a id="marker-1036040"></a>I hope the difference is clear between the two developers in the previous section. Eleanor used automated tests and systematically and effectively engineered test cases. She broke down the requirements into small parts and used them to derive test cases, applying a technique called <i class="fm-italics">domain testing</i>. When she <a id="marker-1036055"></a>was done with the specification, she focused on the code; and through <i class="fm-italics">structural testing</i> (or code <a id="marker-1036071"></a><a id="marker-1036074"></a>coverage), she evaluated whether the current test cases were sufficient. For some test cases, Eleanor wrote <i class="fm-italics">example-based tests</i> (that is, she picked <a id="marker-1036089"></a>a single data point for a test). For one specific case, she used <i class="fm-italics">property-based testing</i>, as it <a id="marker-1036105"></a>helped her better explore possible bugs in the code. Finally, she reflected frequently about the <i class="fm-italics">contracts</i> and <i class="fm-italics">pre-</i> and <i class="fm-italics">post-conditions</i> of the method she was devising (although in the end, she implemented a set of validation checks and not pre-conditions per se; we discuss the differences between contracts and validation in chapter 4).</p>
+
+  <p class="body"><a id="pgfId-1036145"></a>This is what I call <i class="fm-italics">effective and systematic software testing for developers</i>. In the remainder of this chapter, I explain how software developers can perform effective testing together with their development activities. Before we dive into the specific techniques, I describe effective testing within the development processes and how testing techniques complement each other. I discuss the different types of tests and which ones you should focus on. Finally, I illustrate why software testing is so difficult.</p>
+
+  <h3 class="fm-head1" id="heading_id_5"><a id="pgfId-1036160"></a>1.2.1 Effective testing in the development process</h3>
+
+  <p class="body"><a id="pgfId-1036177"></a><a id="marker-1036171"></a><a id="marker-1036173"></a>In this book, I propose a straightforward flow for developers who apply effective and systematic testing. First, we implement a feature, using tests to facilitate and guide development. Once we are reasonably happy with the feature or small unit we’ve coded, we dive into effective and systematic testing to ensure that it works as expected (that is, we test to find bugs). Figure 1.4 illustrates the development workflow in more detail; let’s walk through it:</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/01-04.png" width="800" height="546"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1052570"></a>Figure 1.4 The workflow of a developer who applies effective and systematic testing. The arrows indicate the iterative nature of the process; developers may go back and forth between the different techniques as they learn more about the program under development and test.</p>
+  </div>
+
+  <ol class="calibre14">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1036230"></a>Feature development often starts with a developer receiving some sort of <i class="fm-italics1">requirement</i>. Requirements are often in the form of natural language and may follow a specific format, such as Unified Modeling Language (UML) use cases or agile user stories. After building up some understanding (that is, <i class="fm-italics1">requirement analysis</i>), the developer starts writing code.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1036239"></a>To guide the development of the feature, the developer performs short <i class="fm-italics1">test-driven development</i> (TDD) cycles. These cycles give the developer rapid feedback about whether the code they just wrote makes sense. They also support the developer through the many refactorings that occur when a new feature is being implemented.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1036288"></a>Requirements are often large and complex and are rarely implemented by a single class or method. The developer creates several <i class="fm-italics1">units</i> (classes and methods) with different <i class="fm-italics1">contracts</i>, and they collaborate and together form the required functionality. Writing classes such that they’re easy to test is challenging, and the developer must design with <i class="fm-italics1">testability</i> in mind.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1036327"></a>Once the developer is satisfied with the units they’ve created and believes the requirement is complete, they shift to testing. The first step is to exercise each new unit. <i class="fm-italics1">Domain testing</i>, <i class="fm-italics1">boundary testing</i>, and <i class="fm-italics1">structural testing</i> are the go-to techniques.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1036336"></a>Some parts of the system may require the developer to write <i class="fm-italics1">larger tests</i> (integration or system tests). To devise larger test cases, the developer uses the same three techniques—domain testing, boundary testing, and structural testing—but looking at larger parts of the software system.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1036405"></a>When the developer has engineered test cases using the various techniques, they apply automated, <i class="fm-italics1">intelligent testing</i> tools to look for tests that humans are not good at spotting. Popular techniques include <i class="fm-italics1">test case generation</i>, <i class="fm-italics1">mutation testing</i>, and <i class="fm-italics1">static analysis</i>. In this book, we cover <i class="fm-italics1">mutation testing</i>.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1036414"></a>Finally, after this rigorous testing, the developer feels comfortable releasing the feature. <a class="calibre13" id="marker-1036420"></a><a class="calibre13" id="marker-1036423"></a></p>
+    </li>
+  </ol>
+
+  <h3 class="fm-head1" id="heading_id_6"><a id="pgfId-1036429"></a>1.2.2 Effective testing as an iterative process</h3>
+
+  <p class="body"><a id="pgfId-1036448"></a><a id="marker-1036440"></a><a id="marker-1036442"></a><a id="marker-1036444"></a>While the previous description may sound like a sequential/waterfall process, it is more iterative. A developer may be rigorously testing a class and suddenly notice that a coding decision they made a few hours ago was not ideal. They then go back and redesign the code. They may be performing TDD cycles and realize the requirement is unclear about something. The developer then goes back to the requirement analysis to better grasp the expectations. Quite commonly, while testing, the developer finds a bug. They go back to the code, fix it, and continue testing. Or the developer may have implemented only half of the feature, but they feel it would be more productive to rigorously test it now than to continue the implementation.</p>
+
+  <p class="body"><a id="pgfId-1036453"></a>The development workflow I propose throughout this book is not meant to restrain you. Feel free to go back and forth between techniques or change the order in which you apply them. In practice, you have to find what works best for you and makes you the most productive. <a id="marker-1036455"></a><a id="marker-1036458"></a><a id="marker-1036460"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_7"><a id="pgfId-1036466"></a>1.2.3 Focusing on development and then on testing</h3>
+
+  <p class="body"><a id="pgfId-1036483"></a><a id="marker-1036477"></a><a id="marker-1036479"></a>I find it liberating to focus separately on developing and testing. When I am coding a feature, I do not want to be distracted by obscure corner cases. If I think of one, I take notes so I do not forget to test it later. However, I prefer to focus all my energy on the business rules I am implementing and, at the same time, ensure that the code is easy for future developers to maintain.</p>
+
+  <p class="body"><a id="pgfId-1036488"></a>Once I am finished with the coding decisions, I focus on testing. First I follow the different techniques as if I were working my way down a systematic checklist. As you saw in the example with Eleanor, she did not have to think much about what to exercise when the method received a list: she responded as if she had a checklist that said “null, empty list, one element, many elements.” Only then do I use my creativity and domain knowledge to exercise other cases I find relevant<a id="marker-1046795"></a>.<a id="marker-1046818"></a><a id="marker-1046819"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_8"><a id="pgfId-1036520"></a>1.2.4 The myth of “correctness by design”</h3>
+
+  <p class="body"><a id="pgfId-1036539"></a><a id="marker-1036531"></a><a id="marker-1036533"></a><a id="marker-1036535"></a>Now that you have a clearer picture of what I mean by effective and systematic software testing, let me debunk a myth. There is a perception among software developers that if you design code in a simple way, it will not have bugs, as if the secret of bug-free code is simplicity.</p>
+
+  <p class="body"><a id="pgfId-1036544"></a>Empirical research in software engineering has repeatedly shown that simple, non-smelly code is less prone to defects than complex code (see, for example, the 2006 paper by Shatnawi and Li). However, simplicity is far from enough. It is naive to believe that testing can be fully replaced by simplicity. The same is true for “correctness by design”: designing your code well does not mean you avoid all possible bugs.<a id="marker-1036561"></a><a id="marker-1036564"></a><a id="marker-1036566"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_9"><a id="pgfId-1036572"></a>1.2.5 The cost of testing</h3>
+
+  <p class="body"><a id="pgfId-1036591"></a><a id="marker-1036583"></a><a id="marker-1036585"></a><a id="marker-1036587"></a>You may be thinking that forcing developers to apply rigorous testing may be too costly. Figure 1.4 shows the many techniques developers have to apply if they follow the flow I am proposing. It is true: testing software properly is more work than not doing so. Let me convince you why it is worth it:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1036596"></a>The cost of bugs that happen in production often outweighs the cost of prevention (as shown by Boehm and Papaccio, 1988). Think of a popular web shop and how much it would cost the shop if the payment application goes down for 30 minutes due to a bug that could have been easily prevented via testing.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1036610"></a>Teams that produce many bugs tend to waste time in an eternal loop where developers write bugs, customers (or dedicated QAs) find the bugs, developers fix the bugs, customers find a different set of bugs, and so on.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1036620"></a>Practice is key. Once developers are used to engineering test cases, they can do it much faster. <a class="calibre13" id="marker-1036626"></a><a class="calibre13" id="marker-1036629"></a><a class="calibre13" id="marker-1036631"></a></p>
+    </li>
+  </ul>
+
+  <h3 class="fm-head1" id="heading_id_10"><a id="pgfId-1036637"></a>1.2.6 The meaning of effective and systematic</h3>
+
+  <p class="body"><a id="pgfId-1036682"></a><a id="marker-1036648"></a><a id="marker-1036650"></a><a id="marker-1036652"></a>I have been using two words to describe how I expect a developer to test: <i class="fm-italics">effectively</i> and <i class="fm-italics">systematically</i>. Being <i class="fm-italics">effective</i> means we focus on writing the right tests. Software testing is all about trade-offs. Testers want to maximize the number of bugs they find while minimizing the effort required to find the bugs. How do we achieve this? By knowing what to test.</p>
+
+  <p class="body"><a id="pgfId-1036691"></a>All the techniques I present in this book have a clear beginning (what to test) and a clear end (when to stop). Of course, I do not mean your systems will be bug-free if you follow these techniques. As a community, we still do not know how to build bug-free systems. But I can confidently say that the number of bugs will be reduced, hopefully to tolerable levels.</p>
+
+  <p class="body"><a id="pgfId-1036697"></a>Being <i class="fm-italics">systematic</i> means that for a given piece of code, any developer should come up with the same test suite. Testing often happens in an ad hoc manner. Developers engineer the test cases that come to mind. It is common to see two developers developing different test suites for the same program. We should be able to systematize our processes to reduce the dependency on the developer who is doing the job.</p>
+
+  <p class="body"><a id="pgfId-1036712"></a>I understand and agree with the argument that software development is a creative process that cannot be executed by robots. I believe that humans will always be in the loop when it comes to building software; but why not let developers focus on what requires creativity? A lot of software testing can be systematized, and that is what you will see throughout this book. <a id="marker-1036714"></a><a id="marker-1036717"></a><a id="marker-1036719"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_11"><a id="pgfId-1036725"></a>1.2.7 The role of test automation</h3>
+
+  <p class="body"><a id="pgfId-1036760"></a><a id="marker-1036736"></a><a id="marker-1036738"></a><a id="marker-1036740"></a>Automation is key for an effective testing process. Every test case we devise here is later automated via a testing framework such as JUnit. Let me clearly distinguish between test case <i class="fm-italics">design</i> and test case <i class="fm-italics">execution</i>. Once a test case is written, a framework runs it and shows reports, failures, and so on. This is all that these frameworks do. Their role is very important, but the real challenge in software testing is not writing JUnit code but designing decent test cases that may reveal bugs. Designing test cases is mostly a human activity and is what this book primarily focuses on.</p>
+
+  <p class="fm-callout"><a id="pgfId-1036769"></a><span class="fm-callout-head">Note</span> If you are not familiar with JUnit, it should not be a problem, because the examples in the book are easy to read. But as I mention throughout the book, the more familiar you are with the testing framework, the better.</p>
+
+  <p class="body"><a id="pgfId-1036785"></a>In the chapters where I discuss testing techniques, we first engineer the test cases and only later automate them with JUnit code. In real life, you may mingle both activities; but in this book, I decided to keep them separate so you can see the difference. This also means the book does not talk much about tooling. JUnit and other testing frameworks are powerful tools, and I recommend reading the manuals and books that focus on them. <a id="marker-1036787"></a><a id="marker-1036790"></a><a id="marker-1036792"></a><a id="marker-1036794"></a><a id="marker-1036796"></a></p>
+
+  <h2 class="fm-head" id="heading_id_12"><a id="pgfId-1036802"></a>1.3 Principles of software testing (or, why testing is so difficult)</h2>
+
+  <p class="body"><a id="pgfId-1036819"></a><a id="marker-1036813"></a><a id="marker-1036815"></a>A simplistic view of software testing is that if we want our systems to be well tested, we must keep adding tests until we have enough. I wish it were that simple. Ensuring that programs have no bugs is virtually impossible, and developers should understand why that is the case.</p>
+
+  <p class="body"><a id="pgfId-1036824"></a>In this section, I discuss some principles that make our lives as software testers more difficult and what we can do to mitigate them. These principles were inspired by those presented in the International Software <a id="marker-1036826"></a>Testing <a id="marker-1036832"></a>Qualifications <a id="marker-1036838"></a>Board (ISTQB) book by Black, Veenendaal, and Graham (2012).</p>
+
+  <h3 class="fm-head1" id="heading_id_13"><a id="pgfId-1036848"></a>1.3.1 Exhaustive testing is impossible</h3>
+
+  <p class="body"><a id="pgfId-1036883"></a><a id="marker-1036859"></a><a id="marker-1036861"></a><a id="marker-1036863"></a>We do not have the resources to completely test our programs. Testing all possible situations in a software system might be impossible even if we had unlimited resources. Imagine a software system with “only” 300 different flags or configuration settings (such as the Linux operating system). Each flag can be set to true or false (Boolean) and can be set independently from the others. The software system behaves differently according to the configured combination of flags. Having two possible values for each of the 300 flags gives 2300 combinations that need to be tested. For comparison, the number of atoms in the universe is estimated to be 1080. In other words, this software system has more possible combinations to be tested than the universe has atoms.</p>
+
+  <p class="body"><a id="pgfId-1036892"></a>Knowing that testing everything is not possible, we have to choose (or prioritize) what to test. This is why I emphasize the need for <i class="fm-italics">effective tests</i>. The book discusses techniques that will help you identify the relevant test cases. <a id="marker-1036903"></a><a id="marker-1036906"></a><a id="marker-1036908"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_14"><a id="pgfId-1036914"></a>1.3.2 Knowing when to stop testing</h3>
+
+  <p class="body"><a id="pgfId-1036931"></a><a id="marker-1036925"></a><a id="marker-1036927"></a>Prioritizing which tests to engineer is difficult. Creating too few tests may leave us with a software system that does not behave as intended (that is, it’s full of bugs). On the other hand, creating test after test without proper consideration can lead to ineffective tests (and cost time and money). As I said before, our goal should always be to maximize the number of bugs found while minimizing the resources we spend on finding those bugs. To that aim, I will discuss different adequacy criteria that will help you decide when to stop testing. <a id="marker-1036932"></a><a id="marker-1036935"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_15"><a id="pgfId-1036941"></a>1.3.3 Variability is important (the pesticide paradox)</h3>
+
+  <p class="body"><a id="pgfId-1036960"></a><a id="marker-1036952"></a><a id="marker-1036954"></a><a id="marker-1036956"></a>There is no silver bullet in software testing. In other words, there is no single testing technique that you can always apply to find all possible bugs. Different testing techniques help reveal different bugs. If you use only a single technique, you may find all the bugs you can with that technique and no more.</p>
+
+  <p class="body"><a id="pgfId-1036965"></a>A more concrete example is a team that relies solely on unit testing techniques. The team may find all the bugs that can be captured at the unit test level, but they may miss bugs that only occur at the integration level.</p>
+
+  <p class="body"><a id="pgfId-1036971"></a>This is known as the <i class="fm-italics">pesticide paradox</i>: every method you use to prevent or find bugs leaves a residue of subtler bugs against which those methods are ineffectual. Testers must use different testing strategies to minimize the number of bugs left in the software. When studying the various testing strategies presented in this book, keep in mind that combining them all is probably a wise decision. <a id="marker-1036982"></a><a id="marker-1036985"></a><a id="marker-1036987"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_16"><a id="pgfId-1036993"></a>1.3.4 Bugs happen in some places more than others</h3>
+
+  <p class="body"><a id="pgfId-1037028"></a><a id="marker-1037004"></a><a id="marker-1037006"></a><a id="marker-1037008"></a>As I said earlier, given that exhaustive testing is impossible, software testers have to prioritize the tests they perform. When prioritizing test cases, note that bugs are not uniformly distributed. Empirically, our community has observed that some components present more bugs than others. For example, a <code class="fm-code-in-text">Payment</code> module may require more rigorous testing than a <code class="fm-code-in-text">Marketing</code> module.</p>
+
+  <p class="body"><a id="pgfId-1037037"></a>As a real-world example, take Schröter and colleagues (2006), who studied bugs in the Eclipse projects. They observed that 71% of files that imported compiler packages had to be fixed later. In other words, such files were more prone to defects than the other files in the system. As a software developer, you may have to watch and learn from your software system. Data other than the source code may help you prioritize your testing efforts. <a id="marker-1037039"></a><a id="marker-1037042"></a><a id="marker-1037044"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_17"><a id="pgfId-1037050"></a>1.3.5 No matter what testing you do, it will never be perfect or enough</h3>
+
+  <p class="body"><a id="pgfId-1037067"></a><a id="marker-1037061"></a><a id="marker-1037063"></a>As Dijkstra used to say, “Program testing can be used to show the presence of bugs, but never to show their absence.” In other words, while we may find more bugs by simply testing more, our test suites, however large they may be, will never ensure that the software system is 100% bug-free. They will only ensure that the cases we test for behave as expected.</p>
+
+  <p class="body"><a id="pgfId-1037072"></a>This is an important principle to understand, as it will help you set your (and your customers’) expectations. Bugs will still happen, but (hopefully) the money you pay for testing and prevention will pay off by allowing only the less impactful bugs to go through. “You cannot test everything” is something we must accept.</p>
+
+  <p class="fm-callout"><a id="pgfId-1037078"></a><span class="fm-callout-head">Note</span> Although monitoring is not a major topic in this book, I recommend investing in monitoring systems. Bugs will happen, and you need to be sure you find them the second they manifest in production. That is why tools such as the ELK stack (Elasticsearch, Logstash, and Kibana; <a class="url" href="http://www.elastic.co">www.elastic.co</a>) are becoming so popular. This approach is sometimes called <i class="fm-italics">testing in production</i> (Wilsenach, 2017). <a id="marker-1037099"></a><a id="marker-1037102"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_18"><a id="pgfId-1037108"></a>1.3.6 Context is king</h3>
+
+  <p class="body"><a id="pgfId-1037127"></a><a id="marker-1037121"></a><a id="marker-1037123"></a>The context plays an important role in how we devise test cases. For example, devising test cases for a mobile app is very different from devising test cases for a web application or software used in a rocket. In other words, testing is context-dependent.</p>
+
+  <p class="body"><a id="pgfId-1037132"></a>Most of this book tries to be agnostic about context. The techniques I discuss (domain testing, structural testing, property-based testing, and so on) can be applied in any type of software system. Nevertheless, if you are working on a mobile app, I recommend reading a book dedicated to mobile testing after you read this one. I give some context-specific tips in chapter 9, where I discuss larger tests. <a id="marker-1037137"></a><a id="marker-1037139"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_19"><a id="pgfId-1037145"></a>1.3.7 Verification is not validation</h3>
+
+  <p class="body"><a id="pgfId-1037172"></a><a id="marker-1037156"></a><a id="marker-1037158"></a><a id="marker-1037160"></a><a id="marker-1037162"></a>Finally, note that a software system that works flawlessly but is of no use to its users is not a good software system. As a reviewer of this book said to me, “Coverage of code is easy to measure; coverage of requirements is another matter.” Software testers face this <i class="fm-italics">absence-of-errors fallacy</i> when they <a id="marker-1037177"></a>focus solely on verification and not on validation.</p>
+
+  <p class="body"><a id="pgfId-1037187"></a>A popular saying that may help you remember the difference is, “Verification is about having the system right; validation is about having the right system.” This book primarily covers verification techniques. In other words, I do not focus on techniques to, for example, collaborate with customers to understand their real needs; rather, I present techniques to ensure that, given a specific requirement, the software system implements it correctly.</p>
+
+  <p class="body"><a id="pgfId-1037193"></a>Verification and validation can walk hand in hand. In this chapter’s example about the planning poker algorithm, this was what happened when Eleanor imagined all the developers estimating the same effort. The product owner did not think of this case. A systematic testing approach can help you identify corner cases that even the product experts did not envision. <a id="marker-1037195"></a><a id="marker-1037198"></a><a id="marker-1037200"></a><a id="marker-1037202"></a><a id="marker-1037204"></a><a id="marker-1037206"></a></p>
+
+  <h2 class="fm-head" id="heading_id_20"><a id="pgfId-1037212"></a>1.4 The testing pyramid, and where we should focus</h2>
+
+  <p class="body"><a id="pgfId-1037265"></a><a id="marker-1037223"></a><a id="marker-1037225"></a>Whenever we talk about pragmatic testing, one of the first decisions we need to make is the level at which to test the code. By a test <i class="fm-italics">level</i>, I mean the <i class="fm-italics">unit</i>, <i class="fm-italics">integration</i>, or <i class="fm-italics">system</i> level. Let’s quickly look at each of them.</p>
+
+  <h3 class="fm-head1" id="heading_id_21"><a id="pgfId-1037274"></a>1.4.1 Unit testing</h3>
+
+  <p class="body"><a id="pgfId-1037299"></a><a id="marker-1037285"></a><a id="marker-1037287"></a><a id="marker-1037289"></a>In some situations, the tester’s goal is to test a single feature of the software, purposefully ignoring the other units of the system. This is basically what we saw in the planning poker example. The goal was to test the <code class="fm-code-in-text">identifyExtremes()</code> method and nothing else. Of course, we cared about how this method would interact with the rest of the system, and that is why we tested its contracts. However, we did not test it together with the other pieces of the system.</p>
+
+  <p class="body"><a id="pgfId-1037308"></a>When we test units in isolation, we are doing <i class="fm-italics">unit testing</i>. This test level offers the following advantages:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1037323"></a><i class="fm-italics1">Unit tests are fast</i>. A unit test usually takes just a couple of milliseconds to execute. Fast tests allow us to test huge portions of the system in a small amount of time. Fast, automated test suites give us constant feedback. This fast safety net makes us feel more comfortable and confident in performing evolutionary changes to the software system we are working on.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1037362"></a><i class="fm-italics1">Unit tests are easy to control</i>. A unit test tests the software by giving certain parameters to a method and then comparing the return value of this method to the expected result. These input values and the expected result value are easy to adapt or modify in the test. Again, look at the <code class="fm-code-in-text">identifyExtremes()</code> example and how easy it was to provide different inputs and assert its output.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1037371"></a><i class="fm-italics1">Unit tests are easy to write</i>. They do not require a complicated setup or additional work. A single unit is also often cohesive and small, making the tester’s job easier. Tests become much more complicated when we have databases, frontends, and web services all together.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1037388"></a>As for disadvantages, the following should be considered:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1037394"></a><i class="fm-italics1">Unit tests lack reality</i>. A software system is rarely composed of a single class. The large number of classes in a system and their interaction can cause the system to behave differently in its real application than in the unit tests. Therefore, unit tests do not perfectly represent the real execution of a software system.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1037415"></a><i class="fm-italics1">Some types of bugs are not caught</i>. Some types of bugs cannot be caught at the unit test level; they only happen in the integration of the different components (which are not exercised in a pure unit test). Think of a web application that has a complex UI: you may have tested the backend and the frontend thoroughly, but a bug may only reveal itself when the backend and frontend are put together. Or imagine multithreaded code: everything may work at the unit level, but bugs may appear once threads are running together.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1037432"></a>Interestingly, one of the hardest challenges in unit testing is to define what constitutes a unit. A unit can be one method or multiple classes. Here is a definition for unit testing that I like, given by Roy <a id="marker-1037434"></a>Osherove (2009): “A unit test is an automated piece of code that invokes a unit of work in the system. And a unit of work can span a single method, a whole class or multiple classes working together to achieve one single logical purpose that can be verified.”</p>
+
+  <p class="body"><a id="pgfId-1037444"></a>For me, unit testing means testing a (small) set of classes that have no dependency on external systems (such as databases or web services) or anything else I do not fully control. When I unit-test a set of classes together, the number of classes tends to be small. This is primarily because testing many classes together may be too difficult, not because this isn’t a unit test.</p>
+
+  <p class="body"><a id="pgfId-1037450"></a>But what if a class I want to test depends on another class that talks to, for example, a database (figure 1.5)? This is where unit testing becomes more complicated. Here is a short answer: if I want to test a class, and this class depends on another class that depends on a database, I will simulate the database class. In other words, I will create a stub that acts like the original class but is much simpler and easier to use during testing. We will dive into this specific problem in chapter 6, where we discuss mocks. <a id="marker-1037452"></a><a id="marker-1037455"></a><a id="marker-1037457"></a></p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/01-05.png" width="431" height="230"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1052612"></a>Figure 1.5 Unit testing. Our goal is to test one unit of the system that is as isolated as possible from the rest of the system.</p>
+  </div>
+
+  <h3 class="fm-head1" id="heading_id_22"><a id="pgfId-1037473"></a>1.4.2 Integration testing</h3>
+
+  <p class="body"><a id="pgfId-1037506"></a><a id="marker-1037498"></a><a id="marker-1037500"></a><a id="marker-1037502"></a>Unit tests focus on the smallest parts of the system. However, testing components in isolation sometimes is not enough. This is especially true when the code under test goes beyond the system’s borders and uses other (often external) components. Integration testing is the test level we use to test the integration between our code and external parties.</p>
+
+  <p class="body"><a id="pgfId-1037511"></a>Let’s consider a real-world example. Software systems commonly rely on database systems. To communicate with the database, developers often create a class whose only responsibility is to interact with this external component (think of Data Access Object [DAO] classes). These DAOs may contain complicated SQL code. Thus, a tester feels the need to test the SQL queries. The tester does not want to test the entire system, only the integration between the DAO class and the database. The tester also does not want to test the DAO <a id="marker-1037513"></a>class in complete isolation. After all, the best way to know whether a SQL query works is to submit it to the database and see what the database returns.</p>
+
+  <p class="body"><a id="pgfId-1037523"></a>This is an example of an integration test. Integration testing aims to test multiple components of a system together, focusing on the interactions between them instead of testing the system as a whole (see figure 1.6). Are they communicating correctly? What happens if component A sends message X to component B? Do they still present correct behavior?</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/01-06.png" width="335" height="254"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1052654"></a>Figure 1.6 Integration testing. Our goal is to test whether our component integrates well with an external component.</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1037539"></a>Integration testing focuses on two parts: our component and the external component. Writing such a test is less complicated than writing a test that goes through the entire system and includes components we do not care about.</p>
+
+  <p class="body"><a id="pgfId-1037559"></a>Compared to unit testing, integration tests are more difficult to write. In the example, setting up a database for the test requires effort. Tests that involve databases generally need to use an isolated instance of the database just for testing purposes, update the database schema, put the database into a state expected by the test by adding or removing rows, and clean everything afterward. The same effort is involved in other types of integration tests: web services, file reads and writes, and so on. We will discuss writing integration tests effectively in chapter 9. <a id="marker-1037561"></a><a id="marker-1037564"></a><a id="marker-1037566"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_23"><a id="pgfId-1037572"></a>1.4.3 System testing</h3>
+
+  <p class="body"><a id="pgfId-1037591"></a><a id="marker-1037583"></a><a id="marker-1037585"></a><a id="marker-1037587"></a>To get a more realistic view of the software and thus perform more realistic tests, we should run the entire software system with all its databases, frontend apps, and other components. When we test the system in its entirety, instead of testing small parts of the system in isolation, we are doing system testing (see figure 1.7). We do not care how the system works from the inside; we do not care if it was developed in Java or Ruby, or whether it uses a relational database. We only care that, given input X, the system will provide output Y.</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/01-07.png" width="694" height="281"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1052696"></a>Figure 1.7 System testing. Our goal is to test the entire system and its components.</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1037636"></a>The obvious advantage of system testing is <i class="fm-italics">how realistic the tests are</i>. Our final customers will not run the <code class="fm-code-in-text">identifyExtremes()</code> method in <a id="marker-1037641"></a>isolation. Rather, they will visit a web page, submit a form, and see the results. System tests exercise the system in that precise manner. The more realistic the tests are (that is, when the tests perform actions similar to the final user), the more confident we can be about the whole system.</p>
+
+  <p class="body"><a id="pgfId-1037651"></a>System testing does, however, have its downsides:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1037657"></a>System tests are often <i class="fm-italics1">slow</i> compared to unit tests. Imagine everything a system test has to do, including starting and running the entire system with all its components. The test also has to interact with the real application, and actions may take a few seconds. Imagine a test that starts a container with a web application and another container with a database. It then submits an HTTP request to a web service exposed by this web app. This web service retrieves data from the database and writes a JSON response to the test. This obviously takes more time than running a simple unit test, which has virtually no dependencies.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1037680"></a>System tests are also <i class="fm-italics1">harder to write</i>. Some of the components (such as databases) may require a complex setup before they can be used in a testing scenario. Think of connecting, authenticating, and making sure the database has all the data required by that test case. Additional code is required just to automate the tests.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1037719"></a>System tests are more <i class="fm-italics1">prone to flakiness</i>. A <i class="fm-italics1">flaky</i> test presents erratic behavior: if you run it, it may pass or fail for the same configuration. Flaky tests are an important problem for software development teams, and we discuss this issue in chapter 10. Imagine a system test that exercises a web app. After the tester clicks a button, the HTTP POST request to the web app takes half a second longer than usual (due to small variations we often do not control in real-life scenarios). The test does not expect this and thus fails. The test is executed again, the web app takes the usual time to respond, and the test passes. Many uncertainties in a system test can lead to unexpected behavior. <a class="calibre13" id="marker-1037724"></a><a class="calibre13" id="marker-1037727"></a><a class="calibre13" id="marker-1037729"></a></p>
+    </li>
+  </ul>
+
+  <h3 class="fm-head1" id="heading_id_24"><a id="pgfId-1037735"></a>1.4.4 When to use each test level</h3>
+
+  <p class="body"><a id="pgfId-1037752"></a><a id="marker-1037746"></a><a id="marker-1037748"></a>With a clear understanding of the different test levels and their benefits, we have to decide whether to invest more in unit testing or system testing and determine which components should be tested via unit testing and which components should be tested via system testing. A wrong decision may have a considerable impact on the system’s quality: a wrong level may cost too many resources and may not find sufficient bugs. As you may have guessed, the best answer here is, “It depends.”</p>
+
+  <p class="body"><a id="pgfId-1037757"></a>Some developers—including me—favor unit testing over other test levels. This does not mean such developers do not do integration or system testing; but whenever possible, they push testing toward the unit test level. A pyramid is often used to illustrate this idea, as shown in figure 1.8. The size of the slice in the pyramid represents the relative number of tests to carry out at each test level.</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/01-08.png" width="548" height="215"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1052741"></a>Figure 1.8 My version of the testing pyramid. The closer a test is to the top, the more real and complex the test becomes. At the right part you see what I test at each test level.</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1037773"></a>Unit testing is at the bottom of the pyramid and has the largest area. This means developers who follow this scheme favor unit testing (that is, write more unit tests). Climbing up in the diagram, the next level is integration testing. The area is smaller, indicating that, in practice, these developers write fewer integration tests than unit tests. Given the extra effort that integration tests require, the developers write tests only for the integrations they need. The diagram shows that these developers favor system tests less than integration tests and have even fewer manual tests. <a id="marker-1037789"></a><a id="marker-1037792"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_25"><a id="pgfId-1037798"></a>1.4.5 Why do I favor unit tests?</h3>
+
+  <p class="body"><a id="pgfId-1037808"></a>As I said, I tend to favor unit testing. I appreciate the advantages that unit tests give me. They are easy to write, they are fast, I can write them intertwined with production code, and so on. I also believe that unit testing fits very well with the way software developers work. When developers implement a new feature, they write separate units that will eventually work together to deliver larger functionality. While developing each unit, it is easy to ensure that it works as expected. Testing small units rigorously and effectively is much easier than testing a larger piece of functionality.</p>
+
+  <p class="body"><a id="pgfId-1037814"></a>Because I am also aware of the disadvantages of unit testing, I think carefully about how the unit under development will be used by the other units of the system. Enforcing clear contracts and systematically testing them gives me more certainty that things will work out when they are put together.</p>
+
+  <p class="body"><a id="pgfId-1037820"></a>Finally, given the intensity with which I test my code using (simple and cheap) unit tests, I can use integration and system tests for the parts that really matter. I do not have to retest all the functionalities again at these levels. I use integration or system testing to test specific parts of the code that I believe may cause problems during integration.</p>
+
+  <h3 class="fm-head1" id="heading_id_26"><a id="pgfId-1037826"></a>1.4.6 What do I test at the different levels?</h3>
+
+  <p class="body"><a id="pgfId-1037859"></a><a id="marker-1037837"></a><a id="marker-1037839"></a>I use unit tests for units that are concerned with an algorithm or a single piece of business logic of the software system. Most enterprise/business systems are used to transform data. Such business logic is often expressed by using entity classes (for example, an <code class="fm-code-in-text">Invoice</code> class and an <code class="fm-code-in-text">Order</code> class) to exchange messages. Business logic often does not depend on external services, so it can easily be tested and fully controlled through unit tests. Unit tests give us full control over the input data as well as full observability in terms of asserting that the behavior is as expected.</p>
+
+  <p class="fm-callout"><a id="pgfId-1037868"></a><span class="fm-callout-head">Note</span> If a piece of code deals with specific business logic but cannot be tested via unit tests (for example, the business logic can only be tested with the full system running), previous design or architectural decisions are probably preventing you from writing unit tests. How you design your classes has a significant impact on how easy it is to write unit tests for your code. We discuss design for testability in chapter 7.</p>
+
+  <p class="body"><a id="pgfId-1037884"></a>I use integration tests whenever the component under test interacts with an external component (such as a database or web service). A DAO, whose sole responsibility is to communicate with a database, is better tested at the integration level: you want to ensure that communication with the database works, the SQL query returns what you want it to, and transactions are committed to the database. Again, note that integration tests are more expensive and harder to set up than unit tests, and I use them only because they are the only way to test a particular part of the system. Chapter 7 discusses how having a clear separation between business rules and infrastructure code will help you test business rules with unit tests and integration code with integration tests.</p>
+
+  <p class="body"><a id="pgfId-1037890"></a>As we know already, system tests are very costly (they are difficult to write and slow to run) and, thus, at the top of the pyramid. It is impossible to retest the entire system at the system level. Therefore, I have to prioritize what to test at this level, and I perform a simple risk analysis to decide. What are the critical parts of the software system under test? In other words, what parts of the system would be significantly affected by a bug? These are the areas where I do some system testing.</p>
+
+  <p class="body"><a id="pgfId-1037896"></a>Remember the <i class="fm-italics">pesticide paradox</i>: a single technique usually is not enough to identify all the bugs. Let me give you a real-world example from one of my previous projects. In developing an e-learning platform, one of our most important functionalities was payment. The worst type of bug would prevent users from buying our product. Therefore, we were rigorous in testing all the code related to payment. We used unit tests for business rules related to what the user bought being converted into the right product, access and permissions, and so on. Integration with the two payment gateways we supported was tested via integration testing: the integration tests made real HTTP calls to a sandbox web service provided by the payment gateways, and we tested different types of users buying products with various credit cards. Finally, our system tests represented the entire user journey in buying our product. These tests started a Firefox browser, clicked HTML elements, submitted forms, and checked that the right product was available after confirming payment.</p>
+
+  <p class="body"><a id="pgfId-1037911"></a>Figure 1.8 also includes manual testing. I’ve said that every test should be automated, but I see some value in manual testing when these tests focus on exploration and validation. As a developer, it is nice to use and explore the software system you are building from time to time, both for real and via a test script. Open the browser or the app, and play with it—you may gain better insight into what else to test. <a id="marker-1037913"></a><a id="marker-1037916"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_27"><a id="pgfId-1037922"></a>1.4.7 What if you disagree with the testing pyramid?</h3>
+
+  <p class="body"><a id="pgfId-1037945"></a><a id="marker-1037933"></a><a id="marker-1037935"></a>Many people disagree about the idea of a testing pyramid and whether we should favor unit testing. These developers argue for the <i class="fm-italics">testing trophy</i>: a thinner bottom <a id="marker-1037950"></a>level with unit tests, a bigger middle slice with integration tests, and a thinner top with system tests. Clearly, these developers see the most value in writing integration tests.</p>
+
+  <p class="body"><a id="pgfId-1037960"></a>While I disagree, I see their point. In many software systems, most of the complexity is in integrating components. Think of a highly distributed microservices architecture: in such a scenario, the developer may feel more comfortable if the automated tests make actual calls to other microservices instead of relying on stubs or mocks that simulate them. Why write unit tests for something you have to test anyway via integration tests?</p>
+
+  <p class="body"><a id="pgfId-1037966"></a>In this particular case, as someone who favors unit testing, I would prefer to tackle the microservices testing problem by first writing lots and lots of unit tests in each microservice to ensure that they all behaved correctly, investing heavily in contract design to ensure that the microservices had clear pre- and post-conditions. Then, I would use many integration tests to ensure that communication worked as expected and that the normal variations in the distributed system did not break the system—yes, lots of them, because their benefits would outweigh their costs in this scenario. I might even invest in some smart (maybe AI-driven) tests to explore corner cases I could not see.</p>
+
+  <p class="body"><a id="pgfId-1037972"></a>Another common case I see in favor of integration testing rather than unit testing involves database-centric information systems: that is, systems where the main responsibility is to store, retrieve, and display information. In such systems, the complexity relies on ensuring that the flow of information successfully travels through the UI to the database and back. Such applications often are not composed of complex algorithms or business rules. In that case, integration tests to ensure that SQL queries (which are often complex) work as expected and system tests to ensure that the overall application behaves as expected may be the way to go. As I said before and will say many times in this book, context is king.</p>
+
+  <p class="body"><a id="pgfId-1037978"></a>I’ve written most of this section in the first person because it reflects my point of view and is based on my experience as a developer. Favoring one approach over another is largely a matter of personal taste, experience, and context. You should do the type of testing you believe will benefit your software. I am not aware of any scientific evidence that argues in favor of or against the testing pyramid. And in 2020, Trautsch and colleagues analyzed the fault detection capability of 30,000 tests (some unit tests, some integration tests) and could not find any evidence that certain defect types are more effectively detected by either test level. All the approaches have pros and cons, and you will have to find what works best for you and your development team.</p>
+
+  <p class="body"><a id="pgfId-1037984"></a>I suggest that you read the opinions of others, both in favor of unit testing and in favor of integration testing:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1037990"></a>In <i class="fm-italics1">Software Engineering at Google</i> (Winters, Manshreck, and Wright, 2020), the authors <a class="calibre13" id="marker-1038009"></a>mention <a class="calibre13" id="marker-1038015"></a>that Google <a class="calibre13" id="marker-1038027"></a>often opts for unit tests, as they tend to be cheaper and execute more quickly. Integration and system tests also happen, but to a lesser extent. According to the authors, around 80% of their tests are unit tests.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1038037"></a>Ham Vocke (2018) defends the testing pyramid in <a class="calibre13" id="marker-1038049"></a>Martin Fowler’s wiki.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1038059"></a>Fowler himself (2021) discusses the different test shapes (testing pyramid and testing trophy).</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1038069"></a>André Schaffer (2018) discusses how <a class="calibre13" id="marker-1038075"></a>Spotify prefers integration testing over unit testing.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1038085"></a>Julia Zarechneva and Picnic, a scale-up Dutch company (2021), reason about the testing pyramid.</p>
+    </li>
+  </ul>
+
+  <p class="fm-head2"><a id="pgfId-1038101"></a>Test sizes rather than their scope</p>
+
+  <p class="body"><a id="pgfId-1038159"></a>Google also has an interesting definition of test <i class="fm-italics">sizes</i>, which engineers consider when designing test cases. A <i class="fm-italics">small test</i> is a test <a id="marker-1038132"></a>that can be executed in a single process. Such tests do not have access to main sources of test slowness or determinism. In other words, they are fast and not flaky. A <i class="fm-italics">medium test</i> can span <a id="marker-1038148"></a>multiple processes, use threads, and make external calls (like network calls) to localhost. Medium tests tend to be slower and flakier than small ones. Finally, <i class="fm-italics">large tests</i> remove the localhost restriction and can thus require and make calls to multiple machines. Google reserves large tests for full end-to-end tests.</p>
+
+  <p class="body"><a id="pgfId-1038168"></a>The idea of classifying tests not in terms of their boundaries (unit, integration, system) but in terms of how fast they run is also popular among many developers. Again, what matters is that for each part of the system, your goal is to maximize the effectiveness of the test. You want your test to be as cheap as possible to write and as fast as possible to run and to give you as much feedback as possible about the system’s quality.</p>
+
+  <p class="body"><a id="pgfId-1038174"></a>Most of the code examples in the remainder of this book are about methods, classes, and unit testing, but the techniques can easily be generalized to coarse-grained components. For example, whenever I show a method, you can think of it as a web service. The reasoning will be the same, but you will probably have more test cases to consider, as your component will do more things. <a id="marker-1038176"></a><a id="marker-1038179"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_28"><a id="pgfId-1038185"></a>1.4.8 Will this book help you find all the bugs?</h3>
+
+  <p class="body"><a id="pgfId-1038195"></a>I hope the answer to this question is clear from the preceding discussion: <i class="fm-italics">no</i>! Nevertheless, the techniques discussed in this book will help you discover many bugs—hopefully, all the important ones.</p>
+
+  <p class="body"><a id="pgfId-1038210"></a>In practice, many bugs are very complex. We do not even have the right tools to search for some of them. But we know a lot about testing and how to find different classes of bugs, and those are the ones we focus on in this book. <a id="marker-1038212"></a><a id="marker-1038215"></a></p>
+
+  <h2 class="fm-head" id="heading_id_29"><a id="pgfId-1038221"></a>Exercises</h2>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1038231"></a><a id="marker-1038232"></a>1.1 In your own words, explain what systematic testing is and how it is different from non-systematic testing.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1038240"></a>1.2 Kelly, a very experienced software tester, visits Books!, a social network focused on matching people based on the books they read. Users do not report bugs often, as the Books! developers have strong testing practices in place. However, users say that the software is not delivering what it promises. What testing principle applies here?</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1038246"></a>1.3 Suzanne, a junior software tester, has just joined a very large online payment company in the Netherlands. As her first task, Suzanne analyzes the past two years’ worth of bug reports. She observes that more than 50% of the bugs happen in the international payments module. Suzanne promises her manager that she will design test cases that completely cover the international payments module and thus find all the bugs.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1038252"></a>Which of the following testing principles may explain why this is not possible?</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1038258"></a>A) Pesticide paradox</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1038272"></a>B) Exhaustive testing</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1038282"></a>C) Test early</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1038292"></a>D) Defect clustering</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1038302"></a>1.4 John strongly believes in unit testing. In fact, this is the only type of testing he does for any project he’s part of. Which of the following testing principles will <i class="fm-italics">not</i> help convince John that he should move away from his “only unit testing” approach?</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1038317"></a>A) Pesticide paradox</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1038331"></a>B) Tests are context-dependent</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1038341"></a>C) Absence-of-errors fallacy</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1038351"></a>D) Test early</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1038361"></a>1.5 Sally just started some consultancy for a company that develops a mobile app to help people keep up with their daily exercises. The development team members are fans of automated software testing and, more specifically, unit tests. They have high unit test code coverage (&gt;95% branch coverage), but users still report a significant number of bugs.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1038367"></a>Sally, who is well versed in software testing, explains a testing principle to the team. Which of the following principles did she talk about?</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1038373"></a>A) Pesticide paradox</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1038387"></a>B) Exhaustive testing</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1038397"></a>C) Test early</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1038407"></a>D) Defect clustering</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1038417"></a>1.6 Consider this requirement: “A web shop runs a batch job, once a day, to deliver all orders that have been paid. It also sets the delivery date according to whether the order is from an international customer. Orders are retrieved from an external database. Orders that have been paid are then sent to an external web service.”</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1038423"></a>As a tester, you have to decide which test level (unit, integration, or system) to apply. Which of the following statements is true?</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1038429"></a>A) Integration tests, although more complicated (in terms of automation) than unit tests, would provide more help in finding bugs in the communication with the web service and/or the communication with the database.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1038443"></a>B) Given that unit tests could be easily written (by using mocks) and would cover as much as integration tests would, unit tests are the best option for any situation.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1038453"></a>C) The most effective way to find bugs in this code is through system tests. In this case, the tester should run the entire system and exercise the batch process. Because this code can easily be mocked, system tests would also be cheap.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1038463"></a>D) While all the test levels can be used for this problem, testers are more likely to find more bugs if they choose one level and explore all the possibilities and corner cases there.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1038473"></a>1.7 Delft University of Technology (TU Delft) has built in-house software to handle employee payroll. The application uses Java web technologies and stores data in a Postgres database. The application frequently retrieves, modifies, and inserts large amounts of data. All this communication is done by Java classes that send (complex) SQL queries to the database.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1038479"></a>As testers, we know that a bug can be anywhere, including in the SQL queries. We also know that there are many ways to exercise our system. Which one of the following is <i class="fm-italics1">not</i> a good option to detect bugs in SQL queries?</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1038494"></a>A) Unit testing</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1038508"></a>B) Integration testing</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1038518"></a>C) System testing</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1038528"></a>D) Stress testing</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1038538"></a>1.8 Choosing the level of a test involves a trade-off, because each test level has advantages and disadvantages. Which one of the following is the main advantage of a test at the system level?</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1038544"></a>A) The interaction with the system is much closer to reality.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1038558"></a>B) In a continuous integration environment, system tests provide real feedback to developers.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1038568"></a>C) Because system tests are never flaky, they provide developers with more stable feedback.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1038578"></a>D) A system test is written by product owners, making it closer to reality.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1038588"></a>1.9 What is the main reason the number of recommended system tests in the testing pyramid is smaller than the number of unit tests?</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1038594"></a>A) Unit tests are as good as system tests.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1038608"></a>B) System tests tend to be slow and are difficult to make deterministic.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1038618"></a>C) There are no good tools for system tests.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1038628"></a>D) System tests do not provide developers with enough quality feedback. <a id="marker-1038634"></a></p>
+
+  <h2 class="fm-head" id="heading_id_30"><a id="pgfId-1038641"></a>Summary</h2>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1038651"></a>Testing and test code can guide you through software development. But software testing is about finding bugs, and that is what this book is primarily about.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1038665"></a>Systematic and effective software testing helps you design test cases that exercise all the corners of your code and (hopefully) leaves no space for unexpected behavior.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1038675"></a>Although being systematic helps, you can never be certain that a program does not have bugs.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1038685"></a>Exhaustive testing is impossible. The life of a tester involves making trade-offs about how much testing is needed.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1038695"></a>You can test programs on different levels, ranging from testing small methods to testing entire systems with databases and web services. Each level has advantages and disadvantages.</p>
+    </li>
+  </ul>
+</div>
+</div>
+</body>
+</html>

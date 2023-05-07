@@ -1,0 +1,1182 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xml:lang="en"
+      lang="en"
+      xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:epub="http://www.idpf.org/2007/ops">
+<head>
+<title>Effective Software Testing</title>
+<link rel="stylesheet" type="text/css" href="../../override_v1.css"/>
+<link rel="stylesheet" type="text/css" href="../../stylesheet.css"/><link rel="stylesheet" type="text/css" href="../../page_styles.css"/>
+</head>
+<body>
+<div id="book-content">
+<div id="sbo-rt-content" class="calibre"><h1 class="tochead" id="heading_id_2"><a id="pgfId-998407"></a><a id="pgfId-1023813"></a>6 Test doubles and mocks</h1>
+
+  <p class="co-summary-head"><a id="pgfId-1011754"></a>This chapter covers</p>
+
+  <ul class="calibre12">
+    <li class="co-summary-bullet"><a class="calibre13" id="pgfId-1011760"></a>Using stubs, fakes, and mocks to simplify testing</li>
+
+    <li class="co-summary-bullet"><a class="calibre13" id="pgfId-1011774"></a>Understanding what to mock, when to mock, and when not to mock</li>
+
+    <li class="co-summary-bullet"><a class="calibre13" id="pgfId-1011784"></a>How to mock the unmockable</li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1011794"></a>Until now, we have been testing classes and methods that were isolated from each other. We passed the inputs to a single method call and asserted its output. Or, when a class was involved, we set up the state of the class, called the method under test, and asserted that the class was in the expected state.</p>
+
+  <p class="body"><a id="pgfId-1011800"></a>But some classes depend on other classes to do their job. Exercising (or testing) many classes together may be desirable. We often break down complex behavior into multiple classes to improve maintainability, each with a small part of the business logic. We still want to ensure, however, that the whole thing works together; we will discuss this in chapter 9. This chapter focuses on testing that unit in an isolated fashion without caring too much about its dependencies. But why would we want that?</p>
+
+  <p class="body"><a id="pgfId-1011864"></a>The answer is simple: because exercising the class under test together with its concrete dependencies might be too slow, too hard, or too much work. As an example, consider an application that handles invoices. This system has a class called <code class="fm-code-in-text">IssuedInvoices</code>, which handles the database and contains lots of SQL queries. Other parts of the system (such as the <code class="fm-code-in-text">InvoiceGenerationService</code> class, which generates new invoices) depend on this <code class="fm-code-in-text">IssuedInvoices</code> class to <a id="marker-1011837"></a>persist the generated invoice in the database. This means that whenever we test <code class="fm-code-in-text">InvoiceGenerationService</code>, this class <a id="marker-1011853"></a>will consequently call <code class="fm-code-in-text">IssuedInvoices</code>, which will then communicate with a database.</p>
+
+  <p class="body"><a id="pgfId-1011889"></a>In other words, the <code class="fm-code-in-text">InvoiceGenerationService</code> class indirectly depends on the database that stores the issued invoices. This means testing the <code class="fm-code-in-text">InvoiceGenerationService</code> requires setting up a database, making sure it contains all the right data, and so on. That is clearly much more work than writing tests that do not require a database. Figure 6.1 shows a more generic illustration of this problem. How do we test a class that depends on many other classes, some of which may involve databases and other complicated things?</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/06-01.png" width="281" height="254"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1042464"></a>Figure 6.1 A simple illustration of the challenges we face when testing a class that depends on many other classes</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1011958"></a>But when systematically testing the <code class="fm-code-in-text">InvoiceGenerationService</code> class, maybe we do not want to test whether the SQL query in the <code class="fm-code-in-text">IssuedInvoices</code> class is correct. We only want to ensure that, for example, the invoice is generated correctly or contains all the right values. Testing whether the SQL query works will be the responsibility of the <code class="fm-code-in-text">IssuedInvoicesTest</code> test suite, not <code class="fm-code-in-text">InvoiceGenerationServiceTest</code>. We will write integration tests for SQL queries in chapter 9.</p>
+
+  <p class="body"><a id="pgfId-1011983"></a>We must figure out how to test a class that depends on another class without using that dependency. This is where <i class="fm-italics">test doubles</i> come in handy. We create an object to mimic the behavior of component <code class="fm-code-in-text">B</code> (“it looks like <code class="fm-code-in-text">B</code>, but it is not <code class="fm-code-in-text">B</code>”). Within the test, we have full control over what this fake component <code class="fm-code-in-text">B</code> does, so we can make it behave as <code class="fm-code-in-text">B</code> would <i class="fm-italics">in the context of this test</i> and thus cut the dependency on the real object.</p>
+
+  <p class="body"><a id="pgfId-1012038"></a>In the previous example, suppose <code class="fm-code-in-text">A</code> is a plain Java class that depends on <code class="fm-code-in-text">IssuedInvoices</code> to retrieve values from a database. We can implement a fake <code class="fm-code-in-text">IssuedInvoices</code> that returns a hard-coded list of values rather than retrieving them from an external database. This means we can control the environment around <code class="fm-code-in-text">A</code> so we can check how <code class="fm-code-in-text">A</code> behaves without dealing with complex dependencies. I show examples of how this works later in the chapter.</p>
+
+  <p class="body"><a id="pgfId-1012047"></a>Using objects that simulate the behavior of other objects has the following advantages:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012053"></a><i class="fm-italics1">We have more control</i>. We can easily tell these fake objects what to do. If we want a method to throw an exception, we tell the mock method to throw it. There is no need for complicated setups to force the dependency to throw the exception. Think of how hard it is to force a class to throw an exception or return a fake date. This effort is close to zero when we simulate the dependencies with mock objects.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012074"></a><i class="fm-italics1">Simulations are faster</i>. Imagine a dependency that communicates with a web service or a database. A method in one of these classes might take a few seconds to process. On the other hand, if we simulate the dependency, it will no longer need to communicate with a database or web service and wait for a response. The simulation will return what it was configured to return, and it will cost nothing in terms of time.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012091"></a>When used as a design technique, mocks enable developers to <i class="fm-italics1">reflect on how classes should interact with each other</i>, what their contracts should be, and the conceptual boundaries. Therefore, mocks can be used to make testing easier and support developers in designing code.</p>
+    </li>
+  </ul>
+
+  <p class="fm-callout"><a id="pgfId-1012110"></a><span class="fm-callout-head">Note</span> While some of the schools of thought in testing prefer to see mocks as a design technique, in this book, I talk about stubs and mocks mostly from a testing perspective, as our goal is to use mocks to ease our lives when looking for bugs. If you are interested in mocking as a design technique, I strongly recommend Freeman and Pryce’s 2009 book, which is the canonical reference for the subject.</p>
+
+  <p class="body"><a id="pgfId-1012126"></a>I sorted mocks into the unit testing section of my testing flow (go back to figure 1.4 in chapter 1) because our goal is to focus on a single unit without caring much about the other units of the system. Note, however, that we still care about the contracts of the dependencies, as our simulations must follow and do the same things that the simulated class promises.</p>
+
+  <h2 class="fm-head" id="heading_id_3"><a id="pgfId-1012133"></a>6.1 Dummies, fakes, stubs, spies, and mocks</h2>
+
+  <p class="body"><a id="pgfId-1012143"></a>Before we dive into how to simulate objects, let’s first discuss the different types of simulations we can create. Meszaros, in his book (2007), defines five different types: dummy objects, fake objects, stubs, spies, and mocks. Each makes sense in a specific situation.</p>
+
+  <h3 class="fm-head1" id="heading_id_4"><a id="pgfId-1012149"></a>6.1.1 Dummy objects</h3>
+
+  <p class="body"><a id="pgfId-1012240"></a><a id="marker-1012160"></a><a id="marker-1012162"></a><a id="marker-1012164"></a>Dummy objects are passed to the class under test but never used. This is common in business applications where you need to fill a long list of parameters, but the test exercises only a few of them. Think of a unit test <a id="marker-1012169"></a>for a <code class="fm-code-in-text">Customer</code> class. Maybe this class depends on several other classes like <code class="fm-code-in-text">Address</code>, <code class="fm-code-in-text">Email</code>, and so on. Maybe a specific test case A wants to exercise a behavior, and this behavior does not care which <code class="fm-code-in-text">Address</code> this <code class="fm-code-in-text">Customer</code> has. In this case, a tester can set up a dummy <code class="fm-code-in-text">Address</code> object and pass it to the <code class="fm-code-in-text">Customer</code> class. <a id="marker-1012245"></a><a id="marker-1012248"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_5"><a id="pgfId-1012254"></a>6.1.2 Fake objects</h3>
+
+  <p class="body"><a id="pgfId-1012271"></a><a id="marker-1012265"></a><a id="marker-1012267"></a>Fake objects have real working implementations of the class they simulate. However, they usually do the same task in a much simpler way. Imagine a fake database class that uses an array list instead of a real database. This fake object is simpler to control than the real database. A common example in real life is to use a simpler database during testing.</p>
+
+  <p class="body"><a id="pgfId-1012276"></a>In the Java world, developers like to <a id="marker-1012278"></a>use HSQLDB (HyperSQL database, <a class="url" href="http://hsqldb.org">http://hsqldb.org</a>), an in-memory database that is much faster and easier to set up in the test code than a real database. We will talk more about in-memory databases when we discuss integration testing in chapter 9. <a id="marker-1012285"></a><a id="marker-1012288"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_6"><a id="pgfId-1012294"></a>6.1.3 Stubs</h3>
+
+  <p class="body"><a id="pgfId-1012317"></a><a id="marker-1012305"></a><a id="marker-1012307"></a>Stubs provide hard-coded answers to the calls performed during the test. Unlike fake objects, stubs do not have a working implementation. If the code calls a stubbed method <code class="fm-code-in-text">getAllInvoices</code>, the stub <a id="marker-1012322"></a>will return a hard-coded list of invoices.</p>
+
+  <p class="body"><a id="pgfId-1012332"></a>Stubs are the most popular type of simulation. In most cases, all you need from a dependency is for it to return a value so the method under test can continue its execution. If we were testing a method that depends on this <code class="fm-code-in-text">getAllInvoices</code> method, we could stub it to return an empty list, then return a list with one element, then return a list with many elements, and so on. This would enable us to assert how the method under test would work for lists of various lengths being returned from the database. <a id="marker-1012343"></a><a id="marker-1012346"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_7"><a id="pgfId-1012352"></a>6.1.4 Mocks</h3>
+
+  <p class="body"><a id="pgfId-1012395"></a><a id="marker-1012363"></a><a id="marker-1012365"></a>Mock objects act like stubs in the sense that you can configure how they reply if a method is called: for example, to return a list of invoices when <code class="fm-code-in-text">getAllInvoices</code> is called. However, mocks go beyond that. They save all the interactions and allow you to make assertions afterward. For example, maybe we only want the <code class="fm-code-in-text">getAllInvoices</code> method to be called once. If the method is called twice by the class under test, this is a bug, and the test should fail. At the end of our test, we can write an assertion along the lines of “verify that <code class="fm-code-in-text">getAllInvoices</code> was called just once.”</p>
+
+  <p class="body"><a id="pgfId-1012404"></a>Mocking frameworks let you assert all sorts of interactions, such as “the method was never called with this specific parameter” or “the method was called twice with parameter A and once with parameter B.” Mocks are also popular in industry since they can provide insight into how classes interact. <a id="marker-1027555"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_8"><a id="pgfId-1012413"></a>6.1.5 Spies</h3>
+
+  <p class="body"><a id="pgfId-1012432"></a><a id="marker-1012424"></a><a id="marker-1012426"></a><a id="marker-1012428"></a>As the name suggests, spies spy on a dependency. They wrap themselves around the real object and observe its behavior. Strictly speaking, we are not simulating the object but rather recording all the interactions with the underlying object we are spying on.</p>
+
+  <p class="body"><a id="pgfId-1012437"></a>Spies are used in very specific contexts, such as when it is much easier to use the real implementation than a mock but you still want to assert how the method under test interacts with the dependency. Spies are less common in the wild. <a id="marker-1012439"></a><a id="marker-1012442"></a></p>
+
+  <h2 class="fm-head" id="heading_id_9"><a id="pgfId-1012448"></a>6.2 An introduction to mocking frameworks</h2>
+
+  <p class="body"><a id="pgfId-1012458"></a><a id="marker-1012459"></a>Mocking frameworks are available for virtually all programming languages. While they may differ in their APIs, the underlying idea is the same. Here, I will use Mockito (<a class="url" href="https://site.mockito.org">https://site.mockito.org</a>), one of the most popular stubbing and mocking libraries for Java. Mockito offers a simple API, enabling developers to set up stubs and define expectations in mock objects with just a few lines of code. (Mockito is an extensive framework, and we cover only part of it in this chapter. To learn more, take a look at its documentation.)</p>
+
+  <p class="body"><a id="pgfId-1012468"></a>Mockito is so simple that knowing the following three methods is often enough:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012496"></a><code class="fm-code-in-text">mock(&lt;class&gt;)</code>—Creates a mock object/stub of a given class. The class can be specified by <code class="fm-code-in-text">&lt;ClassName&gt;.class</code>.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012559"></a><code class="fm-code-in-text">when(&lt;mock&gt;.&lt;method&gt;).thenReturn(&lt;value&gt;)</code>—A chain of method calls that defines the (stubbed) behavior of the method. In this case <code class="fm-code-in-text">&lt;value&gt;</code> is returned. For example, to make <a class="calibre13" id="marker-1012528"></a>the <code class="fm-code-in-text">all</code> method of an <code class="fm-code-in-text">issuedInvoices</code> mock return a list of invoices, we write <code class="fm-code-in-text">when(issuedInvoices.all()).thenReturn(someListHere)</code>.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1012606"></a><code class="fm-code-in-text">verify(&lt;mock&gt;).&lt;method&gt;</code>—Asserts that the interactions with the mock object happened in the expected way. For example, if we want to ensure that the method <code class="fm-code-in-text">all</code> of an <code class="fm-code-in-text">issuedInvoices</code> mock was invoked, we use <code class="fm-code-in-text">verify(issuedInvoices).all()</code>.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1012615"></a>Let’s dive into concrete examples to illustrate Mockito’s main features and show you how developers use mocking frameworks in practice. If you are already familiar with Mockito, you can skip this section.</p>
+
+  <h3 class="fm-head1" id="heading_id_10"><a id="pgfId-1012621"></a>6.2.1 Stubbing dependencies</h3>
+
+  <p class="body"><a id="pgfId-1012640"></a><a id="marker-1012632"></a><a id="marker-1012634"></a><a id="marker-1012636"></a>Let’s learn how to use Mockito and set up stubs with a practical example. Suppose we have the following requirement:</p>
+
+  <p class="fm-callout"><a id="pgfId-1012655"></a>The program must return all the issued invoices with values smaller than 100. The collection of invoices can be found in our database. The class <code class="fm-code-in-text">IssuedInvoices</code> already contains a method that retrieves all the invoices.</p>
+
+  <p class="body"><a id="pgfId-1012686"></a>The code in listing 6.1 is a possible implementation of this requirement. Note that <code class="fm-code-in-text">IssuedInvoices</code> is a class responsible for retrieving all the invoices from a real database (for example, MySQL). For now, suppose it has a method <code class="fm-code-in-text">all()</code> (not shown) that returns all the invoices in the database. The class sends SQL queries to the database and returns invoices. You can check the (naive) implementation in the book’s code repository.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1012746"></a>Listing 6.1 <code class="fm-code-in-text">InvoiceFilter</code> class</p>
+  <pre class="programlisting"><a id="pgfId-1012695"></a>import java.util.List;
+<a id="pgfId-1012794"></a>import static java.util.stream.Collectors.toList;
+<a id="pgfId-1012805"></a> 
+<a id="pgfId-1012800"></a>public class InvoiceFilter {
+<a id="pgfId-1012816"></a> 
+<a id="pgfId-1012811"></a>  public List&lt;Invoice&gt; lowValueInvoices() {
+<a id="pgfId-1012827"></a> 
+<a id="pgfId-1012822"></a>    DatabaseConnection dbConnection = new DatabaseConnection();        <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1012839"></a>    IssuedInvoices issuedInvoices = new IssuedInvoices(dbConnection);  <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1012856"></a> 
+<a id="pgfId-1012851"></a>    try {
+<a id="pgfId-1012862"></a>      List&lt;Invoice&gt; all = issuedInvoices.all();                        <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1012879"></a> 
+<a id="pgfId-1012874"></a>      return all.stream()
+<a id="pgfId-1012885"></a>              .filter(invoice -&gt; invoice.getValue() &lt; 100)
+<a id="pgfId-1012891"></a>              .collect(toList());                                      <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1012903"></a>    } finally {
+<a id="pgfId-1012909"></a>      dbConnection.close();                                            <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1012921"></a>    }
+<a id="pgfId-1012927"></a>  }
+<a id="pgfId-1012933"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1041232"></a><span class="fm-combinumeral">❶</span> Instantiates the IssuedInvoices dependency. It needs a DatabaseConnection, so we also instantiate one of those.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1041253"></a><span class="fm-combinumeral">❷</span> Gets all the invoices from the database</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1041270"></a><span class="fm-combinumeral">❸</span> Picks all the invoices with a value smaller than 100</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1041287"></a><span class="fm-combinumeral">❹</span> Closes the connection with the database. You would probably handle it better, but this is here to remind you of all the things you need to handle when dealing with databases.</p>
+
+  <p class="body"><a id="pgfId-1013049"></a>Without stubbing the <code class="fm-code-in-text">IssuedInvoices</code> class, testing the <code class="fm-code-in-text">InvoiceFilter</code> class means <a id="marker-1013028"></a>having to set up a database. It also means having invoices in the database so the SQL query can return them. This is a lot of work, as you can see from the (simplified) test method in listing 6.2, which exercises <code class="fm-code-in-text">InvoiceFilter</code> together with the concrete <code class="fm-code-in-text">IssuedInvoices</code> class and the database. Because the tests need a populated database up and running, we first create a connection to the database and clean up any old data it may contain. Then, in the test method, we persist a set of invoices to the database. Finally, when the test is over, we close the connection with the database, as we do not want hanging connections.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1013109"></a>Listing 6.2 Tests for <code class="fm-code-in-text">InvoiceFilter</code></p>
+  <pre class="programlisting"><a id="pgfId-1013058"></a>public class InvoiceFilterTest {
+<a id="pgfId-1013156"></a>  private IssuedInvoices invoices;
+<a id="pgfId-1013162"></a>  private DatabaseConnection dbConnection;
+<a id="pgfId-1013173"></a> 
+<a id="pgfId-1013168"></a>  @BeforeEach                                          <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1013185"></a>  public void open() {
+<a id="pgfId-1013191"></a>    dbConnection = new DatabaseConnection();
+<a id="pgfId-1013197"></a>    invoices = new IssuedInvoices(dbConnection);
+<a id="pgfId-1013208"></a> 
+<a id="pgfId-1013203"></a>    dbConnection.resetDatabase();                      <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1013220"></a>  }
+<a id="pgfId-1013231"></a> 
+<a id="pgfId-1013226"></a>  @AfterEach                                           <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1013243"></a>  public void close() {
+<a id="pgfId-1013249"></a>    if (dbConnection != null)
+<a id="pgfId-1013255"></a>      dbConnection.close();                            <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1013267"></a>  }
+<a id="pgfId-1013278"></a> 
+<a id="pgfId-1013273"></a>  @Test
+<a id="pgfId-1013284"></a>  void filterInvoices() {
+<a id="pgfId-1013290"></a>    Invoice mauricio = new Invoice("Mauricio", 20);    <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1013302"></a>    Invoice steve = new Invoice("Steve", 99);          <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1013314"></a>    Invoice frank = new Invoice("Frank", 100);         <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1013326"></a>    invoices.save(mauricio);                           <span class="fm-combinumeral">❼</span>
+<a id="pgfId-1013338"></a>    invoices.save(steve);                              <span class="fm-combinumeral">❼</span>
+<a id="pgfId-1013350"></a>    invoices.save(frank);                              <span class="fm-combinumeral">❼</span>
+<a id="pgfId-1013367"></a> 
+<a id="pgfId-1013362"></a>    InvoiceFilter filter = new InvoiceFilter();        <span class="fm-combinumeral">❽</span>
+<a id="pgfId-1013384"></a> 
+<a id="pgfId-1013379"></a>    assertThat(filter.lowValueInvoices())
+<a id="pgfId-1013390"></a>        .containsExactlyInAnyOrder(mauricio, steve);   <span class="fm-combinumeral">❾</span>
+<a id="pgfId-1013402"></a>  }
+<a id="pgfId-1013408"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1040557"></a><span class="fm-combinumeral">❶</span> BeforeEach methods are executed before every test method.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1040578"></a><span class="fm-combinumeral">❷</span> Cleans up the tables to make sure old data in the database does not interfere with the test</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1040595"></a><span class="fm-combinumeral">❸</span> AfterEach methods are executed after every test method.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1040612"></a><span class="fm-combinumeral">❹</span> Closes the database connection after every test</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1040629"></a><span class="fm-combinumeral">❺</span> Creates in-memory invoices as we have been doing so far</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1040646"></a><span class="fm-combinumeral">❻</span> 99 and 100, boundary testing!</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1040663"></a><span class="fm-combinumeral">❼</span> However, we must persist them in the database!</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1040680"></a><span class="fm-combinumeral">❽</span> Instantiates InvoiceFilter, knowing it will connect to the database</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1040697"></a><span class="fm-combinumeral">❾</span> Asserts that the method only returns the low-value invoices</p>
+
+  <p class="fm-callout"><a id="pgfId-1013562"></a><span class="fm-callout-head">Note</span> Did you notice the <code class="fm-code-in-text">assertThat...containsExactlyInAnyOrder</code> assertion? This ensures that the list contains exactly the objects we pass, in any order. Such assertions do not come with JUnit 5. Without AssertJ, we would have to write a lot of code for that assertion to happen. You should get familiar with AssertJ’s assertions; they are handy.</p>
+
+  <p class="body"><a id="pgfId-1013587"></a>This is a small example. Imagine a larger business class with a much more complex database structure. Imagine that instead of persisting a bunch of invoices, you need to persist invoices, customers, items, shopping carts, products, and so on. This can become tedious and expensive.</p>
+
+  <p class="body"><a id="pgfId-1013629"></a>Let’s rewrite the test. This time we will stub the <code class="fm-code-in-text">IssuedInvoices</code> class and avoid the hassle with the database. First, we need a way to inject the <code class="fm-code-in-text">InvoiceFilter</code> stub into the class under test. Its current implementation creates an instance of <code class="fm-code-in-text">IssuedInvoices</code> internally (see the first lines in the <code class="fm-code-in-text">lowValueInvoices</code> method). This means there is no way for this class to use the stub during the test: whenever this method is invoked, it instantiates the concrete database-dependent class.</p>
+
+  <p class="body"><a id="pgfId-1013720"></a>We must change our production code to make testing easier (get used to the idea of changing the production code to facilitate testing). The most direct way to do this is to have <code class="fm-code-in-text">IssuedInvoices</code> passed in as an explicit dependency through the class constructor, as shown in listing 6.3. The class no longer instantiates <a id="marker-1032426"></a>the <code class="fm-code-in-text">DatabaseConnection</code> and <code class="fm-code-in-text">IssuedInvoices</code> classes. Rather, it receives <code class="fm-code-in-text">IssuedInvoices</code> via constructor. Note that there is no need for the <code class="fm-code-in-text">DatabaseConnection</code> class to be injected, as <code class="fm-code-in-text">InvoiceFilter</code> does not need it. This is good: the less we need to do in our test code, the better. The new implementation works for both our tests (because we can inject an <code class="fm-code-in-text">IssueInvoices</code> stub) and production (because we can inject the concrete <code class="fm-code-in-text">IssueInvoices</code>, which will go to the database, as we expect in production).</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1013817"></a>Listing 6.3 <code class="fm-code-in-text">InvoiceFilter</code> class receiving <code class="fm-code-in-text">IssueInvoices</code> via constructor</p>
+  <pre class="programlisting"><a id="pgfId-1013729"></a>public class InvoiceFilter {
+<a id="pgfId-1013845"></a> 
+<a id="pgfId-1013840"></a>  private final IssuedInvoices issuedInvoices;            <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1013862"></a> 
+<a id="pgfId-1013857"></a>  public InvoiceFilter(IssuedInvoices issuedInvoices) {   <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1013874"></a>    this.issuedInvoices = issuedInvoices;
+<a id="pgfId-1013880"></a>  }
+<a id="pgfId-1013891"></a> 
+<a id="pgfId-1013886"></a>  public List&lt;Invoice&gt; lowValueInvoices() {
+<a id="pgfId-1013897"></a>    List&lt;Invoice&gt; all = issuedInvoices.all();             <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1013914"></a> 
+<a id="pgfId-1013909"></a>    return all.stream()
+<a id="pgfId-1013920"></a>        .filter(invoice -&gt; invoice.getValue() &lt; 100)
+<a id="pgfId-1013926"></a>        .collect(toList());
+<a id="pgfId-1013932"></a>  }
+<a id="pgfId-1013938"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1040388"></a><span class="fm-combinumeral">❶</span> Creates a field in the class to store the dependency</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1040409"></a><span class="fm-combinumeral">❷</span> IssuedInvoices is now passed in the constructor.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1040426"></a><span class="fm-combinumeral">❸</span> We no longer instantiate the IssuedInvoices database class. We received it as a dependency, and we use it.</p>
+
+  <p class="body"><a id="pgfId-1014012"></a>Let’s change our focus to the unit test of <code class="fm-code-in-text">InvoiceFilter</code>. The test is very similar to the one we wrote earlier, but now we do not handle the database. Instead, we configure the <code class="fm-code-in-text">IssuedInvoices</code> stub as shown in the next listing. Note how easy it is to write this test: full control over the stub enables us to try different cases (even exceptional ones) quickly.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1014111"></a>Listing 6.4 Tests for <code class="fm-code-in-text">InvoiceFilter</code>, stubbing <code class="fm-code-in-text">IssuedInvoices</code></p>
+  <pre class="programlisting"><a id="pgfId-1014021"></a>public class InvoiceFilterTest {
+<a id="pgfId-1014136"></a> 
+<a id="pgfId-1014131"></a>  @Test
+<a id="pgfId-1014142"></a>  void filterInvoices() {
+<a id="pgfId-1014148"></a>    IssuedInvoices issuedInvoices = mock(IssuedInvoices.class);     <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1014165"></a> 
+<a id="pgfId-1014160"></a>    Invoice mauricio = new Invoice("Mauricio", 20);                 <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1014177"></a>    Invoice steve = new Invoice("Steve", 99);                       <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1014189"></a>    Invoice frank = new Invoice("Frank", 100);                      <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1014201"></a>    List&lt;Invoice&gt; listOfInvoices = Arrays.asList(mauricio, steve, frank);
+<a id="pgfId-1014212"></a> 
+<a id="pgfId-1014207"></a>    when(issuedInvoices.all()).thenReturn(listOfInvoices);          <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1014229"></a> 
+<a id="pgfId-1014224"></a>    InvoiceFilter filter = new InvoiceFilter(issuedInvoices);       <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1014246"></a> 
+<a id="pgfId-1014241"></a>    assertThat(filter.lowValueInvoices())
+<a id="pgfId-1014252"></a>        .containsExactlyInAnyOrder(mauricio, steve);                <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1014264"></a>  }
+<a id="pgfId-1014270"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1040020"></a><span class="fm-combinumeral">❶</span> Instantiates a stub for the IssuedInvoices class, using Mockito’s mock method</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1040041"></a><span class="fm-combinumeral">❷</span> Creates invoices as we did before</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1040058"></a><span class="fm-combinumeral">❸</span> Makes the stub return the predefined list of invoices if all() is called</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1040075"></a><span class="fm-combinumeral">❹</span> Instantiates the class under test, and passes the stub as a dependency (instead of the concrete database class)</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1040092"></a><span class="fm-combinumeral">❺</span> Asserts that the behavior is as expected</p>
+
+  <p class="fm-callout"><a id="pgfId-1014360"></a><span class="fm-callout-head">Note</span> This idea of classes not instantiating their dependencies by themselves but instead receiving them is a popular design technique. It allows us to inject mocks and also makes the production code more flexible. This idea is also known <a id="marker-1014372"></a>as <i class="fm-italics">dependency injection</i>. If you want to dive into the <a id="marker-1014388"></a>topic, I suggest <i class="fm-italics">Dependency Injection: Principles, Practices, and Patterns</i> by Steven van Deursen and Mark <a id="marker-1014410"></a>Seemann (2019).</p>
+
+  <p class="body"><a id="pgfId-1014493"></a>Note how we set up the stub using <a id="marker-1027900"></a>Mockito’s <code class="fm-code-in-text">when()</code> method. In this example, we tell the stub to return a list containing <code class="fm-code-in-text">mauricio</code>, <code class="fm-code-in-text">frank</code>, and <code class="fm-code-in-text">steve</code>, the three invoices we instantiate as part of the test case. The test then invokes the method under test, <code class="fm-code-in-text">filter.lowValueInvoices()</code>. Consequently, the method under test invokes <code class="fm-code-in-text">issuedInvoices.all()</code>. However, at this point, <code class="fm-code-in-text">issuedInvoices</code> is a stub that returns the list with the three invoices. The method under test continues its execution and returns a new list with only the two invoices that are below 100, causing the assertion to pass.</p>
+
+  <p class="body"><a id="pgfId-1014568"></a>Besides making the test easier to write, stubs also made the test class more cohesive and less prone to change if something other than <code class="fm-code-in-text">InvoiceFilter</code> changes. If <code class="fm-code-in-text">IssuedInvoices</code> changes—or, more specifically, if its contracts change—we may have to propagate it to the tests of <code class="fm-code-in-text">InvoiceFilter</code>, too. Our discussion of contracts in chapter 4 also makes sense when talking about mocks. Now <code class="fm-code-in-text">InvoiceFilterTest</code> only tests the <code class="fm-code-in-text">InvoiceFilter</code> class. It does not test the <code class="fm-code-in-text">IssuedInvoices</code> class. <code class="fm-code-in-text">IssuedInvoices</code> deserves to be tested, but in another place, using an integration test (which we’ll discuss in chapter 9).</p>
+
+  <p class="body"><a id="pgfId-1014633"></a>A cohesive test also has fewer chances of failing for another reason. In the old version, the <code class="fm-code-in-text">filterInvoices</code> test could fail because of a bug in the <code class="fm-code-in-text">InvoiceFilter</code> class or a bug in the <code class="fm-code-in-text">IssuedInvoices</code> class (imagine a bug in the SQL query that retrieves the invoices from the database). The new tests can only fail because of a bug in <code class="fm-code-in-text">InvoiceFilter</code>, never because of <code class="fm-code-in-text">IssuedInvoices</code>. This is handy, as a developer will spend less time debugging if this test fails. Our new approach for testing <code class="fm-code-in-text">InvoiceFilter</code> is faster, easier to write, and more cohesive.</p>
+
+  <p class="fm-callout"><a id="pgfId-1014642"></a><span class="fm-callout-head">Note</span> This part of the book does not focus on systematic testing. But that is what you should do, regardless of whether you are using mocks. Look at <a id="marker-1014654"></a>the <code class="fm-code-in-text">filterInvoices</code> test method. Its goal is to filter invoices that are below 100. In our (currently only) test case, we ensure that this works, and we even exercise the 100 boundary. You may want to exercise other cases, such as empty lists, or lists with a single element, or other test cases that emerge during specification-based and structural testing. I don’t do that in this chapter, but you should remember all the techniques discussed in the previous chapters.</p>
+
+  <p class="body"><a id="pgfId-1014674"></a>In a real software system, the business rule implemented by <code class="fm-code-in-text">InvoiceFilter</code> would probably be best executed in the database. A simple SQL query would do the job with a much better performance. Try to abstract away from this simple example: whenever you have a dependency that is expensive to use during testing, stubs may come in handy. <a id="marker-1041758"></a><a id="marker-1041759"></a><a id="marker-1041760"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_11"><a id="pgfId-1014696"></a>6.2.2 Mocks and expectations</h3>
+
+  <p class="body"><a id="pgfId-1014706"></a><a id="marker-1041762"></a>Next, let’s discuss mocks. Suppose our current system has a new requirement:</p>
+
+  <p class="fm-callout"><a id="pgfId-1014725"></a>All low-valued invoices should be sent to our SAP system (a software that manages business operations). SAP offers a <code class="fm-code-in-text">sendInvoice</code> web service that receives invoices.</p>
+
+  <p class="body"><a id="pgfId-1014792"></a>You know you probably want to test the new class without depending on a real full-blown SAP web service. So, the <code class="fm-code-in-text">SAPInvoiceSender</code> class (which contains the main logic of the feature) receives, via its constructor, a class that communicates with SAP. For simplicity, suppose there <a id="marker-1014751"></a>is a <code class="fm-code-in-text">SAP</code> interface. The <code class="fm-code-in-text">SAPInvoiceSender</code>’s main method, <code class="fm-code-in-text">sendLowValuedInvoices</code>, gets all the low-valued invoices using the <code class="fm-code-in-text">InvoiceFilter</code> class discussed in the previous section and then passes the resulting invoices to SAP.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1014852"></a>Listing 6.5 <code class="fm-code-in-text">SAPInvoiceSender</code> class</p>
+  <pre class="programlisting"><a id="pgfId-1014801"></a>public interface SAP {                                        <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1014906"></a>  void send(Invoice invoice);
+<a id="pgfId-1014912"></a>}
+<a id="pgfId-1014923"></a> 
+<a id="pgfId-1014918"></a>public class SAPInvoiceSender {
+<a id="pgfId-1014934"></a> 
+<a id="pgfId-1014929"></a>  private final InvoiceFilter filter;                         <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1014946"></a>  private final SAP sap;                                      <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1014963"></a> 
+<a id="pgfId-1014958"></a>  public SAPInvoiceSender(InvoiceFilter filter, SAP sap) {    <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1014975"></a>    this.filter = filter;
+<a id="pgfId-1014981"></a>    this.sap = sap;
+<a id="pgfId-1014987"></a>  }
+<a id="pgfId-1014998"></a> 
+<a id="pgfId-1014993"></a>  public void sendLowValuedInvoices() {                       <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1015010"></a>    List&lt;Invoice&gt; lowValuedInvoices = filter.lowValueInvoices();
+<a id="pgfId-1015016"></a>    for(Invoice invoice : lowValuedInvoices) {
+<a id="pgfId-1015022"></a>      sap.send(invoice);
+<a id="pgfId-1015028"></a>    }
+<a id="pgfId-1015034"></a>  }
+<a id="pgfId-1015040"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1039702"></a><span class="fm-combinumeral">❶</span> This interface encapsulates the communication with SAP. Note that it does not matter how the concrete implementation will work.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1039723"></a><span class="fm-combinumeral">❷</span> We have fields for both the required dependencies.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1039740"></a><span class="fm-combinumeral">❸</span> The two dependencies are required by the constructor of the class.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1039757"></a><span class="fm-combinumeral">❹</span> The logic of the method is straightforward. We first get the low-value invoices from the InvoiceFilter. Then we pass each of them to SAP.</p>
+
+  <p class="body"><a id="pgfId-1015160"></a>Let’s test the <code class="fm-code-in-text">SAPInvoiceSender</code> class (see listing 6.6 for the implementation of the test suite). For this test, we stub the <code class="fm-code-in-text">InvoiceFilter</code> class. For <code class="fm-code-in-text">SAPInvoiceSender</code>, <code class="fm-code-in-text">InvoiceFilter</code> is a class that returns a list of invoices. It is not the goal of the current test to test <code class="fm-code-in-text">InvoiceFilter</code>, so we should stub this class to facilitate testing the method we do want to test. The stub returns a list of low-valued invoices.</p>
+
+  <p class="body"><a id="pgfId-1015182"></a>The main purpose of this test is to ensure that every low-valued invoice is sent to SAP. How can we assert that this is happening without having the real SAP? It is simple: we ensure that the call <a id="marker-1015171"></a>to SAP’s <code class="fm-code-in-text">send()</code> method happened. How do we do that?</p>
+
+  <p class="body"><a id="pgfId-1015243"></a>Mockito, behind the scenes, records all the interactions with its mocks. This means if we mock the <code class="fm-code-in-text">SAP</code> interface and pass it to the class under test, at the end of the test, all we need to do is ask the mock whether the method is called. For that, we use Mockito’s <code class="fm-code-in-text">verify</code> assertion (listing 6.6). Note the <a id="marker-1015212"></a>syntax: we repeat the method we expect to be called. We can even pass the specific parameters we expect. In the case of this test method, we expect the <code class="fm-code-in-text">send</code> method to be called for both the <code class="fm-code-in-text">mauricio</code> and <code class="fm-code-in-text">frank</code> invoices.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1015303"></a>Listing 6.6 Tests for the <code class="fm-code-in-text">SAPInvoiceSender</code> class</p>
+  <pre class="programlisting"><a id="pgfId-1015252"></a>public class SAPInvoiceSenderTest {
+<a id="pgfId-1015360"></a> 
+<a id="pgfId-1015355"></a>  private InvoiceFilter filter = mock(InvoiceFilter.class);     <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1015372"></a>  private SAP sap = mock(SAP.class);                            <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1015389"></a> 
+<a id="pgfId-1015384"></a>  private SAPInvoiceSender sender =
+<a id="pgfId-1015395"></a>    new SAPInvoiceSender(filter, sap);                          <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1015412"></a> 
+<a id="pgfId-1015407"></a>  @Test
+<a id="pgfId-1015418"></a>  void sendToSap() {
+<a id="pgfId-1015429"></a> 
+<a id="pgfId-1015424"></a>    Invoice mauricio = new Invoice("Mauricio", 20);
+<a id="pgfId-1015435"></a>    Invoice frank = new Invoice("Frank", 99);
+<a id="pgfId-1015446"></a> 
+<a id="pgfId-1015441"></a>    List&lt;Invoice&gt; invoices = Arrays.asList(mauricio, frank);
+
+<a id="pgfId-1015452"></a>    when(filter.lowValueInvoices()).thenReturn(invoices);       <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1015474"></a> 
+<a id="pgfId-1015469"></a>    sender.sendLowValuedInvoices();                             <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1015491"></a> 
+<a id="pgfId-1015486"></a>    verify(sap).send(mauricio);                                 <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1015503"></a>    verify(sap).send(frank);                                    <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1015515"></a>  }
+<a id="pgfId-1015521"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1039312"></a><span class="fm-combinumeral">❶</span> Instantiates all the mocks as fields. Nothing changes in terms of behavior. JUnit instantiates a new class before running each of the test methods. This is a matter of taste, but I usually like to have my mocks as fields, so I do not need to instantiate them in every test method.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1039333"></a><span class="fm-combinumeral">❷</span> Passes the mock and the stub to the class under test</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1039350"></a><span class="fm-combinumeral">❸</span> Sets up the InvoiceFilter stub. It will return two invoices whenever lowValueInvoices() is called.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1039367"></a><span class="fm-combinumeral">❹</span> Calls the method under test, knowing that these two invoices will be sent to SAP</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1039384"></a><span class="fm-combinumeral">❺</span> Ensures that the send method was called for both invoices</p>
+
+  <p class="body"><a id="pgfId-1015611"></a>Again, note how we define the expectations of the mock object. We know exactly how the <code class="fm-code-in-text">InvoiceFilter</code> class should interact with the mock. When the test is executed, Mockito checks whether these expectations were met and fails the test if they were not.</p>
+
+  <p class="body"><a id="pgfId-1015658"></a>If you want to see Mockito in action, comment out the call to <code class="fm-code-in-text">sap.send()</code> in the <code class="fm-code-in-text">sendLowValuedInvoices</code> method to <a id="marker-1015647"></a>see the test fail. Mockito will say something like what you see in listing 6.7. Mockito expected the <code class="fm-code-in-text">send</code> method to <a id="marker-1015663"></a>be called to the “mauricio” invoice, but it was not. Mockito even complements the message and says that it did not see any interactions with this mock. This is an extra tip to help you debug the failing test.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1015724"></a>Listing 6.7 Mockito’s verify-failing message</p>
+  <pre class="programlisting"><a id="pgfId-1015673"></a>Wanted but not invoked:
+<a id="pgfId-1015763"></a>sap.send(                                     <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1015775"></a>    Invoice{customer='Mauricio', value=20}
+<a id="pgfId-1015781"></a>);
+<a id="pgfId-1015798"></a> 
+<a id="pgfId-1015793"></a>Actually, there were zero interactions with this mock.</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1039230"></a><span class="fm-combinumeral">❶</span> send() was not invoked for this invoice!</p>
+
+  <p class="body"><a id="pgfId-1015824"></a>This example illustrates the main difference between stubbing and mocking. Stubbing means returning hard-coded values for a given method call. Mocking means not only defining what methods do but also explicitly defining the interactions with the mock.</p>
+
+  <p class="body"><a id="pgfId-1015830"></a>Mockito enables us to define even more specific expectations. For example, look at the following expectations.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1015887"></a>Listing 6.8 More Mockito expectations</p>
+  <pre class="programlisting"><a id="pgfId-1015836"></a>verify(sap, times(2)).send(any(Invoice.class));   <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1015932"></a>verify(sap, times(1)).send(mauricio);             <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1015944"></a>verify(sap, times(1)).send(frank);                <span class="fm-combinumeral">❸</span></pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1039039"></a><span class="fm-combinumeral">❶</span> Verifies that the send method was called precisely twice for any invoice</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1039060"></a><span class="fm-combinumeral">❷</span> Verifies that the send method was called precisely once for the “mauricio” invoice</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1039077"></a><span class="fm-combinumeral">❸</span> Verifies that the send method was called precisely once for the “frank” invoice</p>
+
+  <p class="body"><a id="pgfId-1016054"></a>These expectations are more restrictive than the earlier ones. We now expect the SAP mock to have its <code class="fm-code-in-text">send</code> method invoked precisely two times (for any given <code class="fm-code-in-text">Invoice</code>). We then expect the <code class="fm-code-in-text">send</code> method to be called once for the <code class="fm-code-in-text">mauricio</code> invoice and once for the <code class="fm-code-in-text">frank</code> invoice.</p>
+
+  <p class="body"><a id="pgfId-1016138"></a>Let’s write one more test so you become more familiar with Mockito. Let’s exercise the case where there are no low-valued invoices. The code is basically the same as in the previous test, but we make our stub return an empty list when <a id="marker-1016065"></a>the <code class="fm-code-in-text">lowValueInvoices()</code> method of <code class="fm-code-in-text">InvoiceFilter</code> is called. We then expect no interactions with the <code class="fm-code-in-text">SAP</code> mock. That can be accomplished through <a id="marker-1016101"></a>the <code class="fm-code-in-text">Mockito.never()</code> and <code class="fm-code-in-text">Mockito.any()</code> methods in <a id="marker-1016127"></a>combination with <code class="fm-code-in-text">verify()</code>.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1016198"></a>Listing 6.9 Test for when there are no low-value invoices</p>
+  <pre class="programlisting"><a id="pgfId-1016147"></a>@Test
+<a id="pgfId-1016237"></a>void noLowValueInvoices() {
+<a id="pgfId-1016243"></a>  List&lt;Invoice&gt; invoices = emptyList();
+<a id="pgfId-1016249"></a>  when(filter.lowValueInvoices()).thenReturn(invoices);   <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1016266"></a> 
+<a id="pgfId-1016261"></a>  sender.sendLowValuedInvoices();
+<a id="pgfId-1016277"></a> 
+<a id="pgfId-1016272"></a>  verify(sap, never()).send(any(Invoice.class));          <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1016289"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1038929"></a><span class="fm-combinumeral">❶</span> This time, the stub will return an empty list.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1038950"></a><span class="fm-combinumeral">❷</span> The important part of this test is the assertion. We ensure that the send() method was not invoked for any invoice.</p>
+
+  <p class="body"><a id="pgfId-1016347"></a>You may wonder why I did not put this new SAP sending functionality in the existing <code class="fm-code-in-text">InvoiceFilter</code> class. The <code class="fm-code-in-text">lowValueInvoices</code> method would then be both a command and a query. Mixing both concepts in a single method is not a good idea, as it may confuse developers who call this method. An advantage of separating commands from queries is that, from a mocking perspective, you know what to do. You should stub the queries, as you now know that queries return values and do not change the object’s state; and you should mock commands, as you know they change the world outside the object under test.</p>
+
+  <p class="fm-callout"><a id="pgfId-1016356"></a><span class="fm-callout-head">Note</span> If you want to learn more, search for “command-query separation” (CQS) or read <a id="marker-1016368"></a>Fowler’s wiki entry on CQS (2005). As you get used to testing and writing tests, you will see that the better the code, the easier it is to test it. In chapter 7, we will discuss code decisions you can make in your production code to facilitate testing.</p>
+
+  <p class="body"><a id="pgfId-1016378"></a>To learn more about the differences between mocks and stubs, see the <a id="marker-1041784"></a>article “Mocks Aren’t Stubs,” by Martin <a id="marker-1041786"></a>Fowler (2007). <a id="marker-1041787"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_12"><a id="pgfId-1016399"></a>6.2.3 Capturing arguments</h3>
+
+  <p class="body"><a id="pgfId-1016416"></a><a id="marker-1041789"></a><a id="marker-1041790"></a>Imagine a tiny change in the requirements of sending the invoice to the SAP feature:</p>
+
+  <p class="fm-callout"><a id="pgfId-1016431"></a>Instead of receiving the <code class="fm-code-in-text">Invoice</code> entity directly, SAP now requires the data to be sent in a different format. SAP requires the customer’s name, the value of the invoice, and a generated ID.</p>
+
+  <p class="fm-callout"><a id="pgfId-1016446"></a>The ID should have the following format: &lt;date&gt;&lt;customer code&gt;.</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-bullet-callout">
+      <p class="list-s"><a id="pgfId-1016452"></a>The date should always be in the “MMddyyyy” format: &lt;month&gt;&lt;day&gt;&lt;year with 4 digits&gt;.</p>
+    </li>
+
+    <li class="fm-list-bullet-callout">
+      <p class="list-s"><a id="pgfId-1016466"></a>The customer code should be the first two characters of the customer’s first name. If the customer’s name has fewer than two characters, it should be “X”.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1016558"></a>Implementation-wise, we change the <code class="fm-code-in-text">SAP</code> interface to receive <a id="marker-1016487"></a>a new <code class="fm-code-in-text">SapInvoice</code> entity. This entity has three fields: <code class="fm-code-in-text">customer</code>, <code class="fm-code-in-text">value</code>, and <code class="fm-code-in-text">id</code>. We then modify the <code class="fm-code-in-text">SAPInvoiceSender</code> so for each low-value invoice, it creates a new <code class="fm-code-in-text">SapInvoice</code> entity with the correct <code class="fm-code-in-text">id</code> and sends it to SAP. The next listing contains the new implementation.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1016618"></a>Listing 6.10 Changing the SAP-related classes to support the new required format</p>
+  <pre class="programlisting"><a id="pgfId-1016567"></a>public class SapInvoice {                                     <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1016663"></a>  private final String customer;
+<a id="pgfId-1016669"></a>  private final int value;
+<a id="pgfId-1016675"></a>  private final String id;
+<a id="pgfId-1016686"></a> 
+<a id="pgfId-1016681"></a>  public SapInvoice(String customer, int value, String id) {
+<a id="pgfId-1016692"></a>    // constructor
+<a id="pgfId-1016698"></a>  }
+<a id="pgfId-1016709"></a> 
+<a id="pgfId-1016704"></a>  // getters
+<a id="pgfId-1016715"></a>}
+<a id="pgfId-1016721"></a>public interface SAP {                                        <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1016738"></a>  void send(SapInvoice invoice);
+<a id="pgfId-1016744"></a>}
+<a id="pgfId-1016755"></a> 
+<a id="pgfId-1016750"></a>public class SAPInvoiceSender {
+<a id="pgfId-1016766"></a> 
+<a id="pgfId-1016761"></a>  private final InvoiceFilter filter;
+<a id="pgfId-1016772"></a>  private final SAP sap;
+<a id="pgfId-1016783"></a> 
+<a id="pgfId-1016778"></a>  public SAPInvoiceSender(InvoiceFilter filter, SAP sap) {    <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1016795"></a>    this.filter = filter;
+<a id="pgfId-1016801"></a>    this.sap = sap;
+<a id="pgfId-1016807"></a>  }
+<a id="pgfId-1016818"></a> 
+<a id="pgfId-1016813"></a>  public void sendLowValuedInvoices() {
+<a id="pgfId-1016824"></a>    List&lt;Invoice&gt; lowValuedInvoices = filter.lowValueInvoices();
+<a id="pgfId-1016835"></a> 
+<a id="pgfId-1016830"></a>    for(Invoice invoice : lowValuedInvoices) {
+<a id="pgfId-1016841"></a>      String customer = invoice.getCustomer();
+<a id="pgfId-1016847"></a>      int value = invoice.getValue();
+<a id="pgfId-1016853"></a>      String sapId = generateId(invoice);
+<a id="pgfId-1016859"></a>      SapInvoice sapInvoice =
+<a id="pgfId-1016865"></a>        new SapInvoice(customer, value, sapId);               <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1016882"></a> 
+<a id="pgfId-1016877"></a>      sap.send(sapInvoice);                                   <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1016894"></a>    }
+<a id="pgfId-1016900"></a>  }
+<a id="pgfId-1016911"></a> 
+<a id="pgfId-1016906"></a>  private String generateId(Invoice invoice) {                <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1016923"></a>    String date = LocalDate.now().format(
+<a id="pgfId-1016929"></a>      <span class="fm-code-continuation-arrow">➥</span> DateTimeFormatter.ofPattern("MMddyyyy"));
+<a id="pgfId-1016946"></a>    String customer = invoice.getCustomer();
+<a id="pgfId-1016957"></a> 
+<a id="pgfId-1016952"></a>    return date +
+<a id="pgfId-1016963"></a>      (customer.length()&gt;=2 ? customer.substring(0,2) : "X"); <span class="fm-combinumeral">❼</span>
+<a id="pgfId-1016975"></a>  }
+<a id="pgfId-1016981"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1038456"></a><span class="fm-combinumeral">❶</span> A new entity to represent the new format</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1038477"></a><span class="fm-combinumeral">❷</span> SAP receives this new SapInvoice entity.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1038494"></a><span class="fm-combinumeral">❸</span> The constructor is the same as before.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1038511"></a><span class="fm-combinumeral">❹</span> Instantiates the new SAPInvoice object</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1038528"></a><span class="fm-combinumeral">❺</span> Sends the new entity to SAP</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1038545"></a><span class="fm-combinumeral">❻</span> Generates the required ID as in the requirements</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1038562"></a><span class="fm-combinumeral">❼</span> Returns the date plus the customer’s code</p>
+
+  <p class="body"><a id="pgfId-1017135"></a>When it comes to testing, we know that we should stub the <code class="fm-code-in-text">InvoiceFilter</code> class. We can also mock the <code class="fm-code-in-text">SAP</code> class and <a id="marker-1017124"></a>ensure that the <code class="fm-code-in-text">send()</code> method was called, as shown next.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1017195"></a>Listing 6.11 Test for the new implementation of <code class="fm-code-in-text">SAPInvoiceSender</code></p>
+  <pre class="programlisting"><a id="pgfId-1017144"></a>@Test
+<a id="pgfId-1017242"></a>void sendSapInvoiceToSap() {
+<a id="pgfId-1017248"></a>  Invoice mauricio = new Invoice("Mauricio", 20);
+<a id="pgfId-1017259"></a> 
+<a id="pgfId-1017264"></a> 
+<a id="pgfId-1017254"></a>  List&lt;Invoice&gt; invoices = Arrays.asList(mauricio);
+<a id="pgfId-1017270"></a>  when(filter.lowValueInvoices()).thenReturn(invoices);    <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1017287"></a> 
+<a id="pgfId-1017282"></a>  sender.sendLowValuedInvoices();
+<a id="pgfId-1017298"></a> 
+<a id="pgfId-1017293"></a>  verify(sap).send(any(SapInvoice.class));                 <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1017310"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1038337"></a><span class="fm-combinumeral">❶</span> Again, we stub InvoiceFilter.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1038358"></a><span class="fm-combinumeral">❷</span> Asserts that SAP received a SapInvoice. But which SapInvoice? Any. That is not good. We want to be more specific.</p>
+
+  <p class="body"><a id="pgfId-1017378"></a>This test ensures that the <code class="fm-code-in-text">send</code> method of the <code class="fm-code-in-text">SAP</code> is called. But how do we assert that the generated <code class="fm-code-in-text">SapInvoice</code> is the correct one? For example, how do we ensure that the generated ID is correct?</p>
+
+  <p class="body"><a id="pgfId-1017459"></a>One idea could be to extract the logic of converting an <code class="fm-code-in-text">Invoice</code> to a <code class="fm-code-in-text">SapInvoice</code>, as shown in listing 6.12. The <code class="fm-code-in-text">convert()</code> method receives <a id="marker-1017418"></a>an invoice, generates the new id, and returns a <code class="fm-code-in-text">SapInvoice</code>. A simple class like this could be tested via unit tests without any stubs or mocks. We can instantiate different <code class="fm-code-in-text">Invoice</code>s, call the <code class="fm-code-in-text">convert</code> method, and assert that the returned <code class="fm-code-in-text">SapInvoice</code> is correct. I leave that as an exercise for you.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1017558"></a>Listing 6.12 Class that converts from <code class="fm-code-in-text">Invoice</code> to <code class="fm-code-in-text">SapInvoice</code></p>
+  <pre class="programlisting"><a id="pgfId-1017468"></a>public class InvoiceToSapInvoiceConverter {
+<a id="pgfId-1017583"></a> 
+<a id="pgfId-1017578"></a>  public SapInvoice convert(Invoice invoice) {     <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1017595"></a>    String customer = invoice.getCustomer();
+<a id="pgfId-1017601"></a>    int value = invoice.getValue();
+<a id="pgfId-1017607"></a>    String sapId = generateId(invoice);
+<a id="pgfId-1017618"></a> 
+<a id="pgfId-1017613"></a>    SapInvoice sapInvoice = new SapInvoice(customer, value, sapId);
+<a id="pgfId-1017624"></a>    return sapInvoice;
+<a id="pgfId-1017630"></a>  }
+<a id="pgfId-1017641"></a> 
+<a id="pgfId-1017636"></a>  private String generateId(Invoice invoice) {     <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1017653"></a>    String date = LocalDate.now()
+<a id="pgfId-1017659"></a>      .format(DateTimeFormatter.ofPattern("MMddyyyy"));
+<a id="pgfId-1017665"></a>    String customer = invoice.getCustomer();
+<a id="pgfId-1017676"></a> 
+<a id="pgfId-1017671"></a>    return date +
+<a id="pgfId-1017682"></a>      (customer.length()&gt;=2 ? customer.substring(0,2) : "X");
+<a id="pgfId-1017688"></a>  }
+<a id="pgfId-1017694"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1038230"></a><span class="fm-combinumeral">❶</span> This method is straightforward. It does not depend on any complex classes, so we can write unit tests for it as we have done previously.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1038251"></a><span class="fm-combinumeral">❷</span> The same generateId method we saw before</p>
+
+  <p class="body"><a id="pgfId-1017752"></a>In chapter 10, we further discuss refactorings you can apply to your code to facilitate testing. I strongly recommend doing so. But for the sake of argument, let’s suppose this is not a possibility. How can we get the <code class="fm-code-in-text">SapInvoice</code> object generated in the current implementation of <code class="fm-code-in-text">SAPInvoiceSender</code> and assert it? This is our chance to use another of Mockito’s features: the argument captor.</p>
+
+  <p class="body"><a id="pgfId-1017807"></a>Mockito allows us to get the specific objects passed to its mocks. We then ask the <code class="fm-code-in-text">SAP</code> mock to give us the <code class="fm-code-in-text">SapInvoice</code> passed to it during the execution of the method, to make assertions on it (see listing 6.13). Instead of using <code class="fm-code-in-text">any(SAPInvoice.class)</code>, we pass an instance of an <code class="fm-code-in-text">ArgumentCaptor</code>. We then capture its value, which in this case is an instance of <code class="fm-code-in-text">SapInvoice</code>. We make traditional assertions on the contents of this object.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1017867"></a>Listing 6.13 Test using the <code class="fm-code-in-text">ArgumentCaptor</code> feature of Mockito</p>
+  <pre class="programlisting"><a id="pgfId-1017816"></a>@ParameterizedTest
+<a id="pgfId-1017919"></a>@CsvSource({                                                          <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1017931"></a>    "Mauricio,Ma",
+<a id="pgfId-1017937"></a>    "M,X"}
+<a id="pgfId-1017943"></a>)
+<a id="pgfId-1017949"></a>void sendToSapWithTheGeneratedId(String customer, String customerCode) {
+<a id="pgfId-1017955"></a>  Invoice mauricio = new Invoice(customer, 20);
+<a id="pgfId-1017966"></a> 
+<a id="pgfId-1017961"></a>  List&lt;Invoice&gt; invoices = Arrays.asList(mauricio);
+<a id="pgfId-1017972"></a>  when(filter.lowValueInvoices()).thenReturn(invoices);
+<a id="pgfId-1017983"></a> 
+<a id="pgfId-1017978"></a>  sender.sendLowValuedInvoices();
+<a id="pgfId-1017994"></a> 
+<a id="pgfId-1017989"></a>  ArgumentCaptor&lt;SapInvoice&gt; captor =
+<a id="pgfId-1018000"></a>    ArgumentCaptor.forClass(SapInvoice.class);                        <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1018017"></a> 
+<a id="pgfId-1018012"></a>  verify(sap).send(captor.capture());                                 <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1018034"></a> 
+<a id="pgfId-1018029"></a>  SapInvoice generatedSapInvoice = captor.getValue();                 <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1018051"></a> 
+<a id="pgfId-1018046"></a>  String date = LocalDate.now().format(DateTimeFormatter.
+<a id="pgfId-1018057"></a>    ofPattern("MMddyyyy"));
+<a id="pgfId-1018063"></a>  assertThat(generatedSapInvoice)
+<a id="pgfId-1018069"></a>    .isEqualTo(new SapInvoice(customer, 20, date + customerCode));    <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1018081"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1037825"></a><span class="fm-combinumeral">❶</span> Passes the two test cases. The test method is executed twice: once for “Mauricio” and once for “M”.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1037846"></a><span class="fm-combinumeral">❷</span> Instantiates an ArgumentCaptor with the type of the object we are expecting to capture</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1037870"></a><span class="fm-combinumeral">❸</span> Calls the verify method and passes the argument captor as the parameter of the method</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1037887"></a><span class="fm-combinumeral">❹</span> The argument was already captured. Now we extract it.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1037904"></a><span class="fm-combinumeral">❺</span> Uses a traditional assertion, ensuring that the ID matches what is expected</p>
+
+  <p class="body"><a id="pgfId-1018171"></a>Note that we have at least two different test cases to ensure that the generated ID is correct: one where the customer’s name is longer than two characters and another where it is shorter than two characters. Given that the structure of the test method would be the same for both methods, I decided to use a parameterized test. I also used the <code class="fm-code-in-text">CsvSource</code> to pass the different test cases to the test method. The CSV source enables us to pass the inputs via comma-separated values. I usually go for CSV sources whenever the inputs are simple and easily written, as in this case.</p>
+
+  <p class="body"><a id="pgfId-1018186"></a>Interestingly, although my first option is always to try to refactor the code so I can write simple unit tests, I use argument captors often. In practice, it is common to have such classes, where most of what you do is coordinate the data flow between different components, and objects that need to be asserted may be created on the fly by the method but not returned to the caller.</p>
+
+  <p class="fm-callout"><a id="pgfId-1018192"></a><span class="fm-callout-head">Note</span> There is another test I find fundamental in the <code class="fm-code-in-text">sendToSapWithTheGeneratedId</code> method: we are <a id="marker-1018213"></a>missing proper boundary testing. The length of the customer’s name (two) is a boundary, so I would test with a customer name that is precisely of length two. Again, we are discussing mocks, but when it comes to designing test cases, all the techniques we have discussed apply. <a id="marker-1018219"></a><a id="marker-1018222"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_13"><a id="pgfId-1018228"></a>6.2.4 Simulating exceptions</h3>
+
+  <p class="body"><a id="pgfId-1018263"></a><a id="marker-1018239"></a><a id="marker-1018241"></a><a id="marker-1018243"></a>The developer realizes that SAP’s <code class="fm-code-in-text">send</code> method may throw a <code class="fm-code-in-text">SapException</code> if a problem occurs. This leads to a new requirement:</p>
+
+  <p class="fm-callout"><a id="pgfId-1018282"></a>The system should return the list of invoices that failed to be sent to SAP. A failure should not make the program stop. Instead, the program should try to send all the invoices, even though some of them may fail.</p>
+
+  <p class="body"><a id="pgfId-1018288"></a>One easy way to implement this is to try to catch any possible exceptions. If an exception happens, we store the failed invoice as shown in the following listing.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1018345"></a>Listing 6.14 Catching a possible <code class="fm-code-in-text">SAPException</code></p>
+  <pre class="programlisting"><a id="pgfId-1018294"></a>public List&lt;Invoice&gt; sendLowValuedInvoices() {
+<a id="pgfId-1018392"></a>  List&lt;Invoice&gt; failedInvoices = new ArrayList&lt;&gt;();
+<a id="pgfId-1018403"></a> 
+<a id="pgfId-1018398"></a>  List&lt;Invoice&gt; lowValuedInvoices = filter.lowValueInvoices();
+<a id="pgfId-1018409"></a>  for(Invoice invoice : lowValuedInvoices) {
+<a id="pgfId-1018415"></a>    String customer = invoice.getCustomer();
+<a id="pgfId-1018421"></a>    int value = invoice.getValue();
+<a id="pgfId-1018427"></a>    String sapId = generateId(invoice);
+<a id="pgfId-1018438"></a> 
+<a id="pgfId-1018433"></a>    SapInvoice sapInvoice = new SapInvoice(customer, value, sapId);
+<a id="pgfId-1018449"></a> 
+<a id="pgfId-1018444"></a>    try {                          <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1018461"></a>      sap.send(sapInvoice);
+<a id="pgfId-1018467"></a>    } catch(SAPException e) {
+<a id="pgfId-1018473"></a>      failedInvoices.add(invoice);
+<a id="pgfId-1018479"></a>    }
+<a id="pgfId-1018485"></a>  }
+<a id="pgfId-1018496"></a> 
+<a id="pgfId-1018491"></a>  return failedInvoices;           <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1018508"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1037695"></a><span class="fm-combinumeral">❶</span> Catches the possible SAPException. If that happens, we store the failed invoice in a list.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1037716"></a><span class="fm-combinumeral">❷</span> Returns the list of failed invoices</p>
+
+  <p class="body"><a id="pgfId-1018656"></a>How do we test this? By now, you probably see that all we need to do is to force our <code class="fm-code-in-text">sap</code> mock to throw an exception for one of the invoices. We should use Mockito’s <code class="fm-code-in-text">doThrow()</code> <code class="fm-code-in-text">.when()</code> chain of calls. This is similar to the <code class="fm-code-in-text">when()</code> API you already know, but now we want it to throw an exception (see listing 6.15). Note that we configure the mock to throw an exception for the <code class="fm-code-in-text">frank</code> invoice. Then we assert that the list of failed invoices returned by the new <code class="fm-code-in-text">sendLowValuedInvoices</code> contains that invoice and that SAP was called for both the <code class="fm-code-in-text">mauricio</code> and the <code class="fm-code-in-text">frank</code> invoices. Also, because the <code class="fm-code-in-text">SAP</code> interface receives a <code class="fm-code-in-text">SapInvoice</code> and not an <code class="fm-code-in-text">Invoice</code>, we must instantiate three invoices (Maurício’s, Frank’s, and Steve’s) before asserting that the <code class="fm-code-in-text">send</code> method was called.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1018716"></a>Listing 6.15 Mocks that throw exceptions</p>
+  <pre class="programlisting"><a id="pgfId-1018665"></a>@Test
+<a id="pgfId-1018755"></a>void returnFailedInvoices() {
+<a id="pgfId-1018761"></a>  Invoice mauricio = new Invoice("Mauricio", 20);
+<a id="pgfId-1018767"></a>  Invoice frank = new Invoice("Frank", 25);
+<a id="pgfId-1018773"></a>  Invoice steve = new Invoice("Steve", 48);
+<a id="pgfId-1018779"></a>  List&lt;Invoice&gt; invoices = Arrays.asList(mauricio, frank, steve);
+<a id="pgfId-1018790"></a>  when(filter.lowValueInvoices()).thenReturn(invoices);
+<a id="pgfId-1018801"></a> 
+<a id="pgfId-1018796"></a>  String date = LocalDate.now()
+<a id="pgfId-1018807"></a>    .format(DateTimeFormatter.ofPattern("MMddyyyy"));
+<a id="pgfId-1018813"></a>  SapInvoice franksInvoice = new SapInvoice("Frank", 25, date + "Fr");
+<a id="pgfId-1018819"></a>  doThrow(new SAPException())
+<a id="pgfId-1018825"></a>    .when(sap).send(franksInvoice);                                <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1018842"></a> 
+<a id="pgfId-1018847"></a> 
+<a id="pgfId-1018837"></a>  List&lt;Invoice&gt; failedInvoices = sender.sendLowValuedInvoices();   <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1018859"></a>  assertThat(failedInvoices).containsExactly(frank);               <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1018876"></a> 
+<a id="pgfId-1018871"></a>  SapInvoice mauriciosInvoice =
+<a id="pgfId-1018882"></a>    new SapInvoice("Mauricio", 20, date + "Ma");
+<a id="pgfId-1018888"></a>  verify(sap).send(mauriciosInvoice);                              <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1018905"></a> 
+<a id="pgfId-1018900"></a>  SapInvoice stevesInvoice =
+<a id="pgfId-1018911"></a>    new SapInvoice("Steve", 48, date + "St");
+<a id="pgfId-1018917"></a>  verify(sap).send(stevesInvoice);                                 <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1018929"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1037446"></a><span class="fm-combinumeral">❶</span> Configures the mock to throw an exception when it receives Frank’s invoice. Note the call to doThrow().when(): this is the first time we use it.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1037467"></a><span class="fm-combinumeral">❷</span> Gets the returned list of failed invoices and ensures that it only has Frank’s invoice</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1037484"></a><span class="fm-combinumeral">❸</span> Asserts that we tried to send both Maurício’s and Steve’s invoices</p>
+
+  <p class="fm-callout"><a id="pgfId-1018996"></a><span class="fm-callout-head">Note</span> Creating <code class="fm-code-in-text">SapInvoice</code>s is becoming a pain, given that we always need to get the current date, put it in the MMddyyyy format, and concatenate it with the first two letters of the customer’s name. You may want to extract all this logic to a helper method or a helper class. Helper methods are widespread in test code. Remember, test code is as important as production code. All the best practices you follow when implementing your production code should be applied to your test code, too. We will discuss test code quality in chapter 10.</p>
+
+  <p class="body"><a id="pgfId-1019021"></a>Configuring mocks to throw exceptions enables us to test how our systems would behave in unexpected scenarios. This is perfect for many software systems that interact with external systems, which may not behave as expected. Think of a web service that is not available for a second: would your application behave correctly if this happened? How would you test the program behavior without using mocks or stubs? How would you force the web service API to throw you an exception? Doing so would be harder than telling the mock to throw an exception.</p>
+
+  <p class="body"><a id="pgfId-1019043"></a>The requirement says one more thing: “A failure should not make the program stop; rather, the program should try to send all the invoices, even though some of them may fail.” We also tested that in our test method. We ensured that <code class="fm-code-in-text">steve</code>’s invoice—the one after <code class="fm-code-in-text">frank</code>’s invoice, which throws the exception—is sent to SAP. <a id="marker-1019048"></a><a id="marker-1019051"></a><a id="marker-1019053"></a><a id="marker-1019055"></a></p>
+
+  <h2 class="fm-head" id="heading_id_14"><a id="pgfId-1019061"></a>6.3 Mocks in the real world</h2>
+
+  <p class="body"><a id="pgfId-1019071"></a>Now that you know how to write mocks and stubs and how you can write powerful tests with them, it is time to discuss best practices. As you can imagine, some developers are big fans of mocking. Others believe mocks should not be used. It is a fact that mocks make your tests less real.</p>
+
+  <p class="body"><a id="pgfId-1019077"></a>When should we mock? When is it best not to mock? What other best practices should I follow? I tackle those questions next.</p>
+
+  <h3 class="fm-head1" id="heading_id_15"><a id="pgfId-1019083"></a>6.3.1 The disadvantages of mocking</h3>
+
+  <p class="body"><a id="pgfId-1019093"></a><a id="marker-1019094"></a>I have been talking a lot about the advantages of mocks. However, as I hinted before, a common (and heated) discussion among practitioners is whether to use mocks. Let’s look at possible disadvantages.</p>
+
+  <p class="body"><a id="pgfId-1019102"></a>Some developers strongly believe that using mocks may lead to test suites that <i class="fm-italics">test the mock, not the code</i>. That can happen. When you use mocks, you are naturally making your test less realistic. In production, your code will use the concrete implementation of the class you mocked during the test. Something may go wrong in the way the classes communicate in production, for example, and you may miss it because you mocked them.</p>
+
+  <p class="body"><a id="pgfId-1019279"></a>Consider a class <code class="fm-code-in-text">A</code> that depends on class <code class="fm-code-in-text">B</code>. Suppose class <code class="fm-code-in-text">B</code> offers a method <code class="fm-code-in-text">sum()</code> that always <a id="marker-1019158"></a>returns positive numbers (that is, the post-condition of <code class="fm-code-in-text">sum()</code>). When testing class <code class="fm-code-in-text">A</code>, the developer decides to mock <code class="fm-code-in-text">B</code>. Everything seems to work. Months later, a developer changes the post-conditions of <code class="fm-code-in-text">B</code>’s <code class="fm-code-in-text">sum()</code>: now it also returns negative numbers. In a common development workflow, a developer would apply these changes in <code class="fm-code-in-text">B</code> and update <code class="fm-code-in-text">B</code>’s tests to reflect the change. It is easy to forget to check whether <code class="fm-code-in-text">A</code> handles this new post-condition well. Even worse, <code class="fm-code-in-text">A</code>’s test suite will still pass! <code class="fm-code-in-text">A</code> mocks <code class="fm-code-in-text">B</code>, and the mock does not know that <code class="fm-code-in-text">B</code> changed. In large-scale software, it can be easy to lose control of your mocks in the sense that mocks may not represent the real contract of the class.</p>
+
+  <p class="body"><a id="pgfId-1019288"></a>For mock objects to work well on a large scale, developers must design careful (and hopefully stable) contracts. If contracts are well designed and stable, you do not need to be afraid of mocks. And although we use the example of a contract break as a disadvantage of mocks, it is part of the coder’s job to find the dependencies of the contract change and check that the new contract is covered, mocks or not.</p>
+
+  <p class="body"><a id="pgfId-1019340"></a>Another disadvantage is that tests that use mocks are naturally more coupled with the code they test than tests that do not use mocks. Think of all the tests we have written without mocks. They call a method, and they assert the output. They do not know anything about the actual implementation of the method. Now, think of all the tests we wrote in this chapter. The test methods know some things about the production code. The tests we wrote for <code class="fm-code-in-text">SAPInvoiceSender</code> know that the class uses <code class="fm-code-in-text">InvoiceFilter</code>’s <code class="fm-code-in-text">lowValueInvoices</code> method and that <code class="fm-code-in-text">SAP</code>’s <code class="fm-code-in-text">send</code> method must be called for all the invoices. This is a lot of information about the class under test.</p>
+
+  <p class="body"><a id="pgfId-1019365"></a>What is the problem with the test knowing so much? It may be harder to change. If the developer changes how the <code class="fm-code-in-text">SAPInvoiceSender</code> class does its job and, say, stops using the <code class="fm-code-in-text">InvoiceFilter</code> class or uses the same filter differently, the developer may also have to change the tests. The mocks and their expectations may be completely different.</p>
+
+  <p class="body"><a id="pgfId-1019374"></a>Therefore, although mocks simplify our tests, they increase the coupling between the test and the production code, which may force us to change the test whenever we change the production code. Spadini and colleagues, including me, observed this through empirical studies in open source systems (2019). <i class="fm-italics">Can you avoid such coupling</i>? Not really, but at least now you are aware of it.</p>
+
+  <p class="body"><a id="pgfId-1019389"></a>Interestingly, developers consider this coupling a major drawback of mocks. But I appreciate that my tests break when I change how a class interacts with other classes. The broken tests make me reflect on the changes I am making. Of course, my tests do not break as a result of every minor change I make in my production code. I also do not use mocks in every situation. I believe that when mocks are properly used, the coupling with the production code is not a big deal.</p>
+
+  <div class="fm-sidebar-block">
+    <p class="fm-sidebar-title"><a class="calibre13" id="pgfId-1019395"></a>Mocking as a design technique</p>
+
+    <p class="fm-sidebar-text"><a id="pgfId-1019405"></a>Whenever I say that mocks increase coupling with production code, I am talking about using mocks from a <i class="fm-italics">testing</i> perspective: not using mocks as a way to design the code, but in the sense of “This is the code we have: let’s test it.” In this case, mocks are naturally coupled with the code under test, and changes in the code will impact the mocks.</p>
+
+    <p class="fm-sidebar-text"><a id="pgfId-1019420"></a>If you are using mocks as a design technique (as explained in Freeman and Pryce’s 2009 book), you should look at it from a different angle. You want your mocks to be coupled with the code under test because you <i class="fm-italics">care</i> about how the code does its job. If the code changes, you want your mocks to change. <a id="marker-1027756"></a></p>
+  </div>
+
+  <h3 class="fm-head1" id="heading_id_16"><a id="pgfId-1019438"></a>6.3.2 What to mock and what not to mock</h3>
+
+  <p class="body"><a id="pgfId-1019488"></a><a id="marker-1019449"></a>Mocks and stubs are useful tools for simplifying the process of writing unit tests. However, <i class="fm-italics">mocking too much</i> might also be a problem. A test that uses the real dependencies is more real than a test that uses doubles and, consequently, is more prone to find real bugs. Therefore, we do not want to mock a dependency that should not be mocked. Imagine you are testing class <code class="fm-code-in-text">A</code>, which depends on class <code class="fm-code-in-text">B</code>. How do we know whether we should mock or stub <code class="fm-code-in-text">B</code> or whether it is better to use the real, concrete implementation?</p>
+
+  <p class="body"><a id="pgfId-1019497"></a>Pragmatically, developers often mock or stub the following types of dependencies:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019503"></a><i class="fm-italics1">Dependencies that are too slow</i> —If the dependency is too slow for any reason, it might be a good idea to simulate it. We do not want slow test suites. Therefore, I mock classes that deal with databases or web services. Note that I still do integration tests to ensure that these classes work properly, but I use mocks for all the other classes that depend on these slow classes.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019552"></a><i class="fm-italics1">Dependencies that communicate with external infrastructure</i> —If the dependency talks to (external) infrastructure, it may be too slow or too complex to set up the required infrastructure. So, I apply the same principle: whenever testing a class that depends on a class that handles external infrastructure, I mock the dependency (as we mocked the <code class="fm-code-in-text">IssuedInvoices</code> class when testing the <code class="fm-code-in-text">InvoiceFilter</code> class). I then write integration tests for these classes.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019561"></a><i class="fm-italics1">Cases that are hard to simulate</i> —If we want to force the dependency to behave in a hard-to-simulate way, mocks or stubs can help. A common example is when we would like the dependency to throw an exception. Forcing an exception might be tricky when using the real dependency but is easy to do with a stub.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1019578"></a>On the other hand, developers tend not to mock or stub the following dependencies:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019622"></a><i class="fm-italics1">Entities</i> —Entities are classes that represent business concepts. They consist primarily of data and methods that manipulate this data. Think of the <code class="fm-code-in-text">Invoice</code> class in <a class="calibre13" id="marker-1019611"></a>this chapter or the <code class="fm-code-in-text">ShoppingCart</code> class from <a class="calibre13" id="marker-1019627"></a>previous chapters. In business systems, entities commonly depend on other entities. This means, whenever testing an entity, we need to instantiate other entities.</p>
+
+      <p class="fm-list-body"><a class="calibre13" id="pgfId-1019689"></a>For example, to test a <code class="fm-code-in-text">ShoppingCart</code>, we may need to instantiate <code class="fm-code-in-text">Product</code>s and <code class="fm-code-in-text">Item</code>s. One possibility would be to mock the <code class="fm-code-in-text">Product</code> class when <a class="calibre13" id="marker-1019678"></a>the focus is to test the <code class="fm-code-in-text">ShoppingCart</code>. However, this is not something I recommend. Entities are classes that are simple to manipulate. Mocking them may require more work. Therefore, I prefer to never mock them. If my test needs three entities, I instantiate them.</p>
+
+      <p class="fm-list-body"><a class="calibre13" id="pgfId-1019734"></a>I make exceptions for heavy entities. Some entities require dozens of other entities. Think of a complex <code class="fm-code-in-text">Invoice</code> class that depends on 10 other entities: <code class="fm-code-in-text">Customer</code>, <code class="fm-code-in-text">Product</code>, and so on. Mocking this complex <code class="fm-code-in-text">Invoice</code> class may be easier.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019771"></a><i class="fm-italics1">Native libraries and utility methods</i> —It is also not common to mock or stub libraries that come with our programming language and utility methods. For example, why would we mock <code class="fm-code-in-text">ArrayList</code> or a call to <code class="fm-code-in-text">String.format</code>? Unless you have a very good reason, avoid mocking them.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019780"></a><i class="fm-italics1">Things that are simple enough</i> —Simple classes may not be worth mocking. If you feel a class is too simple to be mocked, it probably is.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1019797"></a>Interestingly, I always followed those rules, because they made sense to me. In 2018–2019, Spadini, myself, and colleagues performed a study to see how developers mock in the wild. Our findings were surprisingly similar to this list.</p>
+
+  <p class="body"><a id="pgfId-1019803"></a>Let me illustrate with a code example. Consider a <code class="fm-code-in-text">BookStore</code> class with <a id="marker-1019814"></a>the following requirement:</p>
+
+  <p class="fm-callout"><a id="pgfId-1019834"></a>Given a list of books and their respective quantities, the program should return the total price of the cart.</p>
+
+  <p class="fm-callout"><a id="pgfId-1019840"></a>If the bookstore does not have all the requested copies of the book, it includes all the copies it has in stock in the final cart and lets the user know about the missing ones.</p>
+
+  <p class="body"><a id="pgfId-1019894"></a>The implementation (listing 6.16) uses a <code class="fm-code-in-text">BookRepository</code> class to <a id="marker-1019857"></a>check whether the book is available in the store. If not enough copies are available, it keeps track of the unavailable ones <a id="marker-1019863"></a>in the <code class="fm-code-in-text">Overview</code> class. For the available books, the store notifies <code class="fm-code-in-text">BuyBookProcess</code>. In the end, it returns the <code class="fm-code-in-text">Overview</code> class containing the total amount to be paid and the list of unavailable copies.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1019954"></a>Listing 6.16 Implementation of <code class="fm-code-in-text">BookStore</code></p>
+  <pre class="programlisting"><a id="pgfId-1019903"></a>class BookStore {
+<a id="pgfId-1020006"></a> 
+<a id="pgfId-1020001"></a>  private BookRepository bookRepository;
+<a id="pgfId-1020012"></a>  private BuyBookProcess process;
+<a id="pgfId-1020023"></a> 
+<a id="pgfId-1020018"></a>  public BookStore(BookRepository bookRepository, BuyBookProcess process) <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1020035"></a>  {
+<a id="pgfId-1020041"></a>    this.bookRepository = bookRepository;
+<a id="pgfId-1020047"></a>    this.process = process;
+<a id="pgfId-1020053"></a>  }
+<a id="pgfId-1020064"></a> 
+<a id="pgfId-1020059"></a>  private void retrieveBook(String ISBN, int amount, Overview overview) {
+<a id="pgfId-1020070"></a>    Book book = bookRepository.findByISBN(ISBN);                          <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1020087"></a> 
+<a id="pgfId-1020082"></a>    if (book.getAmount() &lt; amount) {                                      <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1020099"></a>      overview.addUnavailable(book, amount - book.getAmount());
+<a id="pgfId-1020105"></a>      amount = book.getAmount();
+<a id="pgfId-1020111"></a>    }
+<a id="pgfId-1020122"></a> 
+<a id="pgfId-1020117"></a>    overview.addToTotalPrice(amount * book.getPrice());                   <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1020134"></a>    process.buyBook(book, amount);                                        <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1020146"></a>  }
+<a id="pgfId-1020157"></a> 
+<a id="pgfId-1020152"></a>  public Overview getPriceForCart(Map&lt;String, Integer&gt; order) {
+<a id="pgfId-1020163"></a>    if(order==null)
+<a id="pgfId-1020169"></a>      return null;
+<a id="pgfId-1020180"></a> 
+<a id="pgfId-1020175"></a>    Overview overview = new Overview();
+<a id="pgfId-1020191"></a> 
+<a id="pgfId-1020186"></a>    for (String ISBN : order.keySet()) {                                  <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1020203"></a>      retrieveBook(ISBN, order.get(ISBN), overview);
+<a id="pgfId-1020209"></a>    }
+<a id="pgfId-1020220"></a> 
+<a id="pgfId-1020215"></a>    return overview;
+<a id="pgfId-1020226"></a>  }
+<a id="pgfId-1020232"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1037018"></a><span class="fm-combinumeral">❶</span> We know we must mock and stub things, so we inject the dependencies.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1037039"></a><span class="fm-combinumeral">❷</span> Searches for the book using its ISBN</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1037056"></a><span class="fm-combinumeral">❸</span> If the number of copies in stock is less than the number of copies the user wants, we keep track of the missing ones.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1037073"></a><span class="fm-combinumeral">❹</span> Adds the available copies to the final price</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1037090"></a><span class="fm-combinumeral">❺</span> Notifies the buy book process</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1037107"></a><span class="fm-combinumeral">❻</span> Processes each book in the order</p>
+
+  <p class="body"><a id="pgfId-1020338"></a>Let’s discuss the main dependencies of the <code class="fm-code-in-text">BookStore</code> class:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1020387"></a>The <code class="fm-code-in-text">BookRepository</code> class is responsible for, among other things, searching for books in the database. This means the concrete implementation of this class sends SQL queries to a database, parses the result, and transforms it into <code class="fm-code-in-text">Book</code> classes. Using the concrete <code class="fm-code-in-text">BookRepository</code> implementation in the test might be too painful: we would need to set up the database, ensure that it had the books we wanted persisted, clean the database afterward, and so on. This is a good dependency to mock.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1020432"></a>The <code class="fm-code-in-text">BuyBookProcess</code> class is <a class="calibre13" id="marker-1020411"></a>responsible for the process of someone buying a book. We do not know exactly what it does, but it sounds complex. <code class="fm-code-in-text">BuyBookProcess</code> deserves its own test suite, and we do not want to mix that with the <code class="fm-code-in-text">BookStore</code> tests. This is another good dependency to mock.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1020487"></a>The <code class="fm-code-in-text">Book</code> class represents <a class="calibre13" id="marker-1020456"></a>a book. The implementation of <code class="fm-code-in-text">BookStore</code> gets the books that are returned by <code class="fm-code-in-text">BookRepository</code> and uses that information to know the book’s price and how many copies the bookstore has in stock. This is a simple class, and there is no need to mock it since it is easy to instantiate a concrete <code class="fm-code-in-text">Book</code>.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1020496"></a>The <code class="fm-code-in-text">Overview</code> class is also a simple, plain old Java object that stores the total price of the cart and the list of unavailable books. Again, there is no need to mock it.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1020571"></a>The <code class="fm-code-in-text">Map&lt;String,</code> <code class="fm-code-in-text">Integer&gt;</code> that the <code class="fm-code-in-text">getPriceForCart</code> receives as an input <a class="calibre13" id="marker-1020540"></a>is a <code class="fm-code-in-text">Map</code> object. <code class="fm-code-in-text">Map</code> and its concrete implementation <code class="fm-code-in-text">HashMap</code> are part of the Java language. They are simple data structures that also do not need to be mocked.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1020580"></a>Now that we have decided what should be mocked and what should not be mocked, we write the tests. The following test exercises the behavior of the program with a more complex order.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1020637"></a>Listing 6.17 Test for <code class="fm-code-in-text">BookStore</code>, only mocking what needs to be mocked</p>
+  <pre class="programlisting"><a id="pgfId-1020586"></a>@Test
+<a id="pgfId-1020689"></a>void moreComplexOrder() {
+<a id="pgfId-1020695"></a>  BookRepository bookRepo = mock(BookRepository.class);          <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1020707"></a>  BuyBookProcess process = mock(BuyBookProcess.class);           <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1020724"></a> 
+<a id="pgfId-1020719"></a>  Map&lt;String, Integer&gt; orderMap = new HashMap&lt;&gt;();               <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1020741"></a> 
+<a id="pgfId-1020736"></a>  orderMap.put("PRODUCT-ENOUGH-QTY", 5);                         <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1020753"></a>  orderMap.put("PRODUCT-PRECISE-QTY", 10);
+<a id="pgfId-1020759"></a>  orderMap.put("PRODUCT-NOT-ENOUGH", 22);
+<a id="pgfId-1020770"></a> 
+<a id="pgfId-1020765"></a>  Book book1 = new Book("PRODUCT-ENOUGH-QTY", 20, 11); // 11 &gt; 5
+<a id="pgfId-1020776"></a>  when(bookRepo.findByISBN("PRODUCT-ENOUGH-QTY"))
+<a id="pgfId-1020782"></a>    .thenReturn(book1);                                          <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1020799"></a> 
+<a id="pgfId-1020794"></a>  Book book2 = new Book("PRODUCT-PRECISE-QTY", 25, 10); // 10 == 10
+<a id="pgfId-1020805"></a>  when(bookRepo.findByISBN("PRODUCT-PRECISE-QTY"))
+<a id="pgfId-1020811"></a>    .thenReturn(book2);                                          <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1020828"></a> 
+<a id="pgfId-1020823"></a>  Book book3 = new Book("PRODUCT-NOT-ENOUGH", 37, 21); // 21 &lt; 22
+<a id="pgfId-1020834"></a>  when(bookRepo.findByISBN("PRODUCT-NOT-ENOUGH"))
+<a id="pgfId-1020840"></a>    .thenReturn(book3);                                          <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1020857"></a> 
+<a id="pgfId-1020852"></a>  BookStore bookStore = new BookStore(bookRepo, process);        <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1020869"></a>  Overview overview = bookStore.getPriceForCart(orderMap);
+<a id="pgfId-1020875"></a>  int expectedPrice =                                            <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1020892"></a>      5*20 + // from the first product
+<a id="pgfId-1020898"></a>          10*25 + // from the second product
+<a id="pgfId-1020904"></a>          21*37; // from the third product
+<a id="pgfId-1020915"></a> 
+<a id="pgfId-1020910"></a>  assertThat(overview.getTotalPrice()).isEqualTo(expectedPrice);
+<a id="pgfId-1020926"></a> 
+<a id="pgfId-1020921"></a>  verify(process).buyBook(book1, 5);                             <span class="fm-combinumeral">❼</span>
+<a id="pgfId-1020938"></a>  verify(process).buyBook(book2, 10);                            <span class="fm-combinumeral">❼</span>
+<a id="pgfId-1020950"></a>  verify(process).buyBook(book3, 21);                            <span class="fm-combinumeral">❼</span>
+<a id="pgfId-1020967"></a> 
+<a id="pgfId-1020962"></a>  assertThat(overview.getUnavailable())
+<a id="pgfId-1020973"></a>      .containsExactly(entry(book3, 1));                         <span class="fm-combinumeral">❽</span>
+<a id="pgfId-1020985"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036267"></a><span class="fm-combinumeral">❶</span> As agreed, BookRepository and BuyBookProcess should be mocked.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036288"></a><span class="fm-combinumeral">❷</span> No need to mock HashMap</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036305"></a><span class="fm-combinumeral">❸</span> The order has three books: one where there is enough quantity, one where the available quantity is precisely what is requested in the order, and one where there is not enough quantity.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036322"></a><span class="fm-combinumeral">❹</span> Stubs the BookRepository to return the three books</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036339"></a><span class="fm-combinumeral">❺</span> Injects the mocks and stubs into BookStore</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036356"></a><span class="fm-combinumeral">❻</span> Ensures that the total price is correct</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036373"></a><span class="fm-combinumeral">❼</span> Ensures that BuyBookProcess was called for three books with the right amounts</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036390"></a><span class="fm-combinumeral">❽</span> Ensures that the list of unavailable books contains the one missing book</p>
+
+  <p class="body"><a id="pgfId-1021123"></a><i class="fm-italics">Could we mock everything?</i> Yes, we could—but doing so would not make sense. You should only stub and mock what is needed. But whenever you mock, you reduce the reality of the test. It is up to you to understand this trade-off. <a id="marker-1021138"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_17"><a id="pgfId-1021145"></a>6.3.3 Date and time wrappers</h3>
+
+  <p class="body"><a id="pgfId-1021164"></a><a id="marker-1021156"></a><a id="marker-1021158"></a><a id="marker-1021160"></a>Software systems often use date and time information. For example, you might need the current date to add a special discount to the customer’s shopping cart, or you might need the current time to start a batch processing job. To fully exercise some pieces of code, our tests need to provide different dates and times as input.</p>
+
+  <p class="body"><a id="pgfId-1021169"></a>Given that date and time operations are common, a best practice is to wrap them into a dedicated class (often called <code class="fm-code-in-text">Clock</code>). Let’s show that using an example:</p>
+
+  <p class="fm-callout"><a id="pgfId-1021194"></a>The program should give a 15% discount on the total amount of an order if the current date is Christmas. There is no discount on other dates.</p>
+
+  <p class="body"><a id="pgfId-1021200"></a>A possible implementation for this requirement is shown next.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1021257"></a>Listing 6.18 <code class="fm-code-in-text">ChristmasDiscount</code> implementation</p>
+  <pre class="programlisting"><a id="pgfId-1021206"></a>public class ChristmasDiscount {
+<a id="pgfId-1021310"></a> 
+<a id="pgfId-1021305"></a>  public double applyDiscount(double amount) {
+<a id="pgfId-1021316"></a>    LocalDate today = LocalDate.now();            <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1021333"></a> 
+<a id="pgfId-1021328"></a>    double discountPercentage = 0;
+<a id="pgfId-1021339"></a>    boolean isChristmas = today.getMonth() == Month.DECEMBER
+<a id="pgfId-1021345"></a>      &amp;&amp; today.getDayOfMonth() == 25;
+<a id="pgfId-1021356"></a> 
+<a id="pgfId-1021351"></a>    if(isChristmas)                               <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1021368"></a>      discountPercentage = 0.15;
+<a id="pgfId-1021379"></a> 
+<a id="pgfId-1021374"></a>    return amount - (amount * discountPercentage);
+<a id="pgfId-1021385"></a>  }
+<a id="pgfId-1021391"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036123"></a><span class="fm-combinumeral">❶</span> Gets the current date. Note the static call.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036144"></a><span class="fm-combinumeral">❷</span> If it is Christmas, we apply the discount.</p>
+
+  <p class="body"><a id="pgfId-1021475"></a>The implementation is straightforward; given the characteristics of the class, unit testing seems to be a perfect fit. The question is, how can we write unit tests for it? To test both cases (Christmas/not Christmas), we need to be able to control/stub the <code class="fm-code-in-text">LocalDate</code> class, so <a id="marker-1021444"></a>it returns the dates we want. Right now, this is not easy to do, given that the method makes explicit, direct calls to <code class="fm-code-in-text">LocalDate.now()</code>. The problem is analogous when <code class="fm-code-in-text">InvoiceFilter</code> instantiated the <code class="fm-code-in-text">IssuedInvoices</code> class directly: we could not stub it.</p>
+
+  <p class="body"><a id="pgfId-1021484"></a>We can then ask a more specific question: how can we stub Java’s Time API? In particular, how can we do so for the static method call to <code class="fm-code-in-text">LocalDate.now()</code>? Mockito allows developers to mock static methods (<a class="url" href="http://mng.bz/g48n">http://mng.bz/g48n</a>), so we could use this Mockito feature.</p>
+
+  <p class="body"><a id="pgfId-1021532"></a>Another solution (which is still popular in code bases) is to encapsulate all the date and time logic into a class. In other words, we create a class called <code class="fm-code-in-text">Clock</code>, and this class handles these operations. The rest of our system only uses this class when it needs dates and times. This new <code class="fm-code-in-text">Clock</code> class is <a id="marker-1021521"></a>passed as a dependency to all classes that need it and can therefore be stubbed. The new version of <code class="fm-code-in-text">ChristmasDiscount</code> is in the following listing.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1021592"></a>Listing 6.19 The <code class="fm-code-in-text">Clock</code> abstraction</p>
+  <pre class="programlisting"><a id="pgfId-1021541"></a>public class Clock {
+<a id="pgfId-1021644"></a>  public LocalDate now() {                        <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1021656"></a>    return LocalDate.now();
+<a id="pgfId-1021662"></a>  }
+<a id="pgfId-1021673"></a> 
+<a id="pgfId-1021668"></a>  // any other date and time operation here...
+<a id="pgfId-1021679"></a>}
+<a id="pgfId-1021690"></a> 
+<a id="pgfId-1021685"></a>public class ChristmasDiscount {
+<a id="pgfId-1021701"></a> 
+<a id="pgfId-1021696"></a>  private final Clock clock;                      <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1021718"></a> 
+<a id="pgfId-1021713"></a>  public ChristmasDiscount(Clock clock) {         <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1021730"></a>    this.clock = clock;
+<a id="pgfId-1021736"></a>  }
+<a id="pgfId-1021747"></a> 
+<a id="pgfId-1021742"></a>  public double applyDiscount(double rawAmount) {
+<a id="pgfId-1021753"></a>    LocalDate today = clock.now();                <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1021770"></a> 
+<a id="pgfId-1021765"></a>    double discountPercentage = 0;
+<a id="pgfId-1021776"></a>    boolean isChristmas = today.getMonth() == Month.DECEMBER
+<a id="pgfId-1021782"></a>        &amp;&amp; today.getDayOfMonth() == 25;
+<a id="pgfId-1021793"></a> 
+<a id="pgfId-1021788"></a>    if(isChristmas)
+<a id="pgfId-1021799"></a>      discountPercentage = 0.15;
+<a id="pgfId-1021810"></a> 
+<a id="pgfId-1021805"></a>    return rawAmount - (rawAmount * discountPercentage);
+<a id="pgfId-1021816"></a>  }
+<a id="pgfId-1021822"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1035912"></a><span class="fm-combinumeral">❶</span> Encapsulates the static call. This seems too simple, but think of other, more complex operations you will encapsulate in this class.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1035933"></a><span class="fm-combinumeral">❷</span> Clock is a plain old dependency that we store in a field and receive via the constructor.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1035950"></a><span class="fm-combinumeral">❸</span> Calls the clock whenever we need, for example, the current date</p>
+
+  <p class="body"><a id="pgfId-1021880"></a>Testing it should be easy, given that we can stub the <code class="fm-code-in-text">Clock</code> class (see listing 6.20). We have two tests: one for when it is Christmas (where we set the clock to December 25 of any year) and another for when it is not Christmas (where we set the clock to any other date).</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1021946"></a>Listing 6.20 Testing the new <code class="fm-code-in-text">ChristmasDiscount</code></p>
+  <pre class="programlisting"><a id="pgfId-1021895"></a>public class ChristmasDiscountTest {
+<a id="pgfId-1021993"></a>  private final Clock clock = mock(Clock.class);                       <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1022005"></a>  private final ChristmasDiscount cd = new ChristmasDiscount(clock);
+<a id="pgfId-1022016"></a> 
+<a id="pgfId-1022011"></a>  @Test
+<a id="pgfId-1022022"></a>  public void christmas() {
+<a id="pgfId-1022028"></a>    LocalDate christmas = LocalDate.of(2015, Month.DECEMBER, 25);
+<a id="pgfId-1022034"></a>    when(clock.now()).thenReturn(christmas);                           <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1022051"></a> 
+<a id="pgfId-1022046"></a>    double finalValue = cd.applyDiscount(100.0);
+<a id="pgfId-1022057"></a>    assertThat(finalValue).isCloseTo(85.0, offset(0.001));
+<a id="pgfId-1022063"></a>  }
+<a id="pgfId-1022074"></a> 
+<a id="pgfId-1022069"></a>  @Test
+<a id="pgfId-1022080"></a>  public void notChristmas() {
+<a id="pgfId-1022086"></a>    LocalDate notChristmas = LocalDate.of(2015, Month.DECEMBER, 26);
+<a id="pgfId-1022092"></a>    when(clock.now()).thenReturn(notChristmas);                        <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1022109"></a> 
+<a id="pgfId-1022104"></a>    double finalValue = cd.applyDiscount(100.0);
+<a id="pgfId-1022115"></a>    assertThat(finalValue).isCloseTo(100.0, offset(0.001));
+<a id="pgfId-1022121"></a>  }
+<a id="pgfId-1022127"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1035718"></a><span class="fm-combinumeral">❶</span> Clock is a stub.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1035754"></a><span class="fm-combinumeral">❷</span> Stubs the now() method to return the Christmas date</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1035719"></a><span class="fm-combinumeral">❸</span> Stubs the now() method. It now returns a date that is not Christmas.</p>
+
+  <p class="body"><a id="pgfId-1022185"></a>As I said, creating an abstraction on top of date and time operations is common. The idea is that having a class that encapsulates these operations will facilitate the testing of the other classes in the system, because they are no longer handling date and time operations. And because these classes now receive this clock abstraction as a dependency, it can be easily stubbed. Martin Fowler’s wiki even has an entry called <code class="fm-code-in-text">ClockWrapper</code>, which explains the same thing.</p>
+
+  <p class="body"><a id="pgfId-1022200"></a>Is it a problem to use Mockito’s ability to mock static methods? As always, there are no right and wrong answers. If your system does not have complex date and time operations, stubbing them using Mockito’s <code class="fm-code-in-text">mockStatic()</code> API should <a id="marker-1022211"></a>be fine. Pragmatism always makes sense. <a id="marker-1022217"></a><a id="marker-1022220"></a><a id="marker-1022222"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_18"><a id="pgfId-1022228"></a>6.3.4 Mocking types you do not own</h3>
+
+  <p class="body"><a id="pgfId-1022248"></a><a id="marker-1022239"></a>Mocking frameworks are powerful. They even allow you to mock classes you do not own. For example, we could stub the <code class="fm-code-in-text">LocalDate</code> class if we wanted to. We can mock any classes from any library our software system uses. The question is, do we want to?</p>
+
+  <p class="body"><a id="pgfId-1022257"></a>When mocking, it is a best practice to avoid mocking types you do not own. Imagine that your software system uses a library. This library is costly, so you decide to mock it 100% of the time. In the long run, you may face the following complications:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1022263"></a>If this library ever changes (for example, a method stops doing what it was supposed to do), you will not have a breaking test. The entire behavior of that library was mocked. You will only notice it in production. Remember that you want your tests to break whenever something goes wrong.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1022277"></a>It may be difficult to mock external libraries. Think about the library you use to access a database such as Hibernate. Mocking all the API calls to Hibernate is too complex. Your tests will quickly become difficult to maintain.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1022287"></a>What is the solution? When you need to mock a type you do not own, you create an abstraction on top of it that encapsulates all the interactions with that type of library. In a way, the <code class="fm-code-in-text">Clock</code> class we discussed is an example. We do not own the Time API, so we created an abstraction that encapsulates it. These abstractions will let you hide all the complexity of that type, offering a much simpler API to the rest of your software system (which is good for the production code). At the same time, we can easily stub these abstractions.</p>
+
+  <p class="body"><a id="pgfId-1022302"></a>If the behavior of your class changes, you do not have any failing tests anyway, as your classes depend on the abstraction, not on the real thing. This is not a problem if you apply the right test levels. In all the classes of the system that depend on this abstraction, you can mock or stub the dependency. At this point, a change in the type you do not own will not be caught by the test suite. The abstraction depends on the contracts of the type before it changed. However, the abstraction itself needs to be tested using integration tests. These integration tests will break if the type changes.</p>
+
+  <p class="body"><a id="pgfId-1022361"></a>Suppose you encapsulate all the behavior of a specific XML parser in <a id="marker-1022310"></a>an <code class="fm-code-in-text">XmlWriter</code> class. The abstraction offers a single method: <code class="fm-code-in-text">write(Invoice)</code>. All the classes of the system that depend on <code class="fm-code-in-text">XmlWriter</code> have <code class="fm-code-in-text">write</code> mocked in their unit tests. The <code class="fm-code-in-text">XmlWriter</code> class, which calls the XML parser, will not mock the library. Rather, it will make calls to the real library and see how it reacts. It will make sure the XML is written as expected. If the library changes, this one test will break. It will then be up to the developer to understand what to do, given the new behavior of the type. See figure 6.2 for an illustration.</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/06-02.png" width="519" height="313"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1042506"></a>Figure 6.2 <code class="fm-code-in-text">XmlWriter</code> is mocked when the developer is testing classes that use it (<code class="fm-code-in-text">A</code>, <code class="fm-code-in-text">B</code>, and <code class="fm-code-in-text">C</code>, in the example). <code class="fm-code-in-text">XmlWriter</code> is then tested via integration tests, exercising the library.</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1022427"></a>In practice, unit tests are fast and easy to write and do not depend on external libraries. Integration tests ensure that the interaction with the library happens as expected, and they capture any changes in the behavior.</p>
+
+  <p class="body"><a id="pgfId-1022447"></a>Creating abstractions on top of dependencies that you do not own, as a way to gain more control, is a common technique among developers. (The idea of only mocking types you own was suggested by Freeman et al. in the paper that introduced the concept of mock objects [2004] and by Mockito.) Doing so increases the overall complexity of the system and requires maintaining another abstraction. But does the ease in testing the system that we get from adding the abstraction compensate for the cost of the increased complexity? Often, the answer is yes: it does pay off. <a id="marker-1022449"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_19"><a id="pgfId-1022456"></a>6.3.5 What do others say about mocking?</h3>
+
+  <p class="body"><a id="pgfId-1022482"></a><a id="marker-1022467"></a>As I said, some developers favor mocking, and others <a id="marker-1022471"></a>do not. <i class="fm-italics">Software Engineering at Google</i>, edited by Winters, Manshreck, and Wright (2020), has an <a id="marker-1022487"></a>entire chapter <a id="marker-1022499"></a>dedicated to test doubles. Here’s what I understood from it, along with my own point of view:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1022509"></a><i class="fm-italics1">Using test doubles requires the system to be designed for testability.</i> Indeed, as we saw, if you use mocks, you need to make sure the class under test can receive the mock.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1022530"></a><i class="fm-italics1">Building test doubles faithful to the real implementation is challenging. Test doubles must be as faithful as possible.</i> If your mocks do not offer the same contracts and expectations of the production class, your tests may all pass, but the software system will fail in production. Whenever you are mocking, make sure your mocks faithfully represent the class you are mocking.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1022547"></a><i class="fm-italics1">Prefer realism over isolation. When possible, opt for the real implementation instead of fakes, stubs, or mocks.</i> I fully agree with this. Although I did my best to convince you about the usefulness of mocking (that was the point of this chapter), realism always wins over isolation. I am pragmatic about it, though. If it is getting too hard to test with the real dependency, I mock it.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1022564"></a>The following are trade-offs to consider when deciding whether to use a test double:</p>
+
+      <ul class="calibre15">
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1022574"></a><i class="fm-italics1">The execution time of the real implementation</i> —I also take the execution time of the dependency into account when deciding to mock or not. I usually mock slow dependencies.</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1022599"></a><i class="fm-italics1">How much non-determinism we would get from using the real implementation</i> —While I did not discuss non-deterministic behavior, dependencies that present such behavior may be good candidates for mocking.</li>
+      </ul>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1022616"></a><i class="fm-italics1">When using the real implementation is not possible or too costly, prefer fakes over mocks.</i> I do not fully agree with this recommendation. In my opinion, you either use the real implementation or mock it. A fake implementation may end up having the same problems as a mock. How do you ensure that the fake implementation has the same behavior as the real implementation? I rarely use fakes.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1022633"></a><i class="fm-italics1">Excessive mocking can be dangerous, as tests become unclear (hard to comprehend), brittle (may break too often), and less effective (reduced ability to detect faults).</i> I agree. If you are mocking too much or the class under test forces you to mock too much, that may be a sign that the production class is poorly designed.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1022650"></a><i class="fm-italics1">When mocking, prefer state testing rather than interaction testing.</i> Google says you should make sure you are asserting a change of state and/or the consequence of the action under test, rather than the precise interaction that the action has with the mocked object. Google’s point is similar to what we discussed about mocks and coupling. Interaction testing tends to be too coupled with the implementation of the system under test.</p>
+
+      <p class="fm-list-body"><a class="calibre13" id="pgfId-1022667"></a>While I agree with this point, properly written interaction tests are useful. They tell you when the interaction changed. This is my rule of thumb: if what matters in the class I am testing is the interaction between classes, I do interaction testing (my assertions check that the interactions are as expected). When what matters is the result of processing, I do state testing (my assertions check the return value or whether the state of the class is as expected).</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1022673"></a><i class="fm-italics1">Avoid over-specified interaction tests. Focus on the relevant arguments and functions.</i> This is a good suggestion and best practice. Make sure you only mock and stub what needs to be mocked and stubbed. Only verify the interactions that make sense for that test. Do not verify every single interaction that happens.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1022690"></a><i class="fm-italics1">Good interaction testing requires strict guidelines when designing the system under test. Google engineers tend not to do this.</i> Using mocks properly is challenging even for senior developers. Focus on training and team education, and help your developer peers do better interaction testing. <a class="calibre13" id="marker-1022703"></a></p>
+    </li>
+  </ul>
+
+  <h2 class="fm-head" id="heading_id_20"><a id="pgfId-1022710"></a>Exercises</h2>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1022720"></a>6.1 Mocks, stubs, and fakes. What are they, and how do they differ from each other?</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1022742"></a>6.2 The following <code class="fm-code-in-text">InvoiceFilter</code> class is responsible for returning the invoices for an amount smaller than 100.0. It uses the <code class="fm-code-in-text">IssuedInvoices</code> type, which is responsible for communication with the database.</p>
+  <pre class="programlistinge"><a id="pgfId-1022751"></a>public class InvoiceFilter {
+<a id="pgfId-1022770"></a> 
+<a id="pgfId-1022765"></a>  private IssuedInvoices invoices;
+<a id="pgfId-1022781"></a> 
+<a id="pgfId-1022776"></a>  public InvoiceFilter(IssuedInvoices invoices) {
+<a id="pgfId-1022787"></a>    this.invoices = invoices;
+<a id="pgfId-1022793"></a>  }
+<a id="pgfId-1022804"></a> 
+<a id="pgfId-1022799"></a>  public List&lt;Invoice&gt; filter() {
+<a id="pgfId-1022810"></a>    return invoices.all().stream()
+<a id="pgfId-1022816"></a>        .filter(invoice -&gt; invoice.getValue() &lt; 100.0)
+<a id="pgfId-1022822"></a>        .collect(toList());
+<a id="pgfId-1022828"></a>  }
+<a id="pgfId-1022834"></a>}</pre>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1022840"></a>Which of the following statements about this class is false?</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1022846"></a>A) Integration testing is the only way to achieve 100% branch coverage.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1022860"></a>B) Its implementation allows for dependency injection, which enables mocking.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1022870"></a>C) It is possible to write completely isolated unit tests by, for example, using mocks.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1022900"></a>D) The <code class="fm-code-in-text">IssuedInvoices</code> type (a direct dependency of <code class="fm-code-in-text">InvoiceFilter</code>) should be tested using integration tests.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1022909"></a>6.3 You are testing a system that triggers advanced events based on complex combinations of external, boolean conditions relating to the weather (outside temperature, amount of rain, wind, and so on). The system has been designed cleanly and consists of a set of cooperating classes, each of which has a single responsibility. You use specification-based testing for this logic and test it using mocks.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1022915"></a>Which of the following is a valid test strategy?</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1022921"></a>A) You use mocks to support observing the external conditions.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1022935"></a>B) You create mock objects to represent each variant you need to test.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1022945"></a>C) You use mocks to control the external conditions and to observe the event being triggered.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1022955"></a>D) You use mocks to control the triggered events.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1022991"></a>6.4 Class <code class="fm-code-in-text">A</code> depends on a static method in class <code class="fm-code-in-text">B</code>. If you want to test class <code class="fm-code-in-text">A</code>, which of the following two actions should you apply to do so properly?</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1023036"></a>Approach 1: Mock class <code class="fm-code-in-text">B</code> to control the behavior of the methods in class <code class="fm-code-in-text">B</code>.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1033151"></a>Approach 2: Refactor class <code class="fm-code-in-text">A</code>, so the outcome of the method of class <code class="fm-code-in-text">B</code> is now used as a parameter.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023045"></a>A) Only approach 1</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023059"></a>B) Neither</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023069"></a>C) Only approach 2</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023079"></a>D) Both</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1023089"></a>6.5 According to the guidelines provided in the book, what types of classes should you mock, and which should you not mock?</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1023095"></a>6.6 Now that you know the advantages and disadvantages of test doubles, what are your thoughts about them? Do you plan to use mocks and stubs, or do you prefer to focus on integration tests?</p>
+
+  <h2 class="fm-head" id="heading_id_21"><a id="pgfId-1023101"></a>Summary</h2>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023111"></a>Test doubles help us test classes that depend on slow, complex, or external components that are hard to control and observe.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023125"></a>There are different types of test doubles. Stubs are doubles that return hard-coded values whenever methods are called. Mocks are like stubs, but we can define how we expect a mock to interact with other classes.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023135"></a>Mocking can help us in testing, but it also has disadvantages. The mock may differ from the real implementation, and that would cause our tests to pass while the system would fail.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023145"></a>Tests that use mocks are more coupled with the production code than tests that do not use mocks. When not carefully planned, such coupling can be problematic.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023155"></a>Production classes should allow for the mock to be injected. One common approach is to require all dependencies via the constructor.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023165"></a>You do not have to (and should not) mock everything, even when you decide to go for mocks. Only mock what is necessary.</p>
+    </li>
+  </ul>
+</div>
+</div>
+</body>
+</html>

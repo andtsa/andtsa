@@ -1,0 +1,99 @@
+@font-face {
+  font-family: Din;
+  src: url(./../assets/din.ttf);
+}
+* {
+  padding: 0;
+  margin: 0;
+}
+* ::selection {
+  background-color: rgba(235, 25, 113, 0.6666666667);
+  color: #e2e2ff;
+}
+
+html {
+  position: fixed;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background-image: url("../../assets/images/blue-butterfly-unsplash.jpg");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
+  opacity: 1;
+}
+
+body {
+  position: fixed;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: linear-gradient(to left top, rgba(0, 120, 16, 0.3843137255), rgba(0, 118, 83, 0.3843137255), rgba(0, 111, 131, 0.3843137255), rgba(0, 99, 154, 0.3843137255), rgba(0, 81, 147, 0.3843137255), rgba(11, 73, 144, 0.3843137255), rgba(25, 64, 140, 0.3843137255), rgba(36, 55, 135, 0.3843137255), rgba(46, 54, 141, 0.3843137255), rgba(57, 53, 147, 0.3843137255), rgba(68, 50, 152, 0.3843137255), rgba(80, 47, 157, 0.3843137255));
+}
+
+#searchbar, #phind, #quicklinks {
+  width: calc(100px + 60vw);
+  max-width: 90vw;
+  min-width: 100px;
+  padding: calc(0.1vw + 0.1vh + 5px);
+  border: calc(4px - 0.1vh) solid #161a65;
+  opacity: 1;
+  margin-top: calc(10px + 1vh + 0.3vw);
+  caret-shape: block;
+}
+
+#searchbar {
+  height: calc(30px + 2vw);
+  outline: none;
+  font-size: calc(27px + 0.5vw);
+  text-align: left;
+  padding-top: calc(0.1vw + 0.1vh + 5px + 5px);
+  padding-left: calc(0.1vw + 0.1vh + 5px + 4px);
+  background: linear-gradient(to left, rgba(215, 253, 255, 0.768627451), rgba(206, 254, 253, 0.768627451), rgba(197, 254, 250, 0.768627451), rgba(189, 255, 246, 0.768627451), rgba(182, 255, 240, 0.768627451), rgba(182, 255, 234, 0.768627451), rgba(183, 255, 227, 0.768627451), rgba(186, 255, 220, 0.768627451), rgba(196, 255, 212, 0.768627451), rgba(207, 255, 205, 0.768627451), rgba(219, 255, 199, 0.768627451), rgba(231, 255, 193, 0.768627451));
+}
+
+#phind {
+  min-height: 100px;
+  height: calc(75vh - 50px);
+}
+
+#quicklinks {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  height: auto;
+  flex-wrap: wrap-reverse;
+}
+#quicklinks a {
+  display: inline-block;
+  position: relative;
+  text-align: center;
+  font-size: calc(17px + 1vh);
+  color: #d4f4ff;
+  text-decoration: none;
+  margin-top: 3px;
+  margin-left: 10px;
+  margin-right: 10px;
+  overflow: hidden;
+}
+#quicklinks a:after {
+  content: "";
+  position: absolute;
+  background: #d4f4ff;
+  height: 2px;
+  width: 0%;
+  transform: translateX(-50%);
+  left: 50%;
+  bottom: 0;
+  transition: 0.25s ease;
+}
+#quicklinks a:hover:after, #quicklinks a:focus:after, #quicklinks a:active:after {
+  width: 100%;
+}
+
+/*# sourceMappingURL=homepage.css.map */

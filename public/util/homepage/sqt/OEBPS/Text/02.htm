@@ -1,0 +1,1452 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xml:lang="en"
+      lang="en"
+      xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:epub="http://www.idpf.org/2007/ops">
+<head>
+<title>Effective Software Testing</title>
+<link rel="stylesheet" type="text/css" href="../../override_v1.css"/>
+<link rel="stylesheet" type="text/css" href="../../stylesheet.css"/><link rel="stylesheet" type="text/css" href="../../page_styles.css"/>
+</head>
+<body>
+<div id="book-content">
+<div id="sbo-rt-content" class="calibre"><h1 class="tochead" id="heading_id_2"><a id="pgfId-998407"></a><a id="pgfId-1024625"></a>2 Specification-based testing</h1>
+
+  <p class="co-summary-head"><a id="pgfId-1011754"></a>This chapter covers</p>
+
+  <ul class="calibre12">
+    <li class="co-summary-bullet"><a class="calibre13" id="pgfId-1011760"></a>Creating test cases using specification-based testing</li>
+
+    <li class="co-summary-bullet"><a class="calibre13" id="pgfId-1011774"></a>Identifying and creating test cases for program boundaries</li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1011784"></a>Software requirements are undoubtedly the most valuable artifact of software testing. By <i class="fm-italics">requirements</i>, I mean any textual document that describes what a functionality should do. Requirements tell us precisely what the software needs to do and what it should not do. They describe the intricacies of the business rules that the software has to implement and we need to validate. Therefore, requirements should be the first artifact you go for when it comes to testing!</p>
+
+  <p class="body"><a id="pgfId-1011799"></a>In this chapter, we explore <i class="fm-italics">specification-based testing</i>. These techniques use the program requirements—such as agile user stories or UML use cases—as testing input. We will discuss how to use all the information available in a requirement to systematically derive a set of tests that exercise that requirement extensively.</p>
+
+  <p class="body"><a id="pgfId-1011814"></a>Where does specification-based testing fit into the entire testing process? Imagine that a software developer receives a new feature to implement. The developer writes the implementation code, guided by <a id="marker-1011816"></a>test-driven development (TDD) cycles, and always ensures that the code is testable. With all the classes ready, the developer switches to “testing mode.” It is time to systematically look for bugs. This is where specification testing fits in: it is the first testing technique I recommend using once you’re in testing mode.</p>
+
+  <p class="body"><a id="pgfId-1011826"></a>As I mentioned, the idea of specification-based testing is to derive tests from the requirements themselves. The specific implementation is less important. Of course, we use source code to test, too—this <i class="fm-italics">structural testing</i> is the next technique in the workflow. Once you have a complete picture of all the techniques, you will be able to use them iteratively and go back and forth between them.</p>
+
+  <h2 class="fm-head" id="heading_id_3"><a id="pgfId-1011841"></a>2.1 The requirements say it all</h2>
+
+  <p class="body"><a id="pgfId-1011861"></a><a id="marker-1011852"></a>Let’s start with an example. A new set of requirements comes in for you to develop. As soon as you begin to analyze the requirements, you identify a particular method you need to implement: a method that searches for substrings between two tags in a given string and returns all the matching substrings. Let’s call this method <code class="fm-code-in-text">substringsBetween()</code>, inspired by <a id="marker-1011866"></a>the Apache Commons Lang library (<a class="url" href="http://mng.bz/nYR5">http://mng.bz/nYR5</a>). You are about to test a real-world open source method.</p>
+
+  <p class="body"><a id="pgfId-1011877"></a>After some thinking, you end up with the following requirements for the <code class="fm-code-in-text">substringsBetween()</code> method:</p>
+
+  <p class="fm-callout"><a id="pgfId-1011916"></a><i class="fm-italics">Method</i>: <code class="fm-code-in-text">substringsBetween()</code></p>
+
+  <p class="fm-callout"><a id="pgfId-1011922"></a>Searches a string for substrings delimited by a start and end tag, returning all matching substrings in an array.</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-bullet-callout">
+      <p class="list-s"><a id="pgfId-1011950"></a><code class="fm-code-in-text">str</code>—The string containing the substrings. Null returns <code class="fm-code-in-text">null</code>; an empty string returns another empty string.</p>
+    </li>
+
+    <li class="fm-list-bullet-callout">
+      <p class="list-s"><a id="pgfId-1011959"></a><code class="fm-code-in-text">open</code>—The string identifying the start of the substring. An empty string returns null.</p>
+    </li>
+
+    <li class="fm-list-bullet-callout">
+      <p class="list-s"><a id="pgfId-1011976"></a><code class="fm-code-in-text">close</code>—The string identifying the end of the substring. An empty string returns null.</p>
+    </li>
+  </ul>
+
+  <p class="fm-callout"><a id="pgfId-1011993"></a>The program returns a string array of substrings, or <code class="fm-code-in-text">null</code> if there is no match.</p>
+
+  <p class="fm-callout"><a id="pgfId-1030633"></a><i class="fm-italics">Example</i>: if <code class="fm-code-in-text">str</code> = “a<b class="fm-bold">x</b>ca<b class="fm-bold">y</b>ca<b class="fm-bold">z</b>c”, <code class="fm-code-in-text">open</code> = “a”, and <code class="fm-code-in-text">close</code> = “c”, the output will be an array containing [“x”, “y”, “z”]. This is the case because the “a&lt;<i class="fm-italics">something</i>&gt;c” substring appears three times in the original string: the first contains “x” in the middle, the second “y,” and the last “z.”</p>
+
+  <p class="body"><a id="pgfId-1012085"></a>With these requirements in mind, you write the implementation shown in listing 2.1. You may or may not use TDD (discussed in chapter 8) to help you develop this feature. You are somewhat confident that the program works. Slightly, but not completely.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1012142"></a>Listing 2.1 Implementing the <code class="fm-code-in-text">substringsBetween()</code> method</p>
+  <pre class="programlisting"><a id="pgfId-1012091"></a>public static String[] substringsBetween(final String str,
+<a id="pgfId-1012194"></a> final String open, final String close) {
+<a id="pgfId-1012205"></a> 
+<a id="pgfId-1012200"></a>  if (str == null || isEmpty(open) || isEmpty(close)) {   <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1012217"></a>    return null;
+<a id="pgfId-1012223"></a>  }
+<a id="pgfId-1012234"></a> 
+<a id="pgfId-1012229"></a>  int strLen = str.length();
+<a id="pgfId-1012240"></a>  if (strLen == 0) {                                      <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1012252"></a>    return EMPTY_STRING_ARRAY;
+<a id="pgfId-1012258"></a>  }
+<a id="pgfId-1012269"></a> 
+<a id="pgfId-1012264"></a>  int closeLen = close.length();
+<a id="pgfId-1012275"></a>  int openLen = open.length();
+<a id="pgfId-1012281"></a>  List&lt;String&gt; list = new ArrayList&lt;&gt;();
+<a id="pgfId-1012287"></a>  int pos = 0;                                            <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1012304"></a> 
+<a id="pgfId-1012299"></a>  while (pos &lt; strLen - closeLen) {
+<a id="pgfId-1012310"></a>    int start = str.indexOf(open, pos);                   <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1012327"></a> 
+<a id="pgfId-1012322"></a>    if (start &lt; 0) {                                      <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1012339"></a>      break;
+<a id="pgfId-1012345"></a>    }
+<a id="pgfId-1012356"></a> 
+<a id="pgfId-1012351"></a>    start += openLen;
+<a id="pgfId-1012362"></a>    int end = str.indexOf(close, start);                  <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1012374"></a>    if (end &lt; 0) {                                        <span class="fm-combinumeral">❼</span>
+<a id="pgfId-1012386"></a>      break;
+<a id="pgfId-1012392"></a>    }
+<a id="pgfId-1012403"></a> 
+<a id="pgfId-1012398"></a>    list.add(str.substring(start, end));                  <span class="fm-combinumeral">❽</span>
+<a id="pgfId-1012415"></a>    pos = end + closeLen;                                 <span class="fm-combinumeral">❾</span>
+<a id="pgfId-1012432"></a> 
+<a id="pgfId-1012427"></a>  }
+<a id="pgfId-1012443"></a> 
+<a id="pgfId-1012438"></a>  if (list.isEmpty()) {                                   <span class="fm-combinumeral">❿</span>
+<a id="pgfId-1012455"></a>    return null;
+<a id="pgfId-1012461"></a>  }
+<a id="pgfId-1012472"></a> 
+<a id="pgfId-1012467"></a>  return list.toArray(EMPTY_STRING_ARRAY);
+<a id="pgfId-1012478"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1038980"></a><span class="fm-combinumeral">❶</span> If the pre-conditions do not hold, returns null right away</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1039001"></a><span class="fm-combinumeral">❷</span> If the string is empty, returns an empty array immediately</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1039018"></a><span class="fm-combinumeral">❸</span> A pointer that indicates the position of the string we are looking at</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1039038"></a><span class="fm-combinumeral">❹</span> Looks for the next occurrence of the open tag</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1039055"></a><span class="fm-combinumeral">❺</span> Breaks the loop if the open tag does not appear again in the string</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1039072"></a><span class="fm-combinumeral">❻</span> Looks for the close tag</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1039089"></a><span class="fm-combinumeral">❼</span> Breaks the loop if the close tag does not appear again in the string</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1039106"></a><span class="fm-combinumeral">❽</span> Gets the substring between the open and close tags</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1039123"></a><span class="fm-combinumeral">❾</span> Moves the pointer to after the close tag we just found</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1039140"></a><span class="fm-combinumeral">❿</span> Returns null if we do not find any substrings</p>
+
+  <p class="body"><a id="pgfId-1012756"></a>Let’s walk through an example. Consider the inputs <code class="fm-code-in-text">str</code> = “a<b class="fm-bold">x</b>ca<b class="fm-bold">y</b>ca<b class="fm-bold">z</b>c”, <code class="fm-code-in-text">open</code> = “a”, and <code class="fm-code-in-text">close</code> = “c”. None of the three strings are empty, so the method goes straight <a id="marker-1025851"></a>to <a id="marker-1025852"></a>the <code class="fm-code-in-text">openLen</code> and <code class="fm-code-in-text">closeLen</code> variables. These two variables store the length of the <code class="fm-code-in-text">open</code> and <code class="fm-code-in-text">close</code> strings, respectively. In this case, both are equal to 1, as “a” and “c” are strings with a single character.</p>
+
+  <p class="body"><a id="pgfId-1012837"></a>The program then goes into its main loop. This loop runs while there still may be substrings in the string to check. In the first iteration, <code class="fm-code-in-text">pos</code> equals zero (the beginning of the string). We call <code class="fm-code-in-text">indexOf</code>, looking for a possible occurrence of <a id="marker-1012786"></a>the <code class="fm-code-in-text">open</code> tag. We pass the <code class="fm-code-in-text">open</code> tag and the position to start the search, which at this point is 0. <code class="fm-code-in-text">indexOf</code> returns 0, which means we found an <code class="fm-code-in-text">open</code> tag. (The first element of the string is already the <code class="fm-code-in-text">open</code> tag.)</p>
+
+  <p class="body"><a id="pgfId-1012981"></a>The program then looks for the end of the substring by calling <a id="marker-1012848"></a>the <code class="fm-code-in-text">indexOf</code> method again, this time on <a id="marker-1012864"></a>the <code class="fm-code-in-text">close</code> tag. Note that we increase the start position by the length of the <code class="fm-code-in-text">open</code> tag because we want to look for the <code class="fm-code-in-text">close</code> tag after the end of the entire <code class="fm-code-in-text">open</code> tag. Remember that the <code class="fm-code-in-text">open</code> tag has a length of one but can have any length. If we find a <code class="fm-code-in-text">close</code> tag, this means there is a substring to return to the user. We get this substring by calling the <code class="fm-code-in-text">substring</code> method with the <a id="marker-1012940"></a>start and end positions as parameters. We then reposition our <code class="fm-code-in-text">pos</code> pointer, and the loop iterates again. Figure 2.1 shows the three iterations of the loop as well as the locations to which the main pointers (<code class="fm-code-in-text">start</code>, <code class="fm-code-in-text">end</code>, and <code class="fm-code-in-text">pos</code>) are pointing.</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/02-01.png" width="242" height="238"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1041120"></a>Figure 2.1 The three iterations of the <code class="fm-code-in-text">substringsBetween</code> method for our example</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1013009"></a>Now that you have finished the first implementation, you flip your mind to testing mode. It is time for specification and boundary testing. As an exercise, before we work on this problem together, look at the requirements one more time and write down all the test cases you can come up with. The format does not matter—it can be something like “all parameters null.” When you are finished with this chapter, compare your initial test suite with the one we are about to derive together.</p>
+
+  <p class="body"><a id="pgfId-1013029"></a>The best way to ensure that this method works properly would be to test all the possible combinations of inputs and outputs. Given that <code class="fm-code-in-text">substringsBetween()</code> receives three string parameters as an input, we would need to pass all possible valid strings to the three parameters, combined in all imaginable ways. As we discussed in chapter 1, exhaustive testing is rarely possible. We have to be pragmatic.</p>
+
+  <h3 class="fm-head1" id="heading_id_4"><a id="pgfId-1013044"></a>2.1.1 Step 1: Understanding the requirements, inputs, and outputs</h3>
+
+  <p class="body"><a id="pgfId-1013063"></a><a id="marker-1013055"></a><a id="marker-1013057"></a><a id="marker-1013059"></a>Regardless of how your requirements are written (or even if they are only in your mind), they include three parts. First is what the program/method must do: its business rules. Second, the program receives data as inputs. Inputs are a fundamental part of our reasoning, as it is through them that we can test the different cases. Third, reasoning about the output will help us better understand what the program does and how the inputs are converted to the expected output.</p>
+
+  <p class="body"><a id="pgfId-1013068"></a>For the <code class="fm-code-in-text">substringsBetween()</code> method, my reasoning would be</p>
+
+  <ol class="calibre14">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1013117"></a>The <i class="fm-italics1">goal</i> of this method is to collect all substrings in a string that are delimited by an <code class="fm-code-in-text">open</code> tag and a <code class="fm-code-in-text">close</code> tag (the user provides these).</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1013126"></a>The program receives three <i class="fm-italics1">parameters</i>:</p>
+
+      <p class="fm-list-body-abc">a) <a id="pgfId-1013145"></a><code class="fm-code-in-text">str</code>, which represents the string from which the program will extract substrings</p>
+
+      <p class="fm-list-body-abc">b) <a id="pgfId-1013170"></a>The <code class="fm-code-in-text">open</code> tag, which indicates the start of a substring</p>
+
+      <p class="fm-list-body-abc">c) <a id="pgfId-1013189"></a>The <code class="fm-code-in-text">close</code> tag, which indicates the end of the substring</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1013208"></a>The program <i class="fm-italics1">returns</i> an array composed of all the substrings found by the program.</p>
+    </li>
+  </ol>
+
+  <p class="body"><a id="pgfId-1013227"></a>Such reflection is useful to think about what you want from the method. <a id="marker-1013229"></a><a id="marker-1013232"></a><a id="marker-1013236"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_5"><a id="pgfId-1013242"></a>2.1.2 Step 2: Explore what the program does for various inputs</h3>
+
+  <p class="body"><a id="pgfId-1013259"></a><a id="marker-1013253"></a><a id="marker-1013255"></a>An ad hoc exploration of what the method does may increase your understanding of it. I have noticed this when observing professional software developers writing test cases for methods they have never seen before (Aniche, Treude, and Zaidman, 2021). This step is more relevant when you did not write the code—if you wrote it, this exploration phase may not be needed.</p>
+
+  <p class="body"><a id="pgfId-1013264"></a>To illustrate this step, suppose you did not write this code (which, in this case, is true). My process would be as follows (see the JUnit code in listing 2.2):</p>
+
+  <p class="body"><a id="pgfId-1013296"></a>Let’s see the program working on a happy case. I will pass the string “abcd” with the <code class="fm-code-in-text">open</code> tag “a” and the <code class="fm-code-in-text">close</code> tag “d”. I expect it to return an array with a single element: <code class="fm-code-in-text">["bc"]</code>. I try that (in a unit test), and the program returns what I expect.</p>
+
+  <p class="body"><a id="pgfId-1013331"></a>Next, let’s see what happens if there are multiple substrings in the main string. I will pass the string “ab<b class="fm-bold">cd</b>a<b class="fm-bold">bc</b>dab” with the same <code class="fm-code-in-text">open</code> and <code class="fm-code-in-text">close</code> tags. I expect it to return an array with two strings: <code class="fm-code-in-text">["bc",</code> <code class="fm-code-in-text">"bc"]</code>. The program returns what I expect.</p>
+
+  <p class="body"><a id="pgfId-1013366"></a>I expect the program to behave the same with <code class="fm-code-in-text">open</code> and <code class="fm-code-in-text">close</code> tags larger than a single character. I will repeat the second test, doubling the “a”s and the “d”s in all the parameters. I will also change one of the “bc”s to “bf”, so it is easier to check that the method returns two different substrings: <code class="fm-code-in-text">["bc",</code> <code class="fm-code-in-text">"bf"]</code>. The program returns what I expect.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1013426"></a>Listing 2.2 Exploratory tests for <code class="fm-code-in-text">substringsBetween()</code></p>
+  <pre class="programlisting"><a id="pgfId-1013375"></a>@Test
+<a id="pgfId-1013473"></a>void simpleCase() {                                   <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1013485"></a>  assertThat(
+<a id="pgfId-1013491"></a>    StringUtils.substringsBetween("abcd", "a", "d")
+<a id="pgfId-1013497"></a>  ).isEqualTo(new String[] { "bc" });
+<a id="pgfId-1013503"></a>}
+<a id="pgfId-1013514"></a> 
+<a id="pgfId-1013509"></a>@Test
+<a id="pgfId-1013520"></a>void manySubstrings() {                               <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1013532"></a>  assertThat(
+<a id="pgfId-1013538"></a>    StringUtils.substringsBetween("abcdabcdab", "a", "d")
+<a id="pgfId-1013544"></a>  ).isEqualTo(new String[] { "bc", "bc" });
+<a id="pgfId-1013550"></a>}
+<a id="pgfId-1013561"></a> 
+<a id="pgfId-1013556"></a>@Test
+<a id="pgfId-1013567"></a>void openAndCloseTagsThatAreLongerThan1Char() {       <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1013579"></a>  assertThat(
+<a id="pgfId-1013585"></a>    StringUtils.substringsBetween("aabcddaabfddaab", "aa", "dd")
+<a id="pgfId-1013591"></a>  ).isEqualTo(new String[] { "bc", "bf" });
+<a id="pgfId-1013597"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1038762"></a><span class="fm-combinumeral">❶</span> We write these test cases based on our feelings. What do we want to explore next?</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1038783"></a><span class="fm-combinumeral">❷</span> I don’t care if they are good tests, as long as they teach me something about the code.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1038800"></a><span class="fm-combinumeral">❸</span> I wrote all the test code in a single line, although you cannot see that in the printed book. Feel free to write it any way you prefer.</p>
+
+  <p class="body"><a id="pgfId-1013655"></a>I stop this exploration phase when I have a clear mental model of how the program should work. Note that I do not expect you to perform the same exploration I did—it is personal and guided by my hypothesis about the program. Also note that I did not explore any corner cases; that comes later. At this moment, I am only interested in better understanding the program. <a id="marker-1013657"></a><a id="marker-1013660"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_6"><a id="pgfId-1013666"></a>2.1.3 Step 3: Explore possible inputs and outputs, and identify partitions</h3>
+
+  <p class="body"><a id="pgfId-1013687"></a><a id="marker-1013677"></a><a id="marker-1013679"></a><a id="marker-1013681"></a><a id="marker-1013683"></a>We should find a way to prioritize and select a subset of inputs and outputs that will give us sufficient certainty about the correctness of the program. Although the number of possible program inputs and outputs is nearly infinite, some sets of inputs make the program behave the same way, regardless of the precise input value.</p>
+
+  <p class="body"><a id="pgfId-1013738"></a>In the case of our example, for testing purposes, the input “abcd” with <code class="fm-code-in-text">open</code> tag “a” and <code class="fm-code-in-text">close</code> tag “d”, which makes the program return “bc”, is the same as the input “xyzw” with <code class="fm-code-in-text">open</code> tag “x” and <code class="fm-code-in-text">close</code> tag “w”. You change the letters, but you expect the program to do the same thing for both inputs. Given your resource constraints, you will test just one of these inputs (it does not matter which), and you will trust that this single case represents that entire class of inputs. In testing terminology, we say that these two inputs are <i class="fm-italics">equivalent</i>.</p>
+
+  <p class="body"><a id="pgfId-1013747"></a>Once you have identified this class (or partition), you repeat the process and look for another class that will make the program behave in a different way that you have not yet tested. If you keep dividing the domain, you will eventually identify all the different possible classes (or partitions) of inputs.</p>
+
+  <p class="body"><a id="pgfId-1013753"></a>A systematic way to do such an exploration is to think of the following:</p>
+
+  <ol class="calibre14">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1013759"></a>Each input individually: “What are the possible classes of inputs I can provide?”</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1013793"></a>Each input in combination with other inputs: “What combinations can I try between the <code class="fm-code-in-text">open</code> and <code class="fm-code-in-text">close</code> tags?”</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1013802"></a>The different classes of output expected from this program: “Does it return arrays? Can it return an empty array? Can it return nulls?”</p>
+    </li>
+  </ol>
+
+  <p class="body"><a id="pgfId-1013812"></a>I find it easiest to start with individual inputs. Follow me:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1013818"></a><code class="fm-code-in-text">str</code> <i class="fm-italics1">parameter</i> —The string <a class="calibre13" id="marker-1013841"></a>can be any string. The specification mentions the null and empty cases; I would have tested those anyway, because they are always good exceptional test cases. Given that this is a string (which is basically a list of characters), I will also test what happens if the string has length 1.</p>
+
+      <p class="fm-list-body-abc">a) <a id="pgfId-1013851"></a>Null string</p>
+
+      <p class="fm-list-body-abc">b) <a id="pgfId-1013869"></a>Empty string</p>
+
+      <p class="fm-list-body-abc">c) <a id="pgfId-1013879"></a>String of length 1</p>
+
+      <p class="fm-list-body-abc">d) <a id="pgfId-1013889"></a>String of length &gt; 1 (any string)</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1013929"></a><code class="fm-code-in-text">open</code> <i class="fm-italics1">parameter</i> —This can <a class="calibre13" id="marker-1013918"></a>also be anything. I will try it with null and empty, as I learned from the <code class="fm-code-in-text">str</code> parameter that those cases are special in this program. I will also try strings with length 1 and greater than 1:</p>
+
+      <p class="fm-list-body-abc">a) <a id="pgfId-1013938"></a>Null string</p>
+
+      <p class="fm-list-body-abc">b) <a id="pgfId-1013956"></a>Empty string</p>
+
+      <p class="fm-list-body-abc">c) <a id="pgfId-1013966"></a>String of length 1</p>
+
+      <p class="fm-list-body-abc">d) <a id="pgfId-1013976"></a>String of length &gt; 1</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1013986"></a><code class="fm-code-in-text">close</code> <i class="fm-italics1">parameter</i> —This parameter <a class="calibre13" id="marker-1014005"></a>is like the previous one:</p>
+
+      <p class="fm-list-body-abc">a) <a id="pgfId-1014015"></a>Null string</p>
+
+      <p class="fm-list-body-abc">b) <a id="pgfId-1014033"></a>Empty string</p>
+
+      <p class="fm-list-body-abc">c) <a id="pgfId-1014043"></a>String of length 1</p>
+
+      <p class="fm-list-body-abc">d) <a id="pgfId-1014053"></a>String of length &gt; 1</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1014063"></a>Once the input variables are analyzed in detail, we explore possible <i class="fm-italics">combinations</i> of variables. A program’s input variables may be related to each other. In the example, it is clear that the three variables have a dependency relationship. Follow me again:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1014136"></a><code class="fm-code-in-text">(str,</code> <code class="fm-code-in-text">open,</code> <code class="fm-code-in-text">close)</code><i class="fm-italics1">parameters</i>—<code class="fm-code-in-text">open</code> and <code class="fm-code-in-text">close</code> may or may not be in the string. Also, <code class="fm-code-in-text">open</code> may be there, but not <code class="fm-code-in-text">close</code> (and vice versa).</p>
+
+      <p class="fm-list-body-abc">a) <a id="pgfId-1014181"></a><code class="fm-code-in-text">str</code> contains neither the <code class="fm-code-in-text">open</code> nor the <code class="fm-code-in-text">close</code> tag.</p>
+
+      <p class="fm-list-body-abc">b) <a id="pgfId-1014218"></a><code class="fm-code-in-text">str</code> contains the <code class="fm-code-in-text">open</code> tag but not the <code class="fm-code-in-text">close</code> tag.</p>
+
+      <p class="fm-list-body-abc">c) <a id="pgfId-1014255"></a><code class="fm-code-in-text">str</code> contains the <code class="fm-code-in-text">close</code> tag but not the <code class="fm-code-in-text">open</code> tag.</p>
+
+      <p class="fm-list-body-abc">d) <a id="pgfId-1014292"></a><code class="fm-code-in-text">str</code> contains both the <code class="fm-code-in-text">open</code> and <code class="fm-code-in-text">close</code> tags.</p>
+
+      <p class="fm-list-body-abc">e) <a id="pgfId-1014329"></a><code class="fm-code-in-text">str</code> contains both the <code class="fm-code-in-text">open</code> and <code class="fm-code-in-text">close</code> tags multiple times.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1014354"></a>Note that this thought process depended on my experience as a tester. The documentation does not explicitly mention tags not being in the string, nor does it mention the <code class="fm-code-in-text">open</code> tag being present but the <code class="fm-code-in-text">close</code> tag not. I saw this case because of my experience as a tester.</p>
+
+  <p class="body"><a id="pgfId-1014363"></a>Finally, we reflect on the possible outputs. The method returns an array of substrings. I can see a set of possible different outputs, both for the array itself and for the strings within the array:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1014369"></a><i class="fm-italics1">Array of strings</i> (output)</p>
+
+      <p class="fm-list-body-abc">a) <a id="pgfId-1014390"></a>Null array</p>
+
+      <p class="fm-list-body-abc">b) <a id="pgfId-1014408"></a>Empty array</p>
+
+      <p class="fm-list-body-abc">c) <a id="pgfId-1014418"></a>Single item</p>
+
+      <p class="fm-list-body-abc">d) <a id="pgfId-1014428"></a>Multiple items</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1014438"></a><i class="fm-italics1">Each individual string</i> (output)</p>
+
+      <p class="fm-list-body-abc">a) <a id="pgfId-1014455"></a>Empty</p>
+
+      <p class="fm-list-body-abc">b) <a id="pgfId-1014473"></a>Single character</p>
+
+      <p class="fm-list-body-abc">c) <a id="pgfId-1014483"></a>Multiple characters</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1014493"></a>You may think that reflecting on the outputs is not necessary. After all, if you reasoned correctly about the inputs, you are probably exercising all the possible kinds of outputs. This is a valid argument. Nevertheless, for more complex programs, reflecting on the outputs may help you see an input case that you did not identify before. <a id="marker-1014495"></a><a id="marker-1014498"></a><a id="marker-1014500"></a><a id="marker-1014502"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_7"><a id="pgfId-1014508"></a>2.1.4 Step 4: Analyze the boundaries</h3>
+
+  <p class="body"><a id="pgfId-1014541"></a><a id="marker-1014519"></a><a id="marker-1014521"></a>Bugs in the boundaries of the input domain are common in software systems. As developers, we have all made mistakes such as using a “greater than” operator (<code class="fm-code-in-text">&gt;</code>) where it should have been a “greater than or equal to” operator (<code class="fm-code-in-text">&gt;=</code>). Programs with such bugs tend to work well for most provided inputs, but they fail when the input is near the boundary. Boundaries are everywhere, and our goal in this section is to learn how to identify them.</p>
+
+  <p class="body"><a id="pgfId-1014550"></a>When we devise partitions, they have <i class="fm-italics">close boundaries</i> with the other partitions. Imagine a simple program that prints “hiphip” if the given input is a number smaller than 10 or “hooray” if the given input is greater than or equal to 10. A tester can divide the input domain into two partitions: (1) the set of inputs that make the program print “hiphip” and (2) the set of inputs that make the program print “hooray”. Figure 2.2 illustrates this program’s inputs and partitions. Note that the input value 9 belongs to the “hiphip” partition, while the input value 10 belongs to the “hooray” partition.</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/02-02.png" width="419" height="250"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1041162"></a>Figure 2.2 The boundary between the “hiphip” and “hooray” partitions. Numbers up to 9 belong to the “hiphip” partition, and numbers greater than 9 belong to the “hooray” partition.</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1014575"></a>The odds of a programmer writing a bug near the boundary (in this case, near the input values 9 and 10) are greater than for other input values. This is what boundary testing is about: making the program behave correctly when inputs are near a boundary. And this is what this fourth step is about: boundary testing.</p>
+
+  <p class="body"><a id="pgfId-1014627"></a>Whenever a boundary is identified, I suggest that you test what happens to the program when inputs go from one boundary to the other. In the previous example, this would mean having a test with 9 as input and another test with 10 as input. This idea is similar to what Jeng and Weyuker proposed in their 1994 paper: testing two points whenever there is a boundary. One test is for the <i class="fm-italics">on point</i>, which is <a id="marker-1014606"></a>the point that is <i class="fm-italics">on</i> the boundary; and the other test is for the <i class="fm-italics">off point</i>, which is <a id="marker-1014632"></a>the point closest to the boundary that belongs to the partition the on point does not belong to (that is, the other partition).</p>
+
+  <p class="body"><a id="pgfId-1014655"></a>In the hiphip-hooray example, the on point is 10. Note that 10 is the number that appears in the specification of the program (input &gt;= 10) and is likely to also be the number the developer uses <a id="marker-1026117"></a>in the <code class="fm-code-in-text">if</code> statement. The value 10 makes the program print “hooray”. The off point is the point closest to the boundary that belongs to the other partition. In this case, the off point is 9. The number 9 is the closest number to 10, and it belongs to the “hiphip” partition.</p>
+
+  <p class="body"><a id="pgfId-1014690"></a>Let’s discuss two more common terms: <i class="fm-italics">in point</i> and <i class="fm-italics">out point</i>. In points are points that make the condition true. You may have an infinite number of them. In the hiphip-hooray example, 11, 12, 25, and 42 are all examples of in points. Out points, on the other hand, are points that make the condition false. 8, 7, 2, and –42 are all examples of out points. In equalities, the in point is the one in the condition, and all others are out points. For example, in <code class="fm-code-in-text">a</code> <code class="fm-code-in-text">==</code> <code class="fm-code-in-text">10</code>, 10 is the (only) in point and the on point; 12 is an out point and an off point; and 56 is an out point. Whenever you find a boundary, two tests (for the on and off points) are usually enough, although, as I will discuss later, I do not mind throwing in some interesting in and out points to have a more complete test suite.</p>
+
+  <p class="body"><a id="pgfId-1014699"></a>Another common situation in boundary testing is finding boundaries that deal with equalities. In the previous example, suppose that instead of input &gt;= 10, the specification says that the program prints “hooray” whenever the input is 10 or “hiphip” otherwise. Given that this is an equality, we now have one on point (10) but two off points (9 and 11), because the boundary applies to both sides. In this case, as a tester, you would write three test cases.</p>
+
+  <p class="body"><a id="pgfId-1014705"></a>My trick to explore boundaries is to look at all the partitions and think of inputs between them. Whenever you find one that is worth testing, you test it.</p>
+
+  <p class="body"><a id="pgfId-1014737"></a>In our example, a straightforward boundary happens when the string passes from empty to non-empty, as you know that the program stops returning empty and will (possibly) start to return something. You already covered this boundary, as you have partitions for both cases. As you examine each partition and how it makes boundaries with others, you analyze the partitions in the <code class="fm-code-in-text">(str,</code> <code class="fm-code-in-text">open,</code> <code class="fm-code-in-text">close)</code> category. The program can have no substrings, one substring, or multiple substrings. And the <code class="fm-code-in-text">open</code> and <code class="fm-code-in-text">close</code> tags may not be in the string; or, more importantly, they may be in the string, but with no substring between them. This is a boundary you should exercise! See figure 2.3.</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/02-03.png" width="552" height="260"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1041207"></a>Figure 2.3 Some of the boundaries in the <code class="fm-code-in-text">substringsBetween()</code> problem.</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1014785"></a>Whenever we identify a boundary, we devise two tests for it, one for each side of the boundary. For the “no substring”/“one substring” boundary, the two tests are as follows:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1014847"></a><code class="fm-code-in-text">str</code> contains both <code class="fm-code-in-text">open</code> and <code class="fm-code-in-text">close</code> tags, with <i class="fm-italics1">no</i> characters between them.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1014884"></a><code class="fm-code-in-text">str</code> contains both <code class="fm-code-in-text">open</code> and <code class="fm-code-in-text">close</code> tags, with characters between them.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1014893"></a>The second test is not necessary in this case, as other tests already exercise this situation. Therefore, we can discard it. <a id="marker-1014895"></a><a id="marker-1014898"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_8"><a id="pgfId-1014904"></a>2.1.5 Step 5: Devise test cases</h3>
+
+  <p class="body"><a id="pgfId-1015260"></a><a id="marker-1014915"></a><a id="marker-1014917"></a>With the inputs, outputs, and boundaries properly dissected, we can generate concrete test cases. Ideally, we would combine all the partitions we’ve devised for each of the inputs. The example has four categories, each with four or five partitions: the <code class="fm-code-in-text">str</code> category with <a id="marker-1014932"></a>four partitions (<i class="fm-italics">null string</i>, <i class="fm-italics">empty string</i>, <i class="fm-italics">string of length 1</i>, and <i class="fm-italics">string of length &gt; 1</i>), the <code class="fm-code-in-text">open</code> category with <a id="marker-1014988"></a>four partitions (the same as <code class="fm-code-in-text">str</code>), the <code class="fm-code-in-text">close</code> category with <a id="marker-1015014"></a>four partitions (also the same as <code class="fm-code-in-text">str</code>), and the (<code class="fm-code-in-text">str</code>, <code class="fm-code-in-text">open</code>, <code class="fm-code-in-text">close</code>) category with five partitions (<i class="fm-italics">string does not contain either the</i> <code class="fm-code-in-text">open</code> <i class="fm-italics">or</i> <code class="fm-code-in-text">close</code> <i class="fm-italics">tags</i>, <i class="fm-italics">string contains the</i> <code class="fm-code-in-text">open</code> <i class="fm-italics">tag but does not contain the</i> <code class="fm-code-in-text">close</code> <i class="fm-italics">tag</i>, <i class="fm-italics">string contains the</i> <code class="fm-code-in-text">close</code> <i class="fm-italics">tag but does not contain the</i> <code class="fm-code-in-text">open</code> <i class="fm-italics">tag</i>, <i class="fm-italics">string contains both the</i> <code class="fm-code-in-text">open</code> <i class="fm-italics">and</i> <code class="fm-code-in-text">close</code> <i class="fm-italics">tags</i>, <i class="fm-italics">string contains both the</i> <code class="fm-code-in-text">open</code> <i class="fm-italics">and</i> <code class="fm-code-in-text">close</code> <i class="fm-italics">tags multiple times</i>). This means you would start with the <code class="fm-code-in-text">str</code> null partition and combine it with the partitions of the <code class="fm-code-in-text">open</code>, <code class="fm-code-in-text">close</code>, and (<code class="fm-code-in-text">str</code>, <code class="fm-code-in-text">open</code>, <code class="fm-code-in-text">close</code>) categories. You would end up with 4 × 4 × 4 × 5 = 320 tests. Writing 320 tests may be an effort that will not pay off.</p>
+
+  <p class="body"><a id="pgfId-1015315"></a>In such situations, we pragmatically decide which partitions should be combined with others and which should not. A first idea to reduce the number of tests is to test exceptional cases only once and not combine them. For example, the <i class="fm-italics">null string</i> partition may be tested only once and not more than that. What would we gain from combining <i class="fm-italics">null string</i> with <code class="fm-code-in-text">open</code> being null, empty, length = 1, and length &gt; 1 as well as with <code class="fm-code-in-text">close</code> being null, empty, length = 1, length &gt; 1, and so on? It would not be worth the effort. The same goes for <i class="fm-italics">empty string</i>: one test may be good enough. If we apply the same logic to the other two parameters and test them as null and empty just once, we already drastically reduce the number of test cases.</p>
+
+  <p class="body"><a id="pgfId-1015324"></a>There may be other partitions that do not need to be combined fully. In this problem, I see two:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1015364"></a>For the <i class="fm-italics1">string of length 1</i> case, given that the string has length 1, two tests may be enough: one where the single character in the string matches <code class="fm-code-in-text">open</code> and <code class="fm-code-in-text">close</code>, and one where it does not.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1015513"></a>Unless we have a good reason to believe that the program handles <code class="fm-code-in-text">open</code> and <code class="fm-code-in-text">close</code> tags of different lengths in different ways, we do not need the four combinations of (<i class="fm-italics1">open length = 1</i>, <i class="fm-italics1">close length = 1</i>), (<i class="fm-italics1">open length &gt; 1</i>, <i class="fm-italics1">close length = 1</i>), (<i class="fm-italics1">open length = 1</i>, <i class="fm-italics1">close length &gt; 1</i>), and (<i class="fm-italics1">open length &gt; 1</i>, <i class="fm-italics1">close length &gt; 1</i>). Just (<i class="fm-italics1">open length = 1</i>, <i class="fm-italics1">close length = 1</i>) and (<i class="fm-italics1">open length &gt; 1</i>, <i class="fm-italics1">close length &gt; 1</i>) are enough.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1015522"></a>In other words, do not blindly combine partitions, as doing so may lead to less relevant test cases. Looking at the implementation can also help you reduce the number of combinations. We discuss using the source code to design test cases in chapter 3.</p>
+
+  <p class="body"><a id="pgfId-1015528"></a>In the following list, I’ve marked with an [x] partitions we will not test multiple times:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1015534"></a><code class="fm-code-in-text">str</code>—Null string [x], empty string [x], length = 1 [x], length &gt; 1</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1015555"></a><code class="fm-code-in-text">open</code>—Null string [x], empty string [x], length = 1, length &gt; 1</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1015572"></a><code class="fm-code-in-text">close</code>—Null string [x], empty string [x], length = 1, length &gt; 1</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1015589"></a><code class="fm-code-in-text">str</code>—Null string [x], empty string [x], length = 1, length &gt; 1</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1015736"></a>(<code class="fm-code-in-text">str</code>, <code class="fm-code-in-text">open</code>, <code class="fm-code-in-text">close</code>)—String does not contain either the <code class="fm-code-in-text">open</code> or the <code class="fm-code-in-text">close</code> tag, string contains the <code class="fm-code-in-text">open</code> tag but does not contain the <code class="fm-code-in-text">close</code> tag, string contains the <code class="fm-code-in-text">close</code> tag but does not contain the <code class="fm-code-in-text">open</code> tag, string contains both the <code class="fm-code-in-text">open</code> and <code class="fm-code-in-text">close</code> tags, string contains both the <code class="fm-code-in-text">open</code> and <code class="fm-code-in-text">close</code> tags multiple times</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1015745"></a>With a clear understanding of which partitions need to be extensively tested and which ones do not, we can derive the test cases by performing the combination. First, the exceptional cases:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1015751"></a>T1: <code class="fm-code-in-text">str</code> is null.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1015774"></a>T2: <code class="fm-code-in-text">str</code> is empty.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1015793"></a>T3: <code class="fm-code-in-text">open</code> is null.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1015812"></a>T4: <code class="fm-code-in-text">open</code> is empty.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1015831"></a>T5: <code class="fm-code-in-text">close</code> is null.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1015850"></a>T6: <code class="fm-code-in-text">close</code> is empty.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1015869"></a>Then, <i class="fm-italics">str length = 1</i> :</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1015908"></a>T7: The single character in <code class="fm-code-in-text">str</code> matches the <code class="fm-code-in-text">open</code> tag.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1015937"></a>T8: The single character in <code class="fm-code-in-text">str</code> matches the <code class="fm-code-in-text">close</code> tag.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1015976"></a>T9: The single character in <code class="fm-code-in-text">str</code> does not match either the <code class="fm-code-in-text">open</code> or the <code class="fm-code-in-text">close</code> tag.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016015"></a>T10: The single character in <code class="fm-code-in-text">str</code> matches both the <code class="fm-code-in-text">open</code> and <code class="fm-code-in-text">close</code> tags.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1016046"></a>Now, <i class="fm-italics">str length &gt; 1,</i> <code class="fm-code-in-text">open</code> <i class="fm-italics">length = 1,</i> <code class="fm-code-in-text">close</code> <i class="fm-italics">= 1</i> :</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016092"></a>T11: <code class="fm-code-in-text">str</code> does not contain either the <code class="fm-code-in-text">open</code> or the <code class="fm-code-in-text">close</code> tag.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016131"></a>T12: <code class="fm-code-in-text">str</code> contains the <code class="fm-code-in-text">open</code> tag but does not contain the <code class="fm-code-in-text">close</code> tag.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016170"></a>T13: <code class="fm-code-in-text">str</code> contains the <code class="fm-code-in-text">close</code> tag but does not contain the <code class="fm-code-in-text">open</code> tag.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016209"></a>T14: <code class="fm-code-in-text">str</code> contains both the <code class="fm-code-in-text">open</code> and <code class="fm-code-in-text">close</code> tags.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016248"></a>T15: <code class="fm-code-in-text">str</code> contains both the <code class="fm-code-in-text">open</code> and <code class="fm-code-in-text">close</code> tags multiple times.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1016279"></a>Next, <i class="fm-italics">str length &gt; 1,</i> <code class="fm-code-in-text">open</code> <i class="fm-italics">length &gt; 1,</i> <code class="fm-code-in-text">close</code> <i class="fm-italics">&gt; 1</i> :</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016325"></a>T16: <code class="fm-code-in-text">str</code> does not contain either the <code class="fm-code-in-text">open</code> or the <code class="fm-code-in-text">close</code> tag.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016364"></a>T17: <code class="fm-code-in-text">str</code> contains the <code class="fm-code-in-text">open</code> tag but does not contain the <code class="fm-code-in-text">close</code> tag.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016403"></a>T18: <code class="fm-code-in-text">str</code> contains the <code class="fm-code-in-text">close</code> tag but does not contain the <code class="fm-code-in-text">open</code> tag.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016442"></a>T19: <code class="fm-code-in-text">str</code> contains both the <code class="fm-code-in-text">open</code> and <code class="fm-code-in-text">close</code> tags.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016481"></a>T20: <code class="fm-code-in-text">str</code> contains both the <code class="fm-code-in-text">open</code> and <code class="fm-code-in-text">close</code> tags multiple times.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1016490"></a>Finally, here is the test for the boundary:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016530"></a>T21: <code class="fm-code-in-text">str</code> contains both the <code class="fm-code-in-text">open</code> and <code class="fm-code-in-text">close</code> tags with no characters between them.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1016539"></a>We end up with 21 tests. Note that deriving them did not require much creativity: the process we followed was systematic. This is the idea!<a id="marker-1016541"></a><a id="marker-1016544"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_9"><a id="pgfId-1016550"></a>2.1.6 Step 6: Automate the test cases</h3>
+
+  <p class="body"><a id="pgfId-1016560"></a><a id="marker-1016561"></a>It is now time to transform the test cases into automated JUnit tests. Writing those tests is mostly a mechanical task. The creative part is coming up with inputs to exercise the specific partition and understanding the correct program output for that partition.</p>
+
+  <p class="body"><a id="pgfId-1016569"></a>The automated test suite is shown in listings 2.3 through 2.7. They are long but easy to understand. Each call to the <code class="fm-code-in-text">substringsBetween</code> method is <a id="marker-1016580"></a>one of our test cases. The 21 calls to it are spread over the test methods, each matching the test cases we devised earlier.</p>
+
+  <p class="body"><a id="pgfId-1016590"></a>First are the tests related to the string being null or empty.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1016647"></a>Listing 2.3 Tests for <code class="fm-code-in-text">substringsBetween</code>, part 1</p>
+  <pre class="programlisting"><a id="pgfId-1016596"></a>import org.junit.jupiter.api.Test;
+<a id="pgfId-1016699"></a>import static ch2.StringUtils.substringsBetween;
+<a id="pgfId-1016705"></a>import static org.assertj.core.api.Assertions.assertThat;
+<a id="pgfId-1016716"></a> 
+<a id="pgfId-1016711"></a>public class StringUtilsTest {
+<a id="pgfId-1016727"></a> 
+<a id="pgfId-1016722"></a>  @Test
+<a id="pgfId-1016733"></a>  void strIsNullOrEmpty() {
+<a id="pgfId-1016739"></a>    assertThat(substringsBetween(null, "a", "b"))   <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1016751"></a>      .isEqualTo(null);
+<a id="pgfId-1016762"></a> 
+<a id="pgfId-1016757"></a>    assertThat(substringsBetween("", "a", "b"))     <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1016774"></a>      .isEqualTo(new String[]{});
+<a id="pgfId-1016780"></a>  }
+<a id="pgfId-1016791"></a> 
+<a id="pgfId-1016786"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1038656"></a><span class="fm-combinumeral">❶</span> This first call to substringsBetween is our test T1.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1038677"></a><span class="fm-combinumeral">❷</span> Test T2</p>
+
+  <p class="body"><a id="pgfId-1016849"></a>Next are all the tests related to <code class="fm-code-in-text">open</code> or <code class="fm-code-in-text">close</code> being null or empty.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1016909"></a>Listing 2.4 Tests for <code class="fm-code-in-text">substringsBetween</code>, part 2</p>
+  <pre class="programlisting"><a id="pgfId-1016858"></a>  @Test
+<a id="pgfId-1016961"></a>  void openIsNullOrEmpty() {
+<a id="pgfId-1016967"></a>    assertThat(substringsBetween("abc", null, "b")).isEqualTo(null);
+<a id="pgfId-1016973"></a>    assertThat(substringsBetween("abc", "", "b")).isEqualTo(null);
+<a id="pgfId-1016979"></a>  }
+<a id="pgfId-1016990"></a> 
+<a id="pgfId-1016985"></a>  @Test
+<a id="pgfId-1016996"></a>  void closeIsNullOrEmpty() {
+<a id="pgfId-1017002"></a>    assertThat(substringsBetween("abc", "a", null)).isEqualTo(null);
+<a id="pgfId-1017008"></a>    assertThat(substringsBetween("abc", "a", "")).isEqualTo(null);
+<a id="pgfId-1017014"></a>  }</pre>
+
+  <p class="body"><a id="pgfId-1017036"></a>Now come all the tests related to string and <code class="fm-code-in-text">open</code> and <code class="fm-code-in-text">close</code> tags with length 1.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1017096"></a>Listing 2.5 Tests for <code class="fm-code-in-text">substringsBetween</code>, part 3</p>
+  <pre class="programlisting"><a id="pgfId-1017045"></a>  @Test
+<a id="pgfId-1017148"></a>  void strOfLength1() {
+<a id="pgfId-1017154"></a>    assertThat(substringsBetween("a", "a", "b")).isEqualTo(null);
+<a id="pgfId-1017160"></a>    assertThat(substringsBetween("a", "b", "a")).isEqualTo(null);
+<a id="pgfId-1017166"></a>    assertThat(substringsBetween("a", "b", "b")).isEqualTo(null);
+<a id="pgfId-1017172"></a>    assertThat(substringsBetween("a", "a", "a")).isEqualTo(null);
+<a id="pgfId-1017178"></a>  }
+<a id="pgfId-1017189"></a> 
+<a id="pgfId-1017184"></a>  @Test
+<a id="pgfId-1017195"></a>  void openAndCloseOfLength1() {
+<a id="pgfId-1017201"></a>    assertThat(substringsBetween("abc", "x", "y")).isEqualTo(null);
+<a id="pgfId-1017207"></a>    assertThat(substringsBetween("abc", "a", "y")).isEqualTo(null);
+<a id="pgfId-1017213"></a>    assertThat(substringsBetween("abc", "x", "c")).isEqualTo(null);
+<a id="pgfId-1017219"></a>    assertThat(substringsBetween("abc", "a", "c"))
+<a id="pgfId-1017225"></a>      .isEqualTo(new String[] {"b"});
+<a id="pgfId-1017231"></a>    assertThat(substringsBetween("abcabc", "a", "c"))
+<a id="pgfId-1017237"></a>      .isEqualTo(new String[] {"b", "b"});
+<a id="pgfId-1017243"></a>  }</pre>
+
+  <p class="body"><a id="pgfId-1017265"></a>Then we have the tests for the <code class="fm-code-in-text">open</code> and <code class="fm-code-in-text">close</code> tags of varying sizes.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1017325"></a>Listing 2.6 Tests for <code class="fm-code-in-text">substringsBetween</code>, part 4</p>
+  <pre class="programlisting"><a id="pgfId-1017274"></a>  @Test
+<a id="pgfId-1017377"></a>  void openAndCloseTagsOfDifferentSizes() {
+<a id="pgfId-1017383"></a>    assertThat(substringsBetween("aabcc", "xx", "yy")).isEqualTo(null);  
+<a id="pgfId-1017395"></a>    assertThat(substringsBetween("aabcc", "aa", "yy")).isEqualTo(null);
+<a id="pgfId-1017401"></a>    assertThat(substringsBetween("aabcc", "xx", "cc")).isEqualTo(null);
+<a id="pgfId-1017407"></a>    assertThat(substringsBetween("aabbcc", "aa", "cc"))
+<a id="pgfId-1017413"></a>      .isEqualTo(new String[] {"bb"});
+<a id="pgfId-1017419"></a>    assertThat(substringsBetween("aabbccaaeecc", "aa", "cc"))
+<a id="pgfId-1017425"></a>      .isEqualTo(new String[] {"bb", "ee"});
+<a id="pgfId-1017431"></a>  }</pre>
+
+  <p class="body"><a id="pgfId-1017473"></a>Finally, here is the test for when there is no substring between the <code class="fm-code-in-text">open</code> and <code class="fm-code-in-text">close</code> tags.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1017533"></a>Listing 2.7 Tests for <code class="fm-code-in-text">substringsBetween</code>, part 5</p>
+  <pre class="programlisting"><a id="pgfId-1017482"></a>@Test
+<a id="pgfId-1017585"></a>void noSubstringBetweenOpenAndCloseTags() {
+<a id="pgfId-1017591"></a>  assertThat(substringsBetween("aabb", "aa", "bb"))
+<a id="pgfId-1017597"></a>    .isEqualTo(new String[] {""});
+<a id="pgfId-1017603"></a>  }
+<a id="pgfId-1017609"></a>}</pre>
+
+  <p class="body"><a id="pgfId-1017660"></a>I decided to group the assertions in five different methods. They almost match my groups when engineering the test cases in step 5. The only difference is that I broke the exceptional cases into <a id="marker-1017617"></a>three <a id="marker-1017623"></a>test <a id="marker-1017629"></a>methods: <code class="fm-code-in-text">strIsNullOrEmpty</code>, <code class="fm-code-in-text">openIsNullOrEmpty</code>, and <code class="fm-code-in-text">closeIsNullOrEmpty</code>.</p>
+
+  <p class="body"><a id="pgfId-1017682"></a>Some developers would vouch for a single method per test case, which would mean 21 test methods, each containing one method call and one assertion. The advantage would be that the test method’s name would clearly describe the test case. JUnit also offers <a id="marker-1017671"></a>the <code class="fm-code-in-text">ParameterizedTest</code> feature (<a class="url" href="http://mng.bz/voKp">http://mng.bz/voKp</a>), which could be used in this case.</p>
+
+  <p class="body"><a id="pgfId-1017692"></a>I prefer simple test methods that focus on one test case, especially when implementing complex business rules in enterprise systems. But in this case, there are lots of inputs to test, and many of them are variants of a larger partition, so it made more sense to me to code the way I did.</p>
+
+  <p class="body"><a id="pgfId-1017698"></a>Deciding whether to put all tests in a single method or in multiple methods is highly subjective. We discuss test code quality and how to write tests that are easy to understand and debug in chapter 10.</p>
+
+  <p class="body"><a id="pgfId-1017730"></a>Also note that sometimes there are values we do not care about. For example, consider test case 1: <code class="fm-code-in-text">str</code> is null. We do not care about the values we pass to the <code class="fm-code-in-text">open</code> and <code class="fm-code-in-text">close</code> tags here. My usual approach is to select reasonable values for the inputs I do not care about—that is, values that will not interfere with the test. <a id="marker-1017735"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_10"><a id="pgfId-1017742"></a>2.1.7 Step 7: Augment the test suite with creativity and experience</h3>
+
+  <p class="body"><a id="pgfId-1017752"></a><a id="marker-1017753"></a>Being systematic is good, but we should never discard our experience. In this step, we look at the partitions we’ve devised and see if we can develop interesting variations. Variation is always a good thing to have in testing.</p>
+
+  <p class="body"><a id="pgfId-1017817"></a>In the example, when revisiting the tests, I noticed that we never tried strings with spaces. I decided to engineer two extra tests based on T15 and T20, both about “<code class="fm-code-in-text">str</code> contains both <code class="fm-code-in-text">open</code> and <code class="fm-code-in-text">close</code> tags multiple times”: one for <code class="fm-code-in-text">open</code> and <code class="fm-code-in-text">close</code> tags with lengths 1, another for <code class="fm-code-in-text">open</code> and <code class="fm-code-in-text">close</code> tags with larger lengths. These check whether the implementation works if there are whitespaces in the string. You see them in listing 2.8.</p>
+
+  <p class="fm-callout"><a id="pgfId-1017826"></a><span class="fm-callout-head">Note</span> It’s possible we don’t need to test for this extra case. Maybe the implementation handles strings in a generic way. For now, we are only looking at the requirements, and testing special characters is always a good idea. If you have access to the implementation (as we discuss in the next chapter), the code can help you decide whether a test is relevant.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1017893"></a>Listing 2.8 Tests for <code class="fm-code-in-text">substringsBetween</code> using parameterized tests, part 6</p>
+  <pre class="programlisting"><a id="pgfId-1017842"></a>@Test
+<a id="pgfId-1017945"></a>void openAndCloseOfLength1() {
+<a id="pgfId-1017951"></a>  // ... previous assertions here
+<a id="pgfId-1017957"></a>  assertThat(substringsBetween("abcabyt byrc", "a", "c"))
+<a id="pgfId-1017963"></a>    .isEqualTo(new String[] {"b", "byt byr"});
+<a id="pgfId-1017969"></a>}
+<a id="pgfId-1017980"></a> 
+<a id="pgfId-1017975"></a>@Test
+<a id="pgfId-1017986"></a>void openAndCloseTagsOfDifferentSizes() {
+<a id="pgfId-1017992"></a>  // ... previous assertions here
+<a id="pgfId-1017998"></a>  assertThat(substringsBetween("a abb ddc ca abbcc", "a a", "c c")).
+<a id="pgfId-1018004"></a>  <span class="fm-code-continuation-arrow">➥</span> isEqualTo(new String[] {"bb dd"});
+<a id="pgfId-1018021"></a>}</pre>
+
+  <p class="body"><a id="pgfId-1018027"></a>We end up with 23 test cases. Take time to revisit all the steps we have worked through, and then consider this question: are we finished?</p>
+
+  <p class="body"><a id="pgfId-1018033"></a>We are finished with specification testing. However, we are not done testing. After specification testing, the next step is to bring the implementation into play and augment our test suite with what we see in the code. That is the topic of chapter 3.</p>
+
+  <div class="fm-sidebar-block">
+    <p class="fm-sidebar-title"><a class="calibre13" id="pgfId-1018039"></a>Four eyes are better than two</p>
+
+    <p class="fm-sidebar-text"><a id="pgfId-1018145"></a>A reviewer of this book had an interesting question: what about a test case where the input is <b class="fm-bold">aabcddaabeddaab</b>, <code class="fm-code-in-text">open</code> is <b class="fm-bold">aa</b>, and <code class="fm-code-in-text">close</code> is <b class="fm-bold">d</b>? “bc” and “be” are the substrings between the provided <code class="fm-code-in-text">open</code> and the <code class="fm-code-in-text">close</code> tags (aa<b class="fm-bold">&lt;bc&gt;</b>ddaa<b class="fm-bold">&lt;be&gt;</b>ddaab), but “bcddaabed” could also be considered a substring (aa<b class="fm-bold">&lt;bcddaabed&gt;</b>daab).</p>
+
+    <p class="fm-sidebar-text"><a id="pgfId-1018154"></a>At first, I thought I had missed this test case. But in fact, it is the same as T15 and T20.</p>
+
+    <p class="fm-sidebar-text"><a id="pgfId-1040071"></a>Different people approach problems in different ways. My thought process was, “Let’s see if the program breaks if we have multiple <code class="fm-code-in-text">open</code> and <code class="fm-code-in-text">close</code> tags in the string.” The reviewer may have thought, “Let’s see if the program will incorrectly go for the longer substring.”</p>
+
+    <p class="fm-sidebar-text"><a id="pgfId-1040072"></a>We want to make testing as systematic as possible, but a lot depends on how the developer models the problem. Sometimes you will not see all the test cases. When you do come up with a new test, add it to the test suite!<a id="marker-1040073"></a><a id="marker-1040074"></a></p>
+  </div>
+
+  <h2 class="fm-head" id="heading_id_11"><a id="pgfId-1018196"></a>2.2 Specification-based testing in a nutshell</h2>
+
+  <p class="body"><a id="pgfId-1018232"></a><a id="marker-1018207"></a>I propose a seven-step approach to derive systematic tests based on a specification. This approach is a mix <a id="marker-1018211"></a>of the <i class="fm-italics">category-partition method</i> proposed by Ostrand and Balcer in their seminal 1988 work, and Kaner et al.’s <i class="fm-italics">Domain Testing Workbook</i> (2013), with my <a id="marker-1018237"></a>own twist: see figure 2.4.</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/02-04.png" width="737" height="175"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1041249"></a>Figure 2.4 The seven steps I propose to derive test cases based on specifications. The solid arrows indicate the standard path to follow. The dashed arrows indicate that, as always, the process should be iterative, so in practice you’ll go back and forth until you are confident about the test suite you’ve created.</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1018257"></a>The steps are as follows:</p>
+
+  <ol class="calibre14">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1018277"></a><i class="fm-italics1">Understand the requirement, inputs, and outputs.</i> We need an overall idea of what we are about to test. Read the requirements carefully. What should the program do? What should it not do? Does it handle specific corner cases? Identify the input and output variables in play, their types (integers, strings, and so on), and their input domain (for example, is the variable a number that must be between 5 and 10?). Some of these characteristics can be found in the program’s specification; others may not be stated explicitly. Try to understand the nitty-gritty details of the requirements.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1018298"></a><i class="fm-italics1">Explore the program.</i> If you did not write the program yourself, a very good way to determine what it does (besides reading the documentation) is to play with it. Call the program under test with different inputs and see what it produces as output. Continue until you are sure your mental model matches what the program does. This exploration does not have to be (and should not be) systematic. Rather, focus on increasing your understanding. Remember that you are still not testing the program.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1018315"></a><i class="fm-italics1">Judiciously explore the possible inputs and outputs, and identify the partitions.</i> Identifying the correct partitions is the hardest part of testing. If you miss one, you may let a bug slip through. I propose three steps to identify the partitions:</p>
+
+      <p class="fm-list-body-abc">a) <a id="pgfId-1018332"></a>Look at each input variable individually. Explore its type (is it an integer? is it a string?) and the range of values it can receive (can it be null? is it a number ranging from 0 to 100? does it allow negative numbers?).</p>
+
+      <p class="fm-list-body-abc">b) <a id="pgfId-1018350"></a>Look at how each variable may interact with another. Variables often have dependencies or put constraints on each other, and those should be tested.</p>
+
+      <p class="fm-list-body-abc">c) <a id="pgfId-1018360"></a>Explore the possible types of outputs, and make sure you are testing them all. While exploring the inputs and outputs, pay attention to any implicit (business) rules, logic, or expected behavior.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1018370"></a><i class="fm-italics1">Identify the boundaries.</i> Bugs love boundaries, so be extra thorough here. Analyze the boundaries of all the partitions you devised in the previous step. Identify the relevant ones, and add them to the list.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1018387"></a><i class="fm-italics1">Devise test cases based on the partitions and boundaries.</i> The basic idea is to combine all the partitions in the different categories to test all possible combinations of inputs. However, combining them all may be too expensive, so part of the task is to reduce the number of combinations. The common strategy is to test exceptional behavior only once and not combine it with the other partitions.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1018404"></a><i class="fm-italics1">Automate the test cases.</i> A test is only a test when it is automated. Therefore, the goal is to write (JUnit) automated tests for all the test cases you just devised. This means identifying concrete input values for them and having a clear expectation of what the program should do (the output). Remember that test code is code, so reduce duplication and ensure that the code is easy to read and that the different test cases are easily identifiable in case one fails.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1018421"></a><i class="fm-italics1">Augment the test suite with creativity and experience.</i> Perform some final checks. Revisit all the tests you created, using your experience and creativity. Did you miss something? Does your gut feeling tell you that the program may fail in a specific case? If so, add a new test case. <a class="calibre13" id="marker-1018434"></a></p>
+    </li>
+  </ol>
+
+  <h2 class="fm-head" id="heading_id_12"><a id="pgfId-1018441"></a>2.3 Finding bugs with specification testing</h2>
+
+  <p class="body"><a id="pgfId-1018464"></a><a id="marker-1018452"></a><a id="marker-1018454"></a>The developers of the Apache Commons Lang framework (the framework where I extracted the implementation of the <code class="fm-code-in-text">substringsBetween</code> method) are just too good. We did not find any bugs there. Let’s look at another example: one implemented by me, an average developer who makes mistakes from time to time. This example will show you the value of specification testing. Try to spot the bug before I reveal it!</p>
+
+  <p class="body"><a id="pgfId-1018473"></a>Some friends and I have participated in many coding challenges, primarily for fun. A couple of years ago we worked on the following problem inspired by LeetCode (<a class="url" href="https://leetcode.com/problems/add-two-numbers">https://leetcode.com/problems/add-two-numbers</a>):</p>
+
+  <p class="fm-callout"><a id="pgfId-1018506"></a>The method receives two numbers, <code class="fm-code-in-text">left</code> and <code class="fm-code-in-text">right</code> (each represented as a list of digits), adds them, and returns the result as a list of digits.</p>
+
+  <p class="fm-callout"><a id="pgfId-1018541"></a>Each element in the <code class="fm-code-in-text">left</code> and <code class="fm-code-in-text">right</code> lists of digits should be a number from [0–9]. An <code class="fm-code-in-text">IllegalArgumentException</code> is thrown if this pre-condition does not hold.</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-bullet-callout">
+      <p class="list-s"><a id="pgfId-1018572"></a><code class="fm-code-in-text">left</code>—A list containing the left number. Null returns <code class="fm-code-in-text">null</code>; empty means 0.</p>
+    </li>
+
+    <li class="fm-list-bullet-callout">
+      <p class="list-s"><a id="pgfId-1018599"></a><code class="fm-code-in-text">right</code>—A list containing the right number. Null returns <code class="fm-code-in-text">null</code>; empty means 0.</p>
+    </li>
+  </ul>
+
+  <p class="fm-callout"><a id="pgfId-1018624"></a>The program returns the sum of <code class="fm-code-in-text">left</code> and <code class="fm-code-in-text">right</code> as a list of digits.</p>
+
+  <p class="body"><a id="pgfId-1018649"></a>For example, adding the numbers 23 and 42 means a (<code class="fm-code-in-text">left</code>) list with two elements [2,3], a (<code class="fm-code-in-text">right</code>) list with two elements [4,2] and, as an output, a list with two elements [6,5] (since 23 + 42 = 65).</p>
+
+  <p class="body"><a id="pgfId-1018658"></a>My initial implementation was as follows.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1018715"></a>Listing 2.9 Initial implementation of the <code class="fm-code-in-text">add()</code> method</p>
+  <pre class="programlisting"><a id="pgfId-1018664"></a>public List&lt;Integer&gt; add(List&lt;Integer&gt; left, List&lt;Integer&gt; right) {
+<a id="pgfId-1018767"></a>  if (left == null || right == null)                          <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1018779"></a>    return null;
+<a id="pgfId-1018790"></a> 
+<a id="pgfId-1018785"></a>  Collections.reverse(left);                                  <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1018802"></a>  Collections.reverse(right);
+<a id="pgfId-1018813"></a> 
+<a id="pgfId-1018808"></a>  LinkedList&lt;Integer&gt; result = new LinkedList&lt;&gt;();
+<a id="pgfId-1018824"></a> 
+<a id="pgfId-1018819"></a>  int carry = 0;
+<a id="pgfId-1018835"></a> 
+<a id="pgfId-1018830"></a>  for (int i = 0; i &lt; max(left.size(), right.size()); i++) {  <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1018852"></a> 
+<a id="pgfId-1018847"></a>    int leftDigit = left.size() &gt; i ? left.get(i) : 0;
+<a id="pgfId-1018858"></a>    int rightDigit = right.size() &gt; i ? right.get(i) : 0;
+<a id="pgfId-1018869"></a> 
+<a id="pgfId-1018864"></a>    if (leftDigit &lt; 0 || leftDigit &gt; 9 ||
+<a id="pgfId-1018875"></a>     rightDigit &lt; 0 || rightDigit &gt; 9)                        <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1018887"></a>      throw new IllegalArgumentException();
+<a id="pgfId-1018898"></a> 
+<a id="pgfId-1018893"></a>    int sum = leftDigit + rightDigit + carry;                 <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1018915"></a> 
+<a id="pgfId-1018910"></a>    result.addFirst(sum % 10);                                <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1018932"></a> 
+<a id="pgfId-1018927"></a>    carry = sum / 10;                                         <span class="fm-combinumeral">❼</span>
+<a id="pgfId-1018944"></a>  }
+<a id="pgfId-1018955"></a> 
+<a id="pgfId-1018950"></a>  return result;
+<a id="pgfId-1018961"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1038156"></a><span class="fm-combinumeral">❶</span> Returns null if left or right is null</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1038177"></a><span class="fm-combinumeral">❷</span> Reverses the numbers so the least significant digit is on the left</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1038194"></a><span class="fm-combinumeral">❸</span> While there is a digit, keeps summing, taking carries into consideration</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1038218"></a><span class="fm-combinumeral">❹</span> Throws an exception if the pre-condition does not hold</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1038235"></a><span class="fm-combinumeral">❺</span> Sums the left digit with the right digit with the possible carry</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1038252"></a><span class="fm-combinumeral">❻</span> The digit should be a number between 0 and 9. We calculate it by taking the rest of the division (the % operator) of the sum by 10.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1038269"></a><span class="fm-combinumeral">❼</span> If the sum is greater than 10, carries the rest of the division to the next digit</p>
+
+  <p class="body"><a id="pgfId-1019099"></a>The algorithm works as follows. First it reverses both lists of digits, so the least significant digit is on the left. This makes it easier for us to loop through the list. Then, for each digit in both the <code class="fm-code-in-text">left</code> and <code class="fm-code-in-text">right</code> numbers, the algorithm gets the next relevant digits and sums them. If the resulting sum is greater than 10, +1 needs to be carried to the next most significant digit. In the end, the algorithm returns the list.</p>
+
+  <p class="body"><a id="pgfId-1019108"></a>I was just having fun with coding, so I did not write systematic tests. I tried a couple of inputs and observed that the output was correct. If you already understand the concept of code coverage, these four tests achieve 100% branch coverage if we discard the <code class="fm-code-in-text">if</code>s related to checking null and pre-conditions (if you are not familiar with code coverage, don’t worry; we discuss it in the next chapter):</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019123"></a>T1 = [1] + [1] = [2]</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019137"></a>T2 = [1,5] + [1,0] = [2,5]</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019147"></a>T3 = [1,5] + [1,5] = [3,0]</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019157"></a>T4 = [5,0,0] + [2,5,0] = [7,5,0]</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1019167"></a>The program worked fine for these inputs. I submitted it to the coding challenge platform, and, to my surprise, the implementation was rejected! There was a bug in my code. Before I show you where it is, here is how specification testing would have caught it.</p>
+
+  <p class="body"><a id="pgfId-1019173"></a>First we analyze each parameter in isolation:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019179"></a><code class="fm-code-in-text">left</code> <i class="fm-italics1">parameter</i> —It is <a class="calibre13" id="marker-1019202"></a>a list, so we should first exercise basic inputs such as null, empty, a single digit, and multiple digits. Given that this list represents a number, we should also try a number with many zeroes on the left. Such zeroes are useless, but it is good to see whether the implementation can handle them. Thus we have the following partitions:</p>
+
+      <ul class="calibre15">
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1019212"></a>Empty</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1019230"></a>Null</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1019240"></a>Single digit</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1019250"></a>Multiple digits</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1019260"></a>Zeroes on the left</li>
+      </ul>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019300"></a><code class="fm-code-in-text">right</code> <i class="fm-italics1">parameter</i> —We have the <a class="calibre13" id="marker-1019289"></a>same list of partitions as for the <code class="fm-code-in-text">left</code> parameter:</p>
+
+      <ul class="calibre15">
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1019309"></a>Empty</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1019327"></a>Null</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1019337"></a>Single digit</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1019347"></a>Multiple digits</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1019357"></a>Zeroes on the left</li>
+      </ul>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1019381"></a><code class="fm-code-in-text">left</code> and <code class="fm-code-in-text">right</code> have a relationship. Let’s explore that:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019424"></a>(<code class="fm-code-in-text">left</code>, <code class="fm-code-in-text">right</code>) <i class="fm-italics1">parameters</i> —They can be different sizes, and the program should be able to handle it:</p>
+
+      <ul class="calibre15">
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1019461"></a>length(<code class="fm-code-in-text">left</code> list) &gt; length(<code class="fm-code-in-text">right</code> list)</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1019490"></a>length(<code class="fm-code-in-text">left</code> list) &lt; length(<code class="fm-code-in-text">right</code> list)</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1019519"></a>length(<code class="fm-code-in-text">left</code> list) = length(<code class="fm-code-in-text">right</code> list)</li>
+      </ul>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1019544"></a>While not explicit in the documentation, we know that the sum of two numbers should be the same regardless of whether the highest number is on the left or right side of the equation. We also know that some sums require carrying. For example, suppose we’re summing 18 + 15: 8 + 5 = 13, which means we have a 3, and we carry +1 to the next digit. We then add 1 + 1 + 1: the first 1 from the <code class="fm-code-in-text">left</code> number, the second 1 from the <code class="fm-code-in-text">right</code> number, and the third 1 carried from the previous sum. The final result is 33. Figure 2.5 illustrates this process.</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/02-05.png" width="269" height="137"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1041291"></a>Figure 2.5 Illustrating the carry when summing 18 + 15</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1019563"></a>The carry is such an important concept in this program that it deserves testing. This is what I meant in listing 2.9 when I said to pay extra attention to specific (business) rules and logic:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019583"></a><i class="fm-italics1">Carry</i> —Let’s try sums that require carrying in many different ways. These are good places to start:</p>
+
+      <ul class="calibre15">
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1019604"></a>Sum without a carry</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1019622"></a>Sum with a carry: one carry at the beginning</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1019632"></a>Sum with a carry: one carry in the middle</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1019642"></a>Sum with a carry: many carries</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1019652"></a>Sum with a carry: many carries, not in a row</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1019662"></a>Sum with a carry: carry propagated to a new (most significant) digit</li>
+      </ul>
+    </li>
+  </ul>
+
+  <div class="fm-sidebar-block">
+    <p class="fm-sidebar-title"><a class="calibre13" id="pgfId-1019672"></a>Domain knowledge is still fundamental to engineer good test cases</p>
+
+    <p class="fm-sidebar-text"><a id="pgfId-1019682"></a>Up to this point, this chapter may have given you the impression that if you analyze every parameter of the method, you can derive all the test cases you need. Life would be much easier if that were true!</p>
+
+    <p class="fm-sidebar-text"><a id="pgfId-1039799"></a>Analyzing parameters, even without much domain knowledge, will help you uncover many bugs. However, having a deep understanding of the requirements is still key in devising good test cases. In the current example, the requirements do not discuss the carry. We devised many tests around the carry because we have a deep knowledge of the problem. We build up knowledge over time; so although the systematic approaches I discuss will help you uncover many common bugs, it is your job to learn about the domain of the software system you’re working on. (And if you wrote the code, you have an advantage: you know it deeply!)</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1019694"></a>The only boundary worth testing is the following: ensuring that cases such as 99 + 1 (where the final number is carried to a new, most significant digit) are covered. This comes from the last partition derived when analyzing the <i class="fm-italics">carry</i>: “Sum with a carry: carry propagated to a new (most significant) digit.”</p>
+
+  <p class="body"><a id="pgfId-1019709"></a>With all the inputs and outputs analyzed, it is time to derive concrete test cases. Let’s apply the following strategy:</p>
+
+  <ol class="calibre14">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019715"></a>Test nulls and empties just once.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019729"></a>Test numbers with single digits just once.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019779"></a>Test numbers with multiple digits, with <code class="fm-code-in-text">left</code> and <code class="fm-code-in-text">right</code> having the same and different lengths. We will be thorough and have the same set of tests for both equal and different lengths, and we will duplicate the test suite to ensure that everything works if <code class="fm-code-in-text">left</code> is longer than <code class="fm-code-in-text">right</code> or vice versa.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019788"></a>We will exercise the zeroes on the left, but a few test cases are enough.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019798"></a>Test the boundary.</p>
+    </li>
+  </ol>
+
+  <p class="body"><a id="pgfId-1019808"></a>Let’s look at the specific test cases:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019814"></a>Nulls and empties</p>
+
+      <ul class="calibre15">
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1019828"></a>T1: left null</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1019846"></a>T2: left empty</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1019856"></a>T3: right null</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1019866"></a>T4: right empty</li>
+      </ul>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019876"></a>Single digits</p>
+
+      <ul class="calibre15">
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1019886"></a>T5: single digit, no carry</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1019904"></a>T6: single digit, carry</li>
+      </ul>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019914"></a>Multiple digits</p>
+
+      <ul class="calibre15">
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1019924"></a>T7: no carry</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1019942"></a>T8: carry in the least significant digit</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1019952"></a>T9: carry in the middle</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1019962"></a>T10: many carries</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1019972"></a>T11: many carries, not in a row</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1019982"></a>T12: carry propagated to a new (now most significant) digit</li>
+      </ul>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1020032"></a>Multiple digits with different lengths (one for <code class="fm-code-in-text">left</code> longer than <code class="fm-code-in-text">right</code>, and one for <code class="fm-code-in-text">right</code> longer than <code class="fm-code-in-text">left</code>)</p>
+
+      <ul class="calibre15">
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1020041"></a>T13: no carry</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1020059"></a>T14: carry in the least significant digit</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1020069"></a>T15: carry in the middle</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1020079"></a>T16: many carries</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1020089"></a>T17: many carries, not in a row</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1020099"></a>T18: carry propagated to a new (now most significant) digit</li>
+      </ul>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1020109"></a>Zeroes on the left</p>
+
+      <ul class="calibre15">
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1020119"></a>T19: no carry</li>
+
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1020137"></a>T20: carry</li>
+      </ul>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1020147"></a>Boundaries</p>
+
+      <ul class="calibre15">
+        <li class="fm-list-numbered"><a class="calibre13" id="pgfId-1020157"></a>T21: carry to a new most significant digit, by one (such as 99 +1 ).</li>
+      </ul>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1020175"></a>Now we transform them into automated test cases, as shown in listing 2.10. A few remarks about this listing:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1020253"></a>This test uses the <code class="fm-code-in-text">ParameterizedTest</code> feature from JUnit. The idea is that we write a single generic test method that works like a skeleton. Instead of having hard-coded values, it uses variables. The concrete values are passed to the test method later. The <code class="fm-code-in-text">testCases()</code> method provides <a class="calibre13" id="marker-1026195"></a>inputs to <a class="calibre13" id="marker-1026196"></a>the <code class="fm-code-in-text">shouldReturnCorrectResult</code> test method. The link between the test method and the method source is done through <a class="calibre13" id="marker-1026197"></a>the <code class="fm-code-in-text">@MethodSource</code> annotation. JUnit offers other ways to provide inputs to methods, such as inline comma-separated values (see the <code class="fm-code-in-text">@CsvSource</code> annotation in the documentation).</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1020298"></a>The <code class="fm-code-in-text">numbers()</code> helper method <a class="calibre13" id="marker-1020277"></a>receives a list of integers and converts it to a <code class="fm-code-in-text">List&lt;Integer&gt;</code>, which the method under test receives. This helper method increases the legibility of the test methods. (For the Java experts, the <code class="fm-code-in-text">Arrays</code> <code class="fm-code-in-text">.asList()</code> native method would have yielded the same result.)</p>
+    </li>
+  </ul>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1020358"></a>Listing 2.10 Tests for the <code class="fm-code-in-text">add</code> method</p>
+  <pre class="programlisting"><a id="pgfId-1020307"></a>import org.junit.jupiter.params.ParameterizedTest;
+<a id="pgfId-1020410"></a>import org.junit.jupiter.params.provider.Arguments;
+<a id="pgfId-1020416"></a>import org.junit.jupiter.params.provider.MethodSource;
+<a id="pgfId-1020427"></a> 
+<a id="pgfId-1020422"></a>import java.util.ArrayList;
+<a id="pgfId-1020433"></a>import java.util.List;
+<a id="pgfId-1020439"></a>import java.util.stream.Stream;
+<a id="pgfId-1020450"></a> 
+<a id="pgfId-1020445"></a>import static org.assertj.core.api.Assertions.assertThat;
+<a id="pgfId-1020456"></a>import static org.assertj.core.api.Assertions.assertThatThrownBy;
+<a id="pgfId-1020462"></a>import static org.junit.jupiter.params.provider.Arguments.of;
+<a id="pgfId-1020473"></a> 
+<a id="pgfId-1020468"></a>public class NumberUtilsTest {
+<a id="pgfId-1020484"></a> 
+<a id="pgfId-1020479"></a> @ParameterizedTest                                                     <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1020496"></a> @MethodSource("testCases")                                             <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1020508"></a> void shouldReturnCorrectResult(List&lt;Integer&gt; left,
+<a id="pgfId-1020514"></a>  List&lt;Integer&gt; right, List&lt;Integer&gt; expected) {
+<a id="pgfId-1020520"></a>   assertThat(new NumberUtils().add(left, right))                       <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1020532"></a>       .isEqualTo(expected);
+<a id="pgfId-1020538"></a> }
+<a id="pgfId-1020549"></a> 
+<a id="pgfId-1020544"></a> static Stream&lt;Arguments&gt; testCases() {                                 <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1020566"></a> 
+<a id="pgfId-1020561"></a>   return Stream.of(
+<a id="pgfId-1020572"></a>     of(null, numbers(7,2), null), // T1                                <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1020584"></a>     of(numbers(), numbers(7,2), numbers(7,2)), // T2                   <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1020596"></a>     of(numbers(9,8), null, null), // T3                                <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1020608"></a>     of(numbers(9,8), numbers(), numbers(9,8 )), // T4                  <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1020625"></a> 
+<a id="pgfId-1020620"></a>     of(numbers(1), numbers(2), numbers(3)), // T5                      <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1020637"></a>     of(numbers(9), numbers(2), numbers(1,1)), // T6                    <span class="fm-combinumeral">❻</span>
+<a id="pgfId-1020654"></a> 
+<a id="pgfId-1020649"></a>     of(numbers(2,2), numbers(3,3), numbers(5,5)), // T7                <span class="fm-combinumeral">❼</span>
+<a id="pgfId-1020666"></a>     of(numbers(2,9), numbers(2,3), numbers(5,2)), // T8                <span class="fm-combinumeral">❼</span>
+<a id="pgfId-1020678"></a>     of(numbers(2,9,3), numbers(1,8,3), numbers(4,7,6)), // T9          <span class="fm-combinumeral">❼</span>
+<a id="pgfId-1020690"></a>     of(numbers(1,7,9), numbers(2,6,8), numbers(4,4,7)), // T10         <span class="fm-combinumeral">❼</span>
+<a id="pgfId-1020702"></a>     of(numbers(1,9,1,7,1), numbers(1,8,1,6,1),                         <span class="fm-combinumeral">❼</span>
+<a id="pgfId-1020708"></a>       numbers(3,7,3,3,2)), // T11                                      <span class="fm-combinumeral">❼</span>
+<a id="pgfId-1020720"></a>     of(numbers(9,9,8), numbers(1,7,2), numbers(1,1,7,0)), // T12       <span class="fm-combinumeral">❼</span>
+<a id="pgfId-1020737"></a> 
+<a id="pgfId-1020732"></a>     of(numbers(2,2), numbers(3), numbers(2,5)), // T13.1               <span class="fm-combinumeral">❽</span>
+<a id="pgfId-1020749"></a>     of(numbers(3), numbers(2,2), numbers(2,5)), // T13.2               <span class="fm-combinumeral">❽</span>
+<a id="pgfId-1020761"></a>     of(numbers(2,2), numbers(9), numbers(3,1)), // T14.1               <span class="fm-combinumeral">❽</span>
+<a id="pgfId-1020773"></a>     of(numbers(9), numbers(2,2), numbers(3,1)), // T14.2               <span class="fm-combinumeral">❽</span>
+<a id="pgfId-1020785"></a>     of(numbers(1,7,3), numbers(9,2), numbers(2,6,5)), // T15.1         <span class="fm-combinumeral">❽</span>
+<a id="pgfId-1020797"></a>     of(numbers(9,2), numbers(1,7,3), numbers(2,6,5)), // T15.2         <span class="fm-combinumeral">❽</span>
+<a id="pgfId-1020809"></a>     of(numbers(3,1,7,9), numbers(2,6,8), numbers(3,4,4,7)), // T16.1   <span class="fm-combinumeral">❽</span>
+<a id="pgfId-1020821"></a>     of(numbers(2,6,8), numbers(3,1,7,9), numbers(3,4,4,7)), // T16.2   <span class="fm-combinumeral">❽</span>
+<a id="pgfId-1020833"></a>     of(numbers(1,9,1,7,1), numbers(2,1,8,1,6,1),                       <span class="fm-combinumeral">❽</span>
+<a id="pgfId-1020839"></a>       numbers(2,3,7,3,3,2)), // T17.1                                  <span class="fm-combinumeral">❽</span>
+<a id="pgfId-1020851"></a>     of(numbers(2,1,8,1,6,1), numbers(1,9,1,7,1),                       <span class="fm-combinumeral">❽</span>
+<a id="pgfId-1020857"></a>       numbers(2,3,7,3,3,2)), // T17.2                                  <span class="fm-combinumeral">❽</span>
+<a id="pgfId-1020869"></a>     of(numbers(9,9,8), numbers(9,1,7,2), numbers(1,0,1,7,0)), // T18.1 <span class="fm-combinumeral">❽</span>
+<a id="pgfId-1020881"></a>     of(numbers(9,1,7,2), numbers(9,9,8), numbers(1,0,1,7,0)), // T18.2 <span class="fm-combinumeral">❽</span>
+<a id="pgfId-1020898"></a> 
+<a id="pgfId-1020893"></a>     of(numbers(0,0,0,1,2), numbers(0,2,3), numbers(3,5)), // T19       <span class="fm-combinumeral">❾</span>
+<a id="pgfId-1020910"></a>     of(numbers(0,0,0,1,2), numbers(0,2,9), numbers(4,1)), // T20       <span class="fm-combinumeral">❾</span>
+<a id="pgfId-1020927"></a> 
+<a id="pgfId-1020922"></a>     of(numbers(9,9), numbers(1), numbers(1,0,0)) // T21                <span class="fm-combinumeral">❿</span>
+<a id="pgfId-1020939"></a>   );
+<a id="pgfId-1020945"></a> }
+<a id="pgfId-1020956"></a> 
+<a id="pgfId-1020962"></a> private static List&lt;Integer&gt; numbers(int... nums) {                    <span class="fm-combinumeral">⓫</span>
+<a id="pgfId-1020974"></a>   List&lt;Integer&gt; list = new ArrayList&lt;&gt;();
+<a id="pgfId-1020980"></a>   for(int n : nums)
+<a id="pgfId-1020986"></a>     list.add(n);
+<a id="pgfId-1020992"></a>   return list;
+<a id="pgfId-1020998"></a> }
+<a id="pgfId-1021009"></a> 
+<a id="pgfId-1021004"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036958"></a><span class="fm-combinumeral">❶</span> A parameterized test is a perfect fit for these kinds of tests!</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036979"></a><span class="fm-combinumeral">❷</span> Indicates the name of the method that will provide the inputs</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036996"></a><span class="fm-combinumeral">❸</span> Calls the method under test, using the parameterized values</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1037013"></a><span class="fm-combinumeral">❹</span> One argument per test case</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1037030"></a><span class="fm-combinumeral">❺</span> Tests with nulls and empties</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1037047"></a><span class="fm-combinumeral">❻</span> Tests with single digits</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1037064"></a><span class="fm-combinumeral">❼</span> Tests with multiple digits</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1037079"></a><span class="fm-combinumeral">❽</span> Tests with multiple digits, different length, with and without carry (from both sides)</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1037121"></a><span class="fm-combinumeral">❾</span> Tests with zeroes on the left</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1037138"></a><span class="fm-combinumeral">❿</span> The boundary test</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1037155"></a><span class="fm-combinumeral">⓫</span> Auxiliary method that produces a list of integers. Auxiliary methods are common in test suites to help developers write more maintainable test code.</p>
+
+  <p class="body"><a id="pgfId-1021311"></a>Interestingly, a lot of these test cases break! See the JUnit report in figure 2.6. For example, take the first failing test, T6 (single digit with a carry). Given <code class="fm-code-in-text">left</code> = <code class="fm-code-in-text">[9]</code> and <code class="fm-code-in-text">right</code> = <code class="fm-code-in-text">[2]</code>, we expect the output to be <code class="fm-code-in-text">[1,1]</code>. But the program outputs <code class="fm-code-in-text">[1]</code>! T12 (“carry propagated to a new (now most significant) digit”) also fails: given <code class="fm-code-in-text">left</code> = <code class="fm-code-in-text">[9,9,8]</code> and <code class="fm-code-in-text">right</code> = <code class="fm-code-in-text">[1,7,2]</code>, we expect the output to be <code class="fm-code-in-text">[1,1,7,0]</code>, but it is <code class="fm-code-in-text">[1,7,0]</code>. The program cannot handle the carry when the carry needs to become a new leftmost digit.</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/02-06.png" width="640" height="771"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1041343"></a>Figure 2.6 The results of the test cases we just created. A lot of them fail, indicating that the program has a bug!</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1021330"></a>What a tricky bug! Did you see it when we wrote the method implementation?</p>
+
+  <p class="body"><a id="pgfId-1021350"></a>There is a simple fix: all we need to do is add the carry at the end, if necessary. Here’s the implementation.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1021407"></a>Listing 2.11 First bug fix in the <code class="fm-code-in-text">add</code> program</p>
+  <pre class="programlisting"><a id="pgfId-1021356"></a>// ... all the code here ...
+<a id="pgfId-1021459"></a>if (carry &gt; 0)
+<a id="pgfId-1021465"></a>    result.addFirst(carry);
+<a id="pgfId-1021471"></a>return result;</pre>
+
+  <p class="body"><a id="pgfId-1021533"></a>With these tests passing, we see that the program does not handle zeroes to the left. When <code class="fm-code-in-text">left</code> = <code class="fm-code-in-text">[0,0,0,1,2]</code> and <code class="fm-code-in-text">right</code> = <code class="fm-code-in-text">[0,2,3]</code>, we expect the output to be <code class="fm-code-in-text">[3,5]</code>, but the program returns <code class="fm-code-in-text">[0,0,0,3,5]</code>. The fix is also straightforward: remove the zeroes on the left before returning the result (listing 2.12).</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1021593"></a>Listing 2.12 Second bug fix in the <code class="fm-code-in-text">add</code> program</p>
+  <pre class="programlisting"><a id="pgfId-1021542"></a>// ... previous code here...
+<a id="pgfId-1021650"></a> 
+<a id="pgfId-1021645"></a>if (carry &gt; 0)
+<a id="pgfId-1021656"></a>    result.addFirst(carry);
+<a id="pgfId-1021667"></a> 
+<a id="pgfId-1021672"></a> 
+<a id="pgfId-1021662"></a>while (result.size() &gt; 1 &amp;&amp; result.get(0) == 0)     <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1021684"></a>  result.remove(0);
+<a id="pgfId-1021695"></a> 
+<a id="pgfId-1021690"></a>return result;</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036903"></a><span class="fm-combinumeral">❶</span> Removes leading zeroes from the result</p>
+
+  <p class="body"><a id="pgfId-1021721"></a>We’re only missing test cases to ensure that the pre-condition holds that each digit is a number between 0 and 9. All we need to do is pass various invalid digits. Let’s do it directly in the JUnit test as follows.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1021778"></a>Listing 2.13 Tests for a pre-condition of the <code class="fm-code-in-text">add</code> program</p>
+  <pre class="programlisting"><a id="pgfId-1021727"></a>@ParameterizedTest                                              <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1021836"></a>@MethodSource("digitsOutOfRange")
+<a id="pgfId-1021842"></a>void shouldThrowExceptionWhenDigitsAreOutOfRange(List&lt;Integer&gt; left,
+<a id="pgfId-1021848"></a>  <span class="fm-code-continuation-arrow">➥</span> List&lt;Integer&gt; right) {
+<a id="pgfId-1021865"></a>  assertThatThrownBy(() -&gt; new NumberUtils().add(left, right))
+<a id="pgfId-1021871"></a>      .isInstanceOf(IllegalArgumentException.class);            <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1021888"></a> 
+<a id="pgfId-1021883"></a>}
+<a id="pgfId-1021899"></a> 
+<a id="pgfId-1021894"></a>static Stream&lt;Arguments&gt; digitsOutOfRange() {                   <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1021911"></a>  return Stream.of(
+<a id="pgfId-1021917"></a>      of(numbers(1,-1,1), numbers(1)),
+<a id="pgfId-1021923"></a>      of(numbers(1), numbers(1,-1,1)),
+<a id="pgfId-1021929"></a>      of(numbers(1,10,1), numbers(1)),
+<a id="pgfId-1021935"></a>      of(numbers(1), numbers(1,11,1))
+<a id="pgfId-1021941"></a>  );
+<a id="pgfId-1021947"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036688"></a><span class="fm-combinumeral">❶</span> A parameterized test also fits well here.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036709"></a><span class="fm-combinumeral">❷</span> Asserts that an exception happens</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036726"></a><span class="fm-combinumeral">❸</span> Passes invalid arguments</p>
+
+  <p class="body"><a id="pgfId-1022005"></a>All tests are now passing. Given the thoroughness of our test suite, I feel confident enough to move on.</p>
+
+  <p class="fm-callout"><a id="pgfId-1022011"></a><span class="fm-callout-head">Note</span> Interestingly, the bugs we found in this example were caused not by buggy code but by a lack of code. This is a common type of bug, and it can be caught by specification testing. When in doubt, write a test! Writing automated (unit) test cases is so quick that they let you easily see what happens. Having too many useless tests is a problem, but a couple will not hurt. <a id="marker-1022023"></a><a id="marker-1022026"></a></p>
+
+  <h2 class="fm-head" id="heading_id_13"><a id="pgfId-1022032"></a>2.4 Specification-based testing in the real world</h2>
+
+  <p class="body"><a id="pgfId-1022042"></a><a id="marker-1022043"></a>Now that you have a clear understanding of how to systematically devise test cases based on specifications, here are a few pragmatic tips I have learned over the years.</p>
+
+  <h3 class="fm-head1" id="heading_id_14"><a id="pgfId-1022051"></a>2.4.1 The process should be iterative, not sequential</h3>
+
+  <p class="body"><a id="pgfId-1022061"></a><a id="marker-1022062"></a>Describing iterative processes in writing is challenging. My explanation may have given you the impression that this process is fully sequential and that you move to the next step only when you have completed the previous one. However, the entire process is meant to be iterative. In practice, I go back and forth between the different steps. Often, when I’m writing test cases, I notice that I missed a partition or boundary, and I go back and improve my test suite. <a id="marker-1022066"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_15"><a id="pgfId-1022073"></a>2.4.2 How far should specification testing go?</h3>
+
+  <p class="body"><a id="pgfId-1022083"></a><a id="marker-1022084"></a>The pragmatic answer to this question is to understand the risks of a failure. What would be the cost of a failure in that part of the program? If the cost is high, it may be wise to invest more in testing, explore more corner cases, and try different techniques to ensure quality. But if the cost is low, being less thorough may be good enough. Personally, I stop testing when I have been through all the steps a couple of times and cannot see a case I am not testing. <a id="marker-1022088"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_16"><a id="pgfId-1022095"></a>2.4.3 Partition or boundary? It does not matter!</h3>
+
+  <p class="body"><a id="pgfId-1022114"></a><a id="marker-1022106"></a><a id="marker-1022108"></a><a id="marker-1022110"></a>When you are exploring inputs and outputs, identifying partitions, and devising test cases, you may end up considering a boundary to be an exclusive partition and not a boundary between two partitions. It does not matter if a specific case emerges when you are identifying partitions or in the boundaries step. Each developer may interpret the specification differently, and minor variations may result. The important thing is that the test case emerges and the bug will not slip into the program. <a id="marker-1022115"></a><a id="marker-1022118"></a><a id="marker-1022120"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_17"><a id="pgfId-1022126"></a>2.4.4 On and off points are enough, but feel free to add in and out points</h3>
+
+  <p class="body"><a id="pgfId-1022145"></a><a id="marker-1022137"></a><a id="marker-1022139"></a><a id="marker-1022141"></a>On and off points belong to specific partitions, so they also serve as concrete test cases for the partitions. This means testing all the boundaries of your input domain is enough. Nevertheless, I often try some in and out points in my tests. They are redundant, because the on and off points exercise the same partition as the in and out points; but these extra points give me a better understanding of the program and may better represent real-life inputs. Striving for the leanest test suite is always a good idea, but a few extra points are fine. <a id="marker-1022146"></a><a id="marker-1022149"></a><a id="marker-1022151"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_18"><a id="pgfId-1022157"></a>2.4.5 Use variations of the same input to facilitate understanding</h3>
+
+  <p class="body"><a id="pgfId-1022174"></a><a id="marker-1022168"></a><a id="marker-1022170"></a>You can simplify your understanding of the different test cases by using the same input seed for all of them, as we noticed in an observational study with professional developers described in my paper with Treude and Zaidman (2021). For each partition, you then make small modifications to the input seed: just enough to meet the criteria of that partition. In the chapter example, all the test cases are based on the string “abc”; as soon as one test case fails, it is easy to compare it to similar inputs from other test cases that pass.</p>
+
+  <p class="body"><a id="pgfId-1022179"></a>Note that this trick goes against the common testing idea of varying inputs as much as possible. Varying inputs is essential, as it allows us to explore the input space and identify corner cases. However, when doing specification-based testing, I prefer to focus on rigorously identifying and testing partitions. Later in the book, we will write test cases that explore the input domain in an automated fashion via property-based testing in chapter 5. <a id="marker-1022181"></a><a id="marker-1022184"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_19"><a id="pgfId-1022190"></a>2.4.6 When the number of combinations explodes, be pragmatic</h3>
+
+  <p class="body"><a id="pgfId-1022210"></a><a id="marker-1022201"></a>If we had combined all the partitions we derived from the <code class="fm-code-in-text">substringsBetween</code> program, we would have ended up with 320 tests. This number is even larger for more complex problems. Combinatorial testing is an entire area of research in software testing; I will not dive into the techniques that have been proposed for such situations, but I will provide you with two pragmatic suggestions.</p>
+
+  <p class="body"><a id="pgfId-1022219"></a>First, reduce the number of combinations as much as possible. Testing exceptional behavior isolated from other behaviors (as we did in the example) is one way to do so. You may also be able to leverage your domain knowledge to further reduce the number of combinations.</p>
+
+  <p class="body"><a id="pgfId-1022225"></a>Second, if you are facing many combinations at the method level, consider breaking the method in two. Two smaller methods have fewer things to test and, therefore, fewer combinations to test. Such a solution works well if you carefully craft the method contracts and the way they should pass information. You also reduce the chances of bugs when the two simple methods are combined into a larger, more complex one. <a id="marker-1022227"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_20"><a id="pgfId-1022234"></a>2.4.7 When in doubt, go for the simplest input</h3>
+
+  <p class="body"><a id="pgfId-1022251"></a><a id="marker-1022245"></a><a id="marker-1022247"></a>Picking concrete input for test cases is tricky. You want to choose a value that is realistic but, at the same time, simple enough to facilitate debugging if the test fails.</p>
+
+  <p class="body"><a id="pgfId-1022256"></a>I recommend that you avoid choosing complex inputs unless you have a good reason to use them. Do not pick a large integer value if you can choose a small integer value. Do not pick a 100-character string if you can select a 5-character string. Simplicity matters. <a id="marker-1022258"></a><a id="marker-1022261"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_21"><a id="pgfId-1022267"></a>2.4.8 Pick reasonable values for inputs you do not care about</h3>
+
+  <p class="body"><a id="pgfId-1022284"></a><a id="marker-1022278"></a><a id="marker-1022280"></a>Sometimes, your goal is to exercise a specific part of the functionality, and that part does not use one of the input values. You can pass any value to that “useless” input variable. In such scenarios, my recommendation is to pass realistic values for these inputs. <a id="marker-1022285"></a><a id="marker-1022288"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_22"><a id="pgfId-1022294"></a>2.4.9 Test for nulls and exceptional cases, but only when it makes sense</h3>
+
+  <p class="body"><a id="pgfId-1022313"></a><a id="marker-1022305"></a><a id="marker-1022307"></a><a id="marker-1022309"></a>Testing nulls and exceptional cases is always important because developers often forget to handle such cases in their code. But remember that you do not want to write tests that never catch a bug. Before writing such tests, you should understand the overall picture of the software system (and its architecture). The architecture may ensure that the pre-conditions of the method are satisfied before calling it.</p>
+
+  <p class="body"><a id="pgfId-1022318"></a>If the piece of code you are testing is very close to the UI, exercise more corner cases such as null, empty strings, uncommon integer values, and so on. If the code is far from the UI and you are sure the data is sanitized before it reaches the component under test, you may be able to skip such tests. Context is king. Only write tests that will eventually catch a bug. <a id="marker-1022320"></a><a id="marker-1022323"></a><a id="marker-1022325"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_23"><a id="pgfId-1022331"></a>2.4.10 Go for parameterized tests when tests have the same skeleton</h3>
+
+  <p class="body"><a id="pgfId-1022354"></a><a id="marker-1022342"></a><a id="marker-1022344"></a>A little duplication is never a problem, but a lot of duplication is. We created 21 different tests for the <code class="fm-code-in-text">substringsBetween</code> program. The test code was lean because we grouped some of the test cases into single test methods. Imagine writing 21 almost-identical test cases. If each method took 5 lines of code, we would have a test class with 21 methods and 105 lines. This is much longer than the test suite with the parameterized test that we wrote.</p>
+
+  <p class="body"><a id="pgfId-1022363"></a>Some developers argue that parameterized tests are confusing. Deciding whether to use JUnit test cases or parameterized tests is, most of all, a matter of taste. I use parameterized tests when the amount of duplication in my test suite is too large. In this chapter, I leaned more toward JUnit test cases: lots of test cases logically grouped in a small set of test methods. We discuss test code quality further in chapter 10. <a id="marker-1022365"></a><a id="marker-1022368"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_24"><a id="pgfId-1022374"></a>2.4.11 Requirements can be of any granularity</h3>
+
+  <p class="body"><a id="pgfId-1022384"></a><a id="marker-1022385"></a>The seven-step approach I propose in this chapter works for requirements of any granularity. Here, we applied it in a specification that could be implemented by a single method. However, nothing prevents you from using it with larger requirements that involve many classes. Traditionally, specification-based testing techniques focus on black-box testing: that is, testing an entire program or feature, rather than unit-testing specific components. I argue that these ideas also make sense at the unit level.</p>
+
+  <p class="body"><a id="pgfId-1022393"></a>When we discuss larger tests (integration testing), we will also look at how to devise test cases for sets of classes or components. The approach is the same: reflect on the inputs and their expected outputs, divide the domain space, and create test cases. You can generalize the technique discussed here to tests at any level. <a id="marker-1022395"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_25"><a id="pgfId-1022402"></a>2.4.12 How does this work with classes and state?</h3>
+
+  <p class="body"><a id="pgfId-1022453"></a><a id="marker-1022413"></a><a id="marker-1022415"></a><a id="marker-1022417"></a>The two methods we tested in this chapter have no state, so all we had to do was think of inputs and outputs. In object-oriented systems, classes have state. Imagine a <code class="fm-code-in-text">ShoppingCart</code> class and <a id="marker-1022432"></a>a behavior <code class="fm-code-in-text">totalPrice()</code> that requires some <code class="fm-code-in-text">CartItem</code>s to be inserted before the method can do its job. How do we apply specification-based testing in this case? See the following listing.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1022550"></a>Listing 2.14 <code class="fm-code-in-text">ShoppingCart</code> and <code class="fm-code-in-text">CartItem</code> classes</p>
+  <pre class="programlisting"><a id="pgfId-1022462"></a>public class ShoppingCart {
+<a id="pgfId-1022578"></a> 
+<a id="pgfId-1022573"></a>  private List&lt;CartItem&gt; items = new ArrayList&lt;CartItem&gt;();
+<a id="pgfId-1022589"></a> 
+<a id="pgfId-1022584"></a>  public void add(CartItem item) {     <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1022601"></a>    this.items.add(item);
+<a id="pgfId-1022607"></a>  }
+<a id="pgfId-1022618"></a> 
+<a id="pgfId-1022613"></a>  public double totalPrice() {         <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1022630"></a>    double totalPrice = 0;
+<a id="pgfId-1022636"></a>    for (CartItem item : items) {
+<a id="pgfId-1022642"></a>      totalPrice += item.getUnitPrice() * item.getQuantity();
+<a id="pgfId-1022648"></a>    }
+<a id="pgfId-1022654"></a>    return totalPrice;
+<a id="pgfId-1022660"></a>  }
+<a id="pgfId-1022666"></a>}
+<a id="pgfId-1022677"></a> 
+<a id="pgfId-1022672"></a>public class CartItem {                <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1022694"></a> 
+<a id="pgfId-1022689"></a>  private final String product;
+<a id="pgfId-1022700"></a>  private final int quantity;
+<a id="pgfId-1022706"></a>  private final double unitPrice;
+<a id="pgfId-1022717"></a> 
+<a id="pgfId-1022712"></a>  public CartItem(String product, int quantity,
+<a id="pgfId-1022723"></a>   double unitPrice) {
+<a id="pgfId-1022729"></a>    this.product = product;
+<a id="pgfId-1022735"></a>    this.quantity = quantity;
+<a id="pgfId-1022741"></a>    this.unitPrice = unitPrice;
+<a id="pgfId-1022747"></a>  }
+<a id="pgfId-1022758"></a> 
+<a id="pgfId-1022753"></a>  // getters
+<a id="pgfId-1022764"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036510"></a><span class="fm-combinumeral">❶</span> Adds items to the cart</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036531"></a><span class="fm-combinumeral">❷</span> Loops through all the items and sums up the final price</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036548"></a><span class="fm-combinumeral">❸</span> A simple class that represents an item in the cart</p>
+
+  <p class="body"><a id="pgfId-1022822"></a>Nothing changes in the way we approach specification-based testing. The only difference is that when we reflect about the method under test, we must consider not only the possible input parameters, but also the state the class should be in. For this specific example, looking at the expected behavior of the <code class="fm-code-in-text">totalPrice</code> method, I can <a id="marker-1022833"></a>imagine tests exercising the behavior of the method when the cart has zero items, a single item, multiple items, and various quantities (plus corner cases such as nulls). All we do differently is to set up the class’s state (by adding multiple items to the cart) before calling the method we want to test, as in the following listing.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1022894"></a>Listing 2.15 Tests for the <code class="fm-code-in-text">ShoppingCart</code> class</p>
+  <pre class="programlisting"><a id="pgfId-1022843"></a>import org.junit.jupiter.api.Test;
+<a id="pgfId-1022946"></a>import static org.assertj.core.api.Assertions.assertThat;
+<a id="pgfId-1022957"></a> 
+<a id="pgfId-1022952"></a>public class ShoppingCartTest {
+<a id="pgfId-1022968"></a> 
+<a id="pgfId-1022963"></a>  private final ShoppingCart cart = new ShoppingCart();   <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1022985"></a> 
+<a id="pgfId-1022980"></a>  @Test
+<a id="pgfId-1022991"></a>  void noItems() {
+<a id="pgfId-1022997"></a>    assertThat(cart.totalPrice())                         <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1023009"></a>      .isEqualTo(0);
+<a id="pgfId-1023015"></a>  }
+<a id="pgfId-1023026"></a> 
+<a id="pgfId-1023021"></a>  @Test
+<a id="pgfId-1023032"></a>  void itemsInTheCart() {
+<a id="pgfId-1023038"></a>    cart.add(new CartItem("TV", 1, 120));
+<a id="pgfId-1023044"></a>    assertThat(cart.totalPrice())                         <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1023056"></a>      .isEqualTo(120);
+<a id="pgfId-1023067"></a> 
+<a id="pgfId-1023062"></a>    cart.add(new CartItem("Chocolate", 2, 2.5));
+<a id="pgfId-1023073"></a>    assertThat(cart.totalPrice())                         <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1023085"></a>      .isEqualTo(120 + 2.5*2);
+<a id="pgfId-1023091"></a>  }
+<a id="pgfId-1023097"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036265"></a><span class="fm-combinumeral">❶</span> Having the cart as a field means we don’t have to instantiate it for every test. This is a common technique to improve legibility.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036301"></a><span class="fm-combinumeral">❷</span> Asserts that an empty cart returns 0</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036318"></a><span class="fm-combinumeral">❸</span> Asserts that it works for a single item in the cart ...</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1036266"></a><span class="fm-combinumeral">❹</span> ... as well as for many items in the cart.</p>
+
+  <p class="body"><a id="pgfId-1023171"></a>Again, the mechanics are the same. We just have to take more into consideration when engineering the test cases. <a id="marker-1023173"></a><a id="marker-1023176"></a><a id="marker-1023178"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_26"><a id="pgfId-1023184"></a>2.4.13 The role of experience and creativity</h3>
+
+  <p class="body"><a id="pgfId-1023207"></a><a id="marker-1023195"></a><a id="marker-1023197"></a>If two testers performed the specification-based testing technique I described earlier in the same program, would they develop the same set of tests? Ideally, but possibly not. In the <code class="fm-code-in-text">substringsBetween()</code> example, I would expect most developers to come up with similar test cases. But it is not uncommon for developers to approach a problem from completely different yet correct angles.</p>
+
+  <p class="body"><a id="pgfId-1023216"></a>I am trying to reduce the role of experience and creativity by giving developers a process that everybody can follow, but in practice, experience and creativity make a difference in testing. We observed that in a small controlled experiment (Yu, Treude, and Aniche, 2019).</p>
+
+  <p class="body"><a id="pgfId-1023222"></a>In the <code class="fm-code-in-text">substringsBetween()</code> example, experienced testers may see more complicated test cases, but a novice tester may have difficulty spotting those. A more experienced tester may realize that spaces in the string play no role and skip this test, whereas a novice developer may be in doubt and write an extra “useless” test. This is why I like the specification-based testing systematic approach I described in this chapter: it will help you remember what to think about. But it is still up to you to do the thinking!<a id="marker-1023233"></a><a id="marker-1023236"></a><a id="marker-1023238"></a></p>
+
+  <h2 class="fm-head" id="heading_id_27"><a id="pgfId-1023244"></a>Exercises</h2>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1023254"></a>2.1 Which statement is false about applying the specification-based testing method on the following Java method?</p>
+  <pre class="programlistinge"><a id="pgfId-1023260"></a>/**
+<a id="pgfId-1023274"></a> * Puts the supplied value into the Map,
+<a id="pgfId-1023280"></a> * mapped by the supplied key.
+<a id="pgfId-1023286"></a> * If the key is already in the map, its
+<a id="pgfId-1023292"></a> * value will be replaced by the new value.
+<a id="pgfId-1023298"></a> *
+<a id="pgfId-1023304"></a> * NOTE: Nulls are not accepted as keys;
+<a id="pgfId-1023310"></a> *  a RuntimeException is thrown when key is null.
+<a id="pgfId-1023316"></a> *
+<a id="pgfId-1023322"></a> * @param key the key used to locate the value
+<a id="pgfId-1023328"></a> * @param value the value to be stored in the HashMap
+<a id="pgfId-1023334"></a> * @return the prior mapping of the key,
+<a id="pgfId-1023340"></a> *  or null if there was none.
+<a id="pgfId-1023346"></a>*/
+<a id="pgfId-1023352"></a>public V put(K key, V value) {
+<a id="pgfId-1023358"></a>  // implementation here
+<a id="pgfId-1023364"></a>}</pre>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023370"></a>A) The specification does not specify any details about the value input parameter, and thus, experience should be used to partition it (for example, <code class="fm-code-in-text">value</code> being null or not null).</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023393"></a>B) The number of tests generated by the category/partition method can grow quickly, as the chosen partitions for each category are later combined one by one. This is not a practical problem for the <code class="fm-code-in-text">put()</code> method because the number of categories and partitions is small.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023412"></a>C) In an object-oriented language, in addition to using the method’s input parameters to explore partitions, we should also consider the object’s internal state (the class’s attributes), as it can also affect the method’s behavior.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023422"></a>D) With the available information, it is not possible to perform the category/ partition method, as the source code is required for the last step (adding constraints).</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1023491"></a>2.2 Consider a <code class="fm-code-in-text">find</code> program that finds occurrences of a pattern in a file. The program has the following syntax:</p>
+  <pre class="programlistinge"><a id="pgfId-1023506"></a>find &lt;pattern&gt; &lt;file&gt;</pre>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1023520"></a>After reading the specification and following specification-based testing, a tester devised the following partitions:</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023526"></a>A) Pattern size: empty, single character, many characters, longer than any line in the file</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023540"></a>B) Quoting: pattern is quoted, pattern is not quoted, pattern is improperly quoted</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023550"></a>C) Filename: good filename, no filename with this name, omitted</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023560"></a>D) Occurrences in the file: none, exactly one, more than one</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023570"></a>E) Occurrences in a single line, assuming the line contains the pattern: one, more than one</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1023580"></a>Now the number of combinations is too high. What actions could we take to reduce the number of combinations?</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1023586"></a>2.3 Postal codes in some imaginary country are always composed of four numbers and two letters: for example, 2628CD. Numbers are in the range [1000, 4000]. Letters are in the range [C, M].</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1023608"></a>Consider a program that receives two inputs—an integer (for the four numbers) and a string (for the two letters)—and returns <code class="fm-code-in-text">true</code> (valid postal code) or <code class="fm-code-in-text">false</code> (invalid postal code). The boundaries for this program appear to be straightforward:</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023617"></a>A) Anything below 1000: invalid</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023631"></a>B) <code class="fm-code-in-text">[1000,</code> <code class="fm-code-in-text">4000]</code>: valid</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023648"></a>C) Anything above 4000: invalid</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023658"></a>D) <code class="fm-code-in-text">[A,</code> <code class="fm-code-in-text">B]</code>: invalid</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023675"></a>E) <code class="fm-code-in-text">[C,</code> <code class="fm-code-in-text">M]</code>: valid</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023692"></a>F) <code class="fm-code-in-text">[N,</code> <code class="fm-code-in-text">Z]</code>: invalid</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1023709"></a>Based on what you as a tester assume about the program, what other corner or boundary cases can you come up with? Describe these invalid cases and how they may exercise the program based on your assumptions.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1023715"></a>2.4 A program called <code class="fm-code-in-text">FizzBuzz</code> does the following: given an integer n, return the string formed from the number followed by “!”. If the number is divisible by 3, use “Fizz” instead of the number; and if the number is divisible by 5, use “Buzz” instead of the number, and if the number is divisible by both 3 and 5, use “FizzBuzz” instead of the number.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1023730"></a>Examples:</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023736"></a>A) The integer 3 yields “Fizz!”</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023750"></a>B) The integer 4 yields “4!”</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023760"></a>C) The integer 5 yields “Buzz!”</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023770"></a>D) The integer 15 yields “FizzBuzz!”</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1023780"></a>A novice tester is trying to devise as many tests as possible for the <code class="fm-code-in-text">FizzBuzz</code> method and comes up with the following:</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023795"></a>A) T1 = 15</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023809"></a>B) T2 = 30</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023819"></a>C) T3 = 8</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023829"></a>D) T4 = 6</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023839"></a>E) T5 = 25</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1023849"></a>Which of these tests can be removed while maintaining a good test suite? Which concept can we use to determine the test(s) that can be removed?</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1023855"></a>2.5 A game has the following condition: <code class="fm-code-in-text">numberOfPoints</code> <code class="fm-code-in-text">&lt;=</code> <code class="fm-code-in-text">570</code>. Perform boundary analysis on the condition. What are the on and off points?</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023870"></a>A) On point = 570, off point = 571</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023884"></a>B) On point = 571, off point = 570</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023894"></a>C) On point = 570, off point = 569</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1023904"></a>D) On point = 569, off point = 570</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1023914"></a>2.6 Perform boundary analysis on the following equality: x == 10. What are the on and off points?</p>
+
+  <h2 class="fm-head" id="heading_id_28"><a id="pgfId-1023920"></a>Summary</h2>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023930"></a>Requirements are the most important artifact we can use to generate tests.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023944"></a>Specification-based testing techniques help us explore the requirements in a systematic way. For example, they help us examine the domain space of the different input variables and how they interact with each other.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023954"></a>I propose a seven-step approach for specification testing: (1) understand the requirements, (2) explore the program if you do not know much about it, (3) judiciously analyze the properties of the inputs and outputs and identify the partitions, (4) analyze the boundaries, (5) devise concrete test cases, (6) implement the concrete test cases as automated (JUnit) tests, and (7) use creativity and experience to augment the test suite.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023964"></a>Bugs love boundaries. However, identifying the boundaries may be the most challenging part of specification testing.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1023974"></a>The number of test cases may be too large, even in simpler programs. This means you must decide what should be tested and what should not be tested.</p>
+    </li>
+  </ul>
+</div>
+</div>
+</body>
+</html>

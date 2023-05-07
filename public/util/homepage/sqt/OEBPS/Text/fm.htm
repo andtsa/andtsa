@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xml:lang="en"
+      lang="en"
+      xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:epub="http://www.idpf.org/2007/ops">
+<head>
+<title>Effective Software Testing</title>
+<link rel="stylesheet" type="text/css" href="../../override_v1.css"/>
+<link rel="stylesheet" type="text/css" href="../../stylesheet.css"/><link rel="stylesheet" type="text/css" href="../../page_styles.css"/>
+</head>
+<body>
+<div id="book-content">
+<div id="sbo-rt-content" class="calibre"><h1 class="tochead" id="heading_id_2">front matter</h1>
+
+  <h2 class="fm-head" id="heading_id_3"><a id="pgfId-1019606"></a>forewords</h2>
+
+  <p class="body"><a id="pgfId-1019607"></a>In modern software development, software testing steers the design, implementation, evolution, quality assurance, and deployment of software systems. To be an effective developer, you must become an effective software tester. This book helps you to achieve that goal.</p>
+
+  <p class="body"><a id="pgfId-1019608"></a>Put simply, testing is nothing but executing a piece of software to see if it behaves as expected. But testing is also hard. Its difficulty surfaces when thinking about the full set of test cases to be designed and executed. Out of the infinitely many possible test cases, which one should you write? Did you do enough testing to move the system to production? What extra tests do you need? Why these tests? And, if you need to change the system, how should you set up the test suite so that it supports rather than impedes future change?</p>
+
+  <p class="body"><a id="pgfId-1019609"></a>This book doesn’t shy away from such complex questions. It covers key testing techniques like design by contract, property-based testing, boundary testing, test adequacy criteria, mutation testing, and the proper use of mock objects. Where relevant, it gives pointers to additional research papers on the topic.</p>
+
+  <p class="body"><a id="pgfId-1019610"></a>At the same time, this book succeeds in making sure the test cases themselves and the testing process remain as simple as can be justified. It does so by always taking the perspective of the developer who is actually designing and running the tests. The book is full of examples, ensuring that the reader can get started with applying the techniques in their own projects straight away.</p>
+
+  <p class="body"><a id="pgfId-1019611"></a>This book emerged out of a course taught at Delft University of Technology for many years. In 2003 I introduced a course on software testing in the undergraduate curriculum. In 2016, Maurício Aniche joined me in teaching the course, and in 2019 he took over the course entirely. Maurício is a superb lecturer, and in 2021 the students elected him as <i class="fm-italics">Teacher of the Year</i> of the faculty of Electrical Engineering, Mathematics, and Computer Science.</p>
+
+  <p class="body"><a id="pgfId-1019612"></a>At TU Delft, we teach testing in the very first year of our Computer Science and Engineering bachelor program. It has been difficult finding a book that aligns with our vision that an effective software engineer must be an effective software tester. Many academic textbooks focus on research results. Many developer-oriented texts focus on specific tools or processes.</p>
+
+  <p class="body"><a id="pgfId-1019613"></a>Maurício Aniche’s <i class="fm-italics">Effective Software Testing</i> fills that gap by finding the sweet spot between theory and practice. It is written with the working developer in mind, offering you state-of-the-art software testing techniques. At the same time, it is perfect for undergraduate university courses, training the next generations of computer scientists to become effective software testers.</p>
+
+  <p class="body"><a id="pgfId-1019615"></a>—<span class="mc-small-caps">Dr. Arie van Deursen</span>, Professor in Software Engineering, Delft University of Technology, The Netherlands</p>
+
+  <p class="body"><br class="calibre10"/></p>
+
+  <p class="body"><a id="pgfId-1019617"></a><i class="fm-italics">Effective Software Testing</i> by Maurício Aniche is a practical introductory book that helps developers test their code. It’s a compact tour through the essentials of software testing that covers major topics every developer should know about. The book’s combination of theory and practice shows the depth of Maurício’s experience as an academic and as a working programmer.</p>
+
+  <p class="body"><a id="pgfId-1019618"></a>My own path into software was rather haphazard: some programming courses at university, ad-hoc training on the job, and eventually a conversion course leading to a PhD. This left me envious of programmers who had taken the right courses at the right time and had the theoretical depth that I lacked. I periodically discovered that one of my ideas, usually with a half-baked implementation, turned out to be an established concept that I hadn’t heard of. That’s why I think it’s important to read introductory material, such as this book.</p>
+
+  <p class="body"><a id="pgfId-1019619"></a>Throughout much of my software life, I saw testing as a necessary evil that mostly involved the tedium of following text instructions by hand. Nowadays it’s obvious to most that test automation is best done by computers, but it’s taken decades for that to become so widely accepted. That’s why, to me, test-driven development, when I first came across it, initially seemed crazy—and then essential.</p>
+
+  <p class="body"><a id="pgfId-1019620"></a>That said, I see a lot of test code in the wild that really isn’t clear. Obviously, this is easier to see in hindsight, without the immediate pressure of deadlines or after the domain model has settled. But I believe that this test code would be improved if more programmers used the techniques described in this book to structure and reason about the problems they’re working on. This doesn’t mean that we all must turn into academics, but the light application of a few concepts can make a big difference. For example, I find design-by-contract helpful when working with components that maintain state. I might not always add explicit pre- and post-conditions to my code, but the concepts help me to think about, or discuss, what the code should do.</p>
+
+  <p class="body"><a id="pgfId-1019621"></a>Obviously, software testing is a huge subject for developers, but this book is a good way to get started. And, for those of us who’ve been around a bit longer, it’s a good reminder of techniques that we’ve neglected or maybe missed the first time around. It’s also good to see sections on software testing as a practice, in particular the brief introduction to larger-scale testing and, my favorite, sustaining test code quality. So many real-life test suites turn into a source of frustration because they haven’t been maintained.</p>
+
+  <p class="body"><a id="pgfId-1019622"></a>Maurício’s experience shows in the practical guidance and heuristics that he includes in the explanation of each technique. He is careful to provide the tools, but lets the reader find their own path (although it’s probably a good idea to take his advice). And, of course, the contents of the book itself have been thoroughly tested as it was originally developed in the open for his course at TU Delft.</p>
+
+  <p class="body"><a id="pgfId-1019623"></a>On a personal note, I used to meet Maurício when I guest lectured for his course, after which we would stop for pickled herrings (a taste that is uniquely appealing to Northern European palates) at a historic market stall in the town center. We would discuss programming and testing techniques, and life in the Netherlands. I was impressed with his care to do his best for his students, and with his ideas for his research. I look forward to the day when I can get on the train to Delft again.</p>
+
+  <p class="body"><a id="pgfId-1019624"></a>—<span class="mc-small-caps">Dr. Steve Freeman</span>, author of <i class="fm-italics">Growing Object-Oriented Software, Guided by Tests</i> (Addison-Wesley Professional)</p>
+
+  <h2 class="fm-head" id="heading_id_4"><a id="pgfId-1019628"></a>preface</h2>
+
+  <p class="body"><a id="pgfId-1019629"></a>Every software developer remembers a specific bug that affected their career. Let me tell you about mine. In 2006, I was the technical lead for a small development team that was building an application to control payments at gas stations. At the time, I was finishing my computer science undergraduate studies and beginning my career as a software developer. I had only worked on two serious web applications previously. And as the lead developer, I took my responsibility very seriously.</p>
+
+  <p class="body"><a id="pgfId-1019630"></a>The system needed to communicate directly with gas pumps. As soon as a customer finished refueling, the gas pump notified our system, and the application started its process: gathering information about the purchase (type of fuel, quantity in liters), calculating the final price, taking the user through the payment process, and storing the information for future reporting.</p>
+
+  <p class="body"><a id="pgfId-1019631"></a>The software system had to run on a dedicated device with a 200 MHz processor, 2 MB of RAM, and a few megabytes of permanent storage. This was the first time anyone had tried to use the device for a business application. So, there was no previous project from which we could learn or borrow code. We also could not reuse any external libraries, and we even had to implement our own simplistic database.</p>
+
+  <p class="body"><a id="pgfId-1019632"></a>The system required refuelings, and simulating them became a vital part of our development flow. We would implement a new feature, run the system, run the simulator, simulate a few gas purchases, and manually check that the system responded correctly.</p>
+
+  <p class="body"><a id="pgfId-1019633"></a>After a few months, we had implemented the important features. Our (manual) tests, including tests performed by the company, succeeded. We had a version that could be tested in the wild! But real-world testing was not simple: an engineering team had to make physical changes at a gas station so the pumps could talk to our software. To my surprise, the company decided to schedule the first pilot in the Dominican Republic. I was excited not only to see my project go live but also to visit such a beautiful country.</p>
+
+  <p class="body"><a id="pgfId-1019634"></a>I was the only developer who traveled to the Dominican Republic for the pilot, so I was responsible for fixing any last-minute bugs. I watched the installation and followed along when the software ran for the first time. I spent the entire day monitoring the system, and everything seemed fine.</p>
+
+  <p class="body"><a id="pgfId-1019635"></a>That night we went out to celebrate. The beer was cold, and I was proud of myself. I went to bed early so I would be ready to meet the stakeholders the next morning and discuss the project’s next steps. But at 6:00 a.m., my hotel telephone rang. It was the owner of the pilot gas station: “The software apparently crashed during the night. The night workers did not know what to do, and the gas pumps were not delivering a single drop of fuel, so the station could not sell anything the entire night!” I was shaken. How could that have happened?</p>
+
+  <p class="body"><a id="pgfId-1019636"></a>I went straight to the site and started debugging the system. The bug was caused by a situation we had not tested: more refuelings than the system could handle. We knew we were using an embedded device with limited memory, so we had taken precautions. But we never tested what would happen if the limit was reached—and there was a bug!</p>
+
+  <p class="body"><a id="pgfId-1019637"></a>Our tests were all done manually: to simulate refueling, we went to the simulator, clicked a button on a pump, started pumping gas, waited some number of seconds (on the simulator, the longer we waited, the more liters of fuel we purchased), and then stopped the refueling process. If we wanted to simulate 100 gas purchases, we had to click 100 times in the simulator. Doing so was slow and painful. So, at development time, we tried only two or three refuelings. We probably tested the exception-handling mechanism once, but that was not enough.</p>
+
+  <p class="body"><a id="pgfId-1019638"></a>The first software system for which I was the lead developer did not even work a full day! What could I have done to prevent the bug? It was time for me to change how I was building software—and this led me to learn more about software testing. Sure, in college I had learned about many testing techniques and the importance of software testing, but you only recognize the value of some things when you need them.</p>
+
+  <p class="body"><a id="pgfId-1019639"></a>Today, I cannot imagine building a system without building an automated test suite along with it. The automated test suite can tell me in seconds whether the code I wrote is right or wrong, so I am much more productive. This book is my attempt to help developers avoid the mistakes I made.</p>
+
+  <h2 class="fm-head" id="heading_id_5"><a id="pgfId-1019644"></a>acknowledgments</h2>
+
+  <p class="body"><a id="pgfId-1019645"></a>This is not my first technical book, but it is the first one I have put my heart into. And it was only possible due to the help and inspiration of many people.</p>
+
+  <p class="body"><a id="pgfId-1019646"></a>First, by far the most important person who led me to write this book is Prof. Dr. Arie van Deursen. Arie was my post-doc supervisor and later my colleague in the Software Engineering Research Group (SERG) at Delft University of Technology. In 2017, he invited me to co-teach his software testing course for first-year computer science students (yes, Delft teaches software testing from the start!). While co-teaching with him, I learned a great deal about his views on theoretical and practical software testing. Arie’s passion for educating people on this topic inspired me, and I keep working to improve TU Delft’s software testing course (which is now my full responsibility). This book is a natural result of the interest he triggered in me years ago.</p>
+
+  <p class="body"><a id="pgfId-1019647"></a>Other colleagues at TU Delft have also influenced me significantly. Frank Mulder, who now co-teaches software testing with me, is a very experienced software developer and not afraid to challenge the software development status quo. I have lost count of how many discussions we have had about different practices over the years. We also take these discussions into the lecture hall, and our students have almost as much fun as we do as we present our views. Many of the pragmatic discussions in this book began as conversations with Frank.</p>
+
+  <p class="body"><a id="pgfId-1019648"></a>My thanks go to Wouter Polet. Wouter has been my teaching assistant for many years. When the Covid pandemic began, I told Wouter that we should make the lecture notes available for students who couldn’t attend class. He took that as a mission and quickly built a website containing transcripts of videos I had made a few years earlier. These transcripts became my lecture notes, which later became this book. Without Wouter’s support, I do not think this book would have come to be. My thanks also go to Sára Juhošová, who joined us as a head teaching assistant and has been instrumental in the course. I don’t know if anyone else will read this book as thoroughly as she did. Sára also spent a lot of time fine-tuning my poorly written sentences—the book would not have been the same without her help. Finally, I thank Nadine Kuo and the dozens of teaching assistants over the years who have helped me improve the course material. There are many others who helped me (too many to list here), but they all played a role in the development of this book.</p>
+
+  <p class="body"><a id="pgfId-1019649"></a>Thank you to Prof. Dr. Andy Zaidman and Dr. Annibale Panichella. Andy has been a colleague of mine for years and was a role model for me before that. I read his papers with passion and interest. Andy’s love for empirical software testing inspired me to come to Delft for my post-doc. Annibale was my office mate for many years and is, by far, the best software engineering researcher I know. Annibale is a world-class expert on search-based software testing and I have learned a great deal about the topic from him (much of it over beers). Although I don’t talk much about it in the book, Annibale has shown me how far artificial intelligence can go in software testing, and has influenced me to reflect on what should be done by (human) developers.</p>
+
+  <p class="body"><a id="pgfId-1019650"></a>People outside TU Delft have also influenced me and made this book possible. First, I want to thank Alberto Souza. Alberto is one of my best friends and one of the most pragmatic developers I know. When I decided to embark on the lengthy process of writing a book, I needed positive reinforcement, and Alberto provided it. Without his constant positive feedback, I am not sure I would have finished the book.</p>
+
+  <p class="body"><a id="pgfId-1019651"></a>I also want to thank Steve Freeman. Steve is one of the authors of the well-known book, <i class="fm-italics">Growing Object-Oriented Systems, Guided by Tests</i> (Addison-Wesley Professional, 2009). When I gave my first-ever academic talk at a workshop on test-driven development (TDD) in 2011, Steve was the keynote speaker. Today, Steve gives a guest lecture each year as part of my testing course. I am a big fan of how Steve sees software development, and his book is one of the most influential I have ever read. I also have fun discussing software development topics with him because he is passionate and opinionated. Although my chapters on TDD and mocking do not reflect the way Steve thinks, he has definitely influenced my views on testing.</p>
+
+  <p class="body"><a id="pgfId-1019652"></a>I also want to thank the people at Manning Publications. They have helped me shape my ideas from day one, and the final version of the book is much different (and better) than the initial proposal. My thanks to Kristen Watterson, Tiffany Taylor, Toni Arritola, Rebecca Rinehart, Melissa Ice, Ivan Martinovic, Paul Wells, Christopher Kaufmann, Andy Marinkovich, Aira Ducic, Jason Everett, Azra Dedic, and Michael Stephens. I also thank Frances Buontempo, the developer assigned to follow my book from start to finish. Her timely, rich feedback led to many improvements in the book.</p>
+
+  <p class="body"><a id="pgfId-1019653"></a>To all the reviewers: Amit Lamba, Atul S Khot, David Cabrero Souto, Francesco Basile, James Liu, James McKean Wood, Jereme Allen, Joel Holmes, Kevin Orr, Matteo Battista, Michael Holmes, Nelson H. Ferrari, Prabhuti Prakash, Robert Edwards, Shawn Lam, Stephen Byrne, Timothy Wooldridge, and Tom Madden, your suggestions helped make this a better book.</p>
+
+  <p class="body"><a id="pgfId-1019654"></a>Finally, I thank my beloved wife, Laura. I signed the deal with Manning a few weeks before our baby was born. She was incredibly patient and supportive throughout this time. Without her, I could not have written this book (or done many other things in life). Our baby is now seven months old, and although he does not know much about testing yet, he is the reason I want to make the world a better place.</p>
+
+  <h2 class="fm-head" id="heading_id_6"><a id="pgfId-1019659"></a>about this book</h2>
+
+  <p class="body"><a id="pgfId-1019660"></a>Like most software engineering, software testing is an art. Over the past decade, our community has learned that automated tests are the best way to test software. Computers can run hundreds of tests in a split second, and such test suites allow companies to confidently ship software dozens of times a day.</p>
+
+  <p class="body"><a id="pgfId-1019661"></a>A huge number of resources (books, tutorials, and online courses) are available that explain how to automate tests. No matter what language you are working in or what type of software you are developing, you can find information about the right tool to use. But we are missing resources related to engineering effective test cases. Automation executes tests that a developer designed. If the tests are not good or do not exercise parts of the code that contain bugs, the test suite is less useful.</p>
+
+  <p class="body"><a id="pgfId-1019662"></a>The development community treats software testing like an art form, where inspired and creative developers create more effective test suites than developers who are less creative or experienced. But I challenge that attitude in this book and show that software testing does not need to depend on expertise, experience, or creativity: it can, for the most part, be systematized.</p>
+
+  <p class="body"><a id="pgfId-1019663"></a>By following an effective, systematic approach to software testing, we no longer depend on very experienced software developers to write good tests. And if we find ways to automate most of the process, this frees us to focus on tests that do require creativity.</p>
+
+  <h3 class="fm-head1" id="heading_id_7"><a id="pgfId-1019664"></a>Who should read this book</h3>
+
+  <p class="body"><a id="pgfId-1019665"></a>This book was written for developers who want to learn more about testing or sharpen their testing skills. If you have years of experience in software engineering and have written lots of automated tests, but you always follow your intuition about what the next test case should be, this book will provide some structure for your thought process.</p>
+
+  <p class="body"><a id="pgfId-1019666"></a>Developers with different levels of expertise will benefit from reading this book. Novice developers will be able to follow all the code examples and techniques I introduce. Senior developers will be introduced to techniques they may not be familiar with and will learn from the real-world, pragmatic discussions in every chapter.</p>
+
+  <p class="body"><a id="pgfId-1019667"></a>The testing techniques I describe are meant to be applied by the developer writing the code. While this book can be read by dedicated software testers who see programs as black boxes, it is written from the standpoint of the developer who wrote the code that is being tested.</p>
+
+  <p class="body"><a id="pgfId-1019668"></a>The examples in this book are written in Java, but I did my best to avoid fancy constructs that will be unfamiliar to developers using other programming languages. I also generalize the techniques so that even if the code does not translate directly to your context, the ideas do.</p>
+
+  <p class="body"><a id="pgfId-1019669"></a>In chapter 7, I discuss designing testable systems. Those ideas make more sense for developers building object-oriented software systems than for systems built in a functional style. However, this is the only chapter that may not directly apply to functional programmers.</p>
+
+  <h3 class="fm-head1" id="heading_id_8"><a id="pgfId-1019670"></a>How this book is organized: A roadmap</h3>
+
+  <p class="body"><a id="pgfId-1019671"></a>This book is organized into 11 chapters. In chapter 1, I make my case for systematic and effective software testing. I present an example involving two developers—both implementing the same feature, one casually and the other systematically—and highlight the differences between their approaches. I then discuss the differences between unit, integration, and system tests and argue that developers should first focus on fast unit tests and integration tests (the well-known testing pyramid).</p>
+
+  <p class="body"><a id="pgfId-1019672"></a>Chapter 2 introduces domain testing. This testing practice focuses on engineering test cases based on requirements. Software development teams use different practices when it comes to requirements—user stories, Unified Modeling Language (UML), or in-house formats—and domain testing uses this information. Every testing session should begin with the requirements of the feature being developed.</p>
+
+  <p class="body"><a id="pgfId-1019673"></a>Chapter 3 shows how to use the program’s source code and structure to augment the tests we engineer via domain testing. We can run code coverage tools and use the results to reflect on parts of code that our initial test suite did not cover. Some developers do not think code coverage is a useful metric, but in this chapter I hope to convince you that, when applied correctly, code coverage should be part of the testing process.</p>
+
+  <p class="body"><a id="pgfId-1019674"></a>In chapter 4, I discuss the idea that quality goes beyond testing: it also depends on how you model your code and the certainties your methods and classes give to the system’s other classes and methods. Design by contract makes the code’s pre- and post-conditions explicit. This way, if something goes wrong, the program will halt without causing other problems.</p>
+
+  <p class="body"><a id="pgfId-1019675"></a>Chapter 5 introduces property-based testing. Instead of writing tests based on a single concrete example, we test all the program’s properties. The testing framework is responsible for generating input data that matches the properties. Mastering this technique can be tricky: it is not easy to express properties, and doing so requires practice. Property-based testing is also more appropriate for some pieces of code than others. This chapter is full of examples that demonstrate this concept.</p>
+
+  <p class="body"><a id="pgfId-1019676"></a>Chapter 6 discusses practicalities that go beyond engineering good test cases. In more complex systems, classes depend on other classes, and writing tests can become a burden. I introduce mocks and stubs, which let us ignore some dependencies during testing. We also discuss a significant trade-off: although mocks simplify testing, they make our tests more coupled with the production code, which may result in tests that do not evolve gracefully. The chapter discusses the pros and cons of mocks as well as when to use (or not use) them.</p>
+
+  <p class="body"><a id="pgfId-1019677"></a>In chapter 7, I explain the difference between systems that are designed with testability in mind and systems that are not. We discuss several simple patterns that will help you write code that is easy to control and easy to observe (the dream of any developer when it comes to testing). This chapter is about software design as well as testing—as you will see, they have a strong relationship.</p>
+
+  <p class="body"><a id="pgfId-1019678"></a>Chapter 8 discusses test-driven development (TDD): writing tests before production code. TDD is an extremely popular technique, especially among Agile practitioners. I recommend reading this chapter even if you are already familiar with TDD—I have a somewhat unusual view of how TDD should be applied and, in particular, cases where I think TDD does not make much difference.</p>
+
+  <p class="body"><a id="pgfId-1019679"></a>In chapter 9, I go beyond unit tests and discuss integration and system tests. You will see how the techniques discussed in earlier chapters (such as domain and structural testing) can be directly applied to these tests. Writing integration and system tests requires much more code, so if we do not organize the code well, we can end up with a complex test suite. This chapter introduces several best practices for writing test suites that are solid and easy to maintain.</p>
+
+  <p class="body"><a id="pgfId-1019680"></a>In chapter 10, I discuss test code best practices. Writing tests in an automated fashion is a fundamental part of our process. We also want to write code that is easy to understand and maintain. This chapter introduces best practices (what we want from our tests) and bad practices (what we do not want from our tests).</p>
+
+  <p class="body"><a id="pgfId-1019681"></a>In chapter 11, I revisit some of the concepts covered in the book, reinforce important topics, and give you some final advice about where to go next.</p>
+
+  <h3 class="fm-head1" id="heading_id_9"><a id="pgfId-1019682"></a>What this book does not cover</h3>
+
+  <p class="body"><a id="pgfId-1019683"></a>This book does not cover software testing for specific technologies and environments, such as choosing a testing framework or how to test mobile applications, React applications, or distributed systems.</p>
+
+  <p class="body"><a id="pgfId-1019684"></a>I am confident that all the practices and techniques I discuss will apply to any software system you are developing. This book can serve as the basis for any testing you need to do. However, each domain has its own testing practices and tools; so, after reading the book, you should look for additional resources that focus on the type of application you are building.</p>
+
+  <p class="body"><a id="pgfId-1019685"></a>This book focuses on functional testing rather than non-functional testing (performance, scalability, and security). If your application requires that type of testing, as many do, I suggest that you look for specific resources on that topic.</p>
+
+  <h3 class="fm-head1" id="heading_id_10"><a id="pgfId-1019686"></a>About the code</h3>
+
+  <p class="body"><a id="pgfId-1019687"></a>This book uses Java to illustrate all the ideas and concepts. However, the code is written so that developers from other languages can follow it and understand the techniques.</p>
+
+  <p class="body"><a id="pgfId-1019688"></a>Due to space constraints, the code listings do not include all the required imports and packages. However, you can find the complete source code on the book’s website (<a class="url" href="http://www.manning.com/books/effective-software-testing">www.manning.com/books/effective-software-testing</a>) and on GitHub (<a class="url" href="https://github.com/effective-software-testing/code">https://github.com/effective-software-testing/code</a>). The code was tested with Java 11, and I do not expect any trouble with newer versions.</p>
+
+  <p class="body"><a id="pgfId-1019689"></a>I also have a dedicated website for this book at <a class="url" href="http://www.effective-software-testing.com">www.effective-software-testing.com</a>, and I share fresh software testing content there. You can also subscribe to my free newsletter.</p>
+
+  <h3 class="fm-head1" id="heading_id_11"><a id="pgfId-1019690"></a>liveBook discussion forum</h3>
+
+  <p class="body"><a id="pgfId-1019691"></a>Purchase of <i class="fm-italics">Effective Software Testing</i> includes free access to liveBook, Manning’s online reading platform. Using liveBook’s exclusive discussion features, you can attach comments to the book globally or to specific sections or paragraphs. It’s a snap to make notes for yourself, ask and answer technical questions, and receive help from the author and other users. To access the forum, go to <a class="url" href="https://livebook.manning.com/book/effective-software-testing/discussion">https://livebook.manning.com/book/effective-software-testing/discussion</a>. You can also learn more about Manning’s forums and the rules of conduct at <a class="url" href="https://livebook.manning.com/discussion">https://livebook.manning.com/discussion</a>.</p>
+
+  <p class="body"><a id="pgfId-1019693"></a>Manning’s commitment to our readers is to provide a venue where a meaningful dialogue between individual readers and between readers and the author can take place. It is not a commitment to any specific amount of participation on the part of the author, whose contribution to the forum remains voluntary (and unpaid). We suggest you try asking the author some challenging questions lest his interest stray! The forum and the archives of previous discussions will be accessible from the publisher’s website as long as the book is in print.</p>
+
+  <h2 class="fm-head" id="heading_id_12"><a id="pgfId-1019694"></a>about the author</h2>
+
+  <table class="fm-contenttable">
+    <colgroup class="calibre4">
+      <col class="calibre5" span="1" width="20%"/>
+      <col class="calibre5" span="2" width="80%"/>
+    </colgroup>
+
+    <tbody class="calibre6">
+      <tr class="calibre7">
+        <td class="calibre8" colspan="1" rowspan="1">
+          <p class="copyrightfigures"><img alt="" class="calibre11" src="../../OEBPS/Images/Aniche_AuthorPhoto.png" width="197" height="265"/>    </p>
+        </td>
+
+        <td class="calibre8" colspan="1" rowspan="1">
+          <p class="body"><span class="mc-small-caps">Dr. Maurício Aniche’s</span> life’s mission is to make software engineers better at what they do. He leads the Tech Academy of Adyen, a Dutch payment company that allows businesses to accept e-commerce, mobile, and point-of-sale payments.</p>
+
+          <p class="body"><a id="pgfId-1019697"></a> Maurício is also an assistant professor of software engineering at Delft University of Technology in the Netherlands, where he conducts research on how to make developers more productive during testing and maintenance. His teaching efforts in software testing earned him the Computer Science Teacher of the Year 2021 award and the TU Delft Education Fellowship, a prestigious fellowship given to innovative lecturers.</p>
+
+          <p class="body"><a id="pgfId-1019698"></a>Maurício holds MSc and PhD degrees in computer science from the University of São Paulo, Brazil. During his MSc, he co-founded Alura, one of the most popular e-learning platforms for software engineers in Brazil. He is the author of two Brazilian Portuguese books popular among Brazilian developers: <i class="fm-italics">Test-Driven Development in the Real World</i> and <i class="fm-italics">Object-Oriented Programming and SOLID for Ninjas</i>.</p>
+
+          <p class="body"><a id="pgfId-1019699"></a>Maurício strongly believes that software engineering will soon become a more science-based field. One of his goals is to make sure that practitioners get to know what academics are up to and that academics understand the real challenges that practitioners face in their daily jobs.</p>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2 class="fm-head" id="heading_id_13"><a id="pgfId-1019700"></a>about the cover illustration</h2>
+
+  <p class="body"><a id="pgfId-1020636"></a>The figure on the cover of <i class="fm-italics">Effective Software Testing</i> is “Homme Mordwine,” or “Mordwine Man,” taken from a collection by Jacques Grasset de Saint-Sauveur, published in 1797. Each illustration is finely drawn and colored by hand.</p>
+
+  <p class="body"><a id="pgfId-1020637"></a> In those days, it was easy to identify where people lived and what their trade or station in life was just by their dress. Manning celebrates the inventiveness and initiative of the computer business with book covers based on the rich diversity of regional culture centuries ago, brought back to life by pictures from collections such as this one.</p>
+</div>
+</div>
+</body>
+</html>

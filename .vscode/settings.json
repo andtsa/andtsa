@@ -1,7 +1,7 @@
 {
-	"workbench.colorTheme": "Material Theme Palenight",
+	"workbench.colorTheme": "Palenight (Mild Contrast)",
 	"workbench.fontAliasing": "antialiased",
-	"workbench.iconTheme": "material-icon-theme",
+	"workbench.iconTheme": "eq-material-theme-icons-light",
 	"editor.fontFamily": "SF Mono bold, Menlo, Monaco, 'Courier New', monospace",
 	"editor.fontLigatures": true,
 	"editor.fontWeight": "200",

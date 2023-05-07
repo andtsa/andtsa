@@ -1,0 +1,648 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xml:lang="en"
+      lang="en"
+      xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:epub="http://www.idpf.org/2007/ops">
+<head>
+<title>Effective Software Testing</title>
+<link rel="stylesheet" type="text/css" href="../../override_v1.css"/>
+<link rel="stylesheet" type="text/css" href="../../stylesheet.css"/><link rel="stylesheet" type="text/css" href="../../page_styles.css"/>
+</head>
+<body>
+<div id="book-content">
+<div id="sbo-rt-content" class="calibre"><h1 class="tochead" id="heading_id_2"><a id="pgfId-998407"></a><a id="pgfId-1030693"></a>4 Designing contracts</h1>
+
+  <p class="co-summary-head"><a id="pgfId-1011754"></a>This chapter covers</p>
+
+  <ul class="calibre12">
+    <li class="co-summary-bullet"><a class="calibre13" id="pgfId-1011760"></a>Designing pre-conditions, post-conditions, and invariants</li>
+
+    <li class="co-summary-bullet"><a class="calibre13" id="pgfId-1011774"></a>Understanding the differences between contracts and validation</li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1011784"></a>Imagine a piece of software that handles a very complex financial process. For that big routine to happen, the software system chains calls to several subroutines (or classes) in a complex flow of information: that is, the results of one class are passed to the next class, whose results are again passed to the next class, and so on. As usual, the data comes from different sources, such as databases, external web services, and users. At some point in the routine, the class <code class="fm-code-in-text">TaxCalculator</code> (which handles <a id="marker-1039208"></a>calculating a specific tax) is called. From the requirements of this class, the calculation only makes sense for positive numbers.</p>
+
+  <p class="body"><a id="pgfId-1011805"></a>We need to think about how we want to model such a restriction. I see three options when facing such a restriction:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1011811"></a>Ensure that classes never call other classes with invalid inputs. In our example, any other classes called <code class="fm-code-in-text">TaxCalculator</code> will ensure that they will never pass a negative number. While this simplifies the code of the class under development, since it does not need to deal with the special cases, it adds complexity to the caller classes that need to be sure they never make a bad call.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1011834"></a>Program in a more defensive manner, ensuring that if an invalid input happens, the system halts and returns an error message to the user. This adds a little complexity to every class in the system, as they all have to know how to handle invalid inputs. At the same time, it makes the system more resilient. However, coding defensively in an ad hoc manner is not productive. You may end up adding unnecessary code, such as restrictions that were already checked.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1011844"></a>My favorite approach, and the goal of this chapter, is to define clear contracts for each class we develop. These contracts clearly establish what the class requires as pre-conditions, what the class provides as post-conditions, and what invariants always hold for the class. This is a major modeling activity for which the <i class="fm-italics1">design-by-contract</i> idea will <a class="calibre13" id="marker-1039213"></a>inspire us (originally proposed by<a class="calibre13" id="marker-1039214"></a> Bertrand Meyer).</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1011875"></a>Such contract decisions happen while the developer is implementing the functionality. That is why design-by-contract appears on the “testing to guide development” side of the development flow I propose (see figure 1.4).</p>
+
+  <h2 class="fm-head" id="heading_id_3"><a id="pgfId-1011882"></a>4.1 Pre-conditions and post-conditions</h2>
+
+  <p class="body"><a id="pgfId-1011929"></a><a id="marker-1039217"></a><a id="marker-1039218"></a><a id="marker-1039219"></a><a id="marker-1039220"></a>Going back to the tax calculation example, we need to reflect on <i class="fm-italics">pre-conditions</i> that the method needs to function properly, as well as its <i class="fm-italics">post-conditions</i>: what the method guarantees as outcomes. We already mentioned a pre-condition: the method <i class="fm-italics">does not</i> accept negative numbers. A possible post-condition of this method is that it also does not return negative numbers.</p>
+
+  <p class="body"><a id="pgfId-1011938"></a>Once the method’s pre- and post-conditions are established, it is time to add them to the source code. Doing so can be as simple as an <code class="fm-code-in-text">if</code> instruction, as shown in the following listing.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1012004"></a>Listing 4.1 <code class="fm-code-in-text">TaxCalculator</code> with pre- and post-conditions</p>
+  <pre class="programlisting"><a id="pgfId-1011953"></a>public class TaxCalculator {
+<a id="pgfId-1012052"></a>  public double calculateTax(double value) {
+<a id="pgfId-1012063"></a> 
+<a id="pgfId-1012058"></a>    if(value &lt; 0) {                                            <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1012075"></a>      throw new RuntimeException("Value cannot be negative.");
+<a id="pgfId-1012081"></a>    }
+<a id="pgfId-1012092"></a> 
+<a id="pgfId-1012087"></a>    double taxValue = 0;
+<a id="pgfId-1012103"></a> 
+<a id="pgfId-1012098"></a>    // some complex business rule here...
+<a id="pgfId-1012109"></a>    // final value goes to 'taxValue'
+<a id="pgfId-1012120"></a> 
+<a id="pgfId-1012115"></a>    if(taxValue &lt; 0) {                                         <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1012132"></a>      throw new RuntimeException("Calculated tax value
+<a id="pgfId-1012138"></a>      <span class="fm-code-continuation-arrow">➥</span> cannot be negative.");
+<a id="pgfId-1012155"></a>    }
+<a id="pgfId-1012166"></a> 
+<a id="pgfId-1012161"></a>    return taxValue;
+<a id="pgfId-1012172"></a>  }
+<a id="pgfId-1012178"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1046732"></a><span class="fm-combinumeral">❶</span> The pre-condition: a simple if ensuring that no invalid values pass</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1046753"></a><span class="fm-combinumeral">❷</span> The post-condition is also implemented as a simple if. If something goes wrong, we throw an exception, alerting the consumer that the post-condition does not hold.</p>
+
+  <p class="fm-callout"><a id="pgfId-1012220"></a><span class="fm-callout-head">Note</span> You may be wondering what <code class="fm-code-in-text">value</code>, the input parameter of the <code class="fm-code-in-text">calculateTax</code> method, represents. Also, how is the tax rate set? In real life, the requirements and implementation of a tax calculator would be much more complex—this simple code lets you focus on the technique. Bear with me!</p>
+
+  <p class="body"><a id="pgfId-1012255"></a>Note that the pre- and post-conditions ensure different things. Pre-conditions (in this case, a single pre-condition) ensure that the input values received by a method adhere to what it requires. Post-conditions ensure that the method returns what it promises to other methods.</p>
+
+  <p class="body"><a id="pgfId-1012261"></a>You may be wondering, “How can I have a value that breaks the post-condition if I am coding the implementation of this method?” In this example, you hope that your implementation will never return a negative number. But in very complex implementations, a bug may slip in! If bugs did not exist, there would be no reason for this book. The post-condition check ensures that if there is a bug in the implementation, the method will throw an exception instead of returning an invalid value. An exception will make your program halt—and halting is often much better than continuing with an incorrect value.</p>
+
+  <p class="body"><a id="pgfId-1012267"></a>Making your pre- and post-conditions clear in the documentation is also fundamental and very much recommended. Let’s do that in the next listing.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1012324"></a>Listing 4.2 Javadoc of the <code class="fm-code-in-text">calculateTax</code> method describing its contract</p>
+  <pre class="programlisting"><a id="pgfId-1012273"></a>/**
+<a id="pgfId-1012376"></a> * Calculates the tax according to (some
+<a id="pgfId-1012382"></a> * explanation here...)
+<a id="pgfId-1012388"></a> *
+<a id="pgfId-1012394"></a> * @param value the base value for tax calculation. Value has
+<a id="pgfId-1012400"></a> *              to be a positive number.
+<a id="pgfId-1012406"></a> * @return the calculated tax. The tax is always a positive number.
+<a id="pgfId-1012412"></a> */
+<a id="pgfId-1012418"></a>public double calculateTax(double value) { ... }</pre>
+
+  <h3 class="fm-head1" id="heading_id_4"><a id="pgfId-1012424"></a>4.1.1 The assert keyword</h3>
+
+  <p class="body"><a id="pgfId-1012481"></a><a id="marker-1041260"></a><a id="marker-1041261"></a><a id="marker-1041262"></a><a id="marker-1041263"></a>The Java language offers the keyword <code class="fm-code-in-text">assert</code>, which is a native way of writing assertions. In the previous example, instead of throwing an exception, we could write <code class="fm-code-in-text">assert</code> <code class="fm-code-in-text">value</code> <code class="fm-code-in-text">&gt;=</code> <code class="fm-code-in-text">0</code> <code class="fm-code-in-text">:</code> <code class="fm-code-in-text">"Value</code> <code class="fm-code-in-text">cannot</code> <code class="fm-code-in-text">be</code> <code class="fm-code-in-text">negative."</code>. If <code class="fm-code-in-text">value</code> is not greater than or equal to 0, the Java Virtual Machine (JVM) will throw an <code class="fm-code-in-text">AssertionError</code>. In the following listing, I show a version of the <code class="fm-code-in-text">TaxCalculator</code> using asserts.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1012541"></a>Listing 4.3 <code class="fm-code-in-text">TaxCalculator</code> with pre- and post-conditions implemented via asserts</p>
+  <pre class="programlisting"><a id="pgfId-1012490"></a>public class TaxCalculator {
+<a id="pgfId-1012591"></a>  public double calculateTax(double value) {
+<a id="pgfId-1012597"></a>    assert value &gt;= 0 : "Value cannot be negative";   <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1043153"></a> 
+<a id="pgfId-1012614"></a>    double taxValue = 0;
+<a id="pgfId-1012630"></a> 
+<a id="pgfId-1012625"></a>    // some complex business rule here...
+<a id="pgfId-1012636"></a>    // final value goes to 'taxValue'
+<a id="pgfId-1012647"></a> 
+<a id="pgfId-1012642"></a>    assert taxValue &gt;= 0 : "Calculated tax value
+<a id="pgfId-1012653"></a>    <span class="fm-code-continuation-arrow">➥</span> cannot be negative.";                          <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1012681"></a> 
+<a id="pgfId-1012676"></a>    return taxValue;
+<a id="pgfId-1012687"></a>  }
+<a id="pgfId-1012693"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1046602"></a><span class="fm-combinumeral">❶</span> The same pre-condition, now as an assert statement</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1046623"></a><span class="fm-combinumeral">❷</span> The same post-condition, now as an assert statement</p>
+
+  <p class="body"><a id="pgfId-1012751"></a>Deciding whether to use <code class="fm-code-in-text">assert</code> instructions or simple <code class="fm-code-in-text">if</code> statements that <a id="marker-1039315"></a>throw exceptions is something to discuss with your team members. I’ll give you my opinion about it later in section 4.5.3.</p>
+
+  <p class="body"><a id="pgfId-1012766"></a>The <code class="fm-code-in-text">assert</code> instruction can be disabled via a parameter to the JVM, so it does not have to be executed at all times. If you disable it in production, for example, the pre-conditions will not be checked while running the system. If you do not have full control of your production environment, you may want to opt for exceptions so you can be sure your pre-conditions will be checked.</p>
+
+  <p class="body"><a id="pgfId-1012807"></a>An argument against the use of <code class="fm-code-in-text">assert</code>s is that they always throw <code class="fm-code-in-text">AssertionError</code>, which is a generic error. Sometimes you may want to throw a more specific exception that the caller can handle. For simplicity, I make use of <code class="fm-code-in-text">assert</code> in the remainder of this chapter.</p>
+
+  <p class="body"><a id="pgfId-1012816"></a>Later in this chapter, we differentiate between pre-conditions and validations. This may also be taken into account when deciding between asserts and exceptions. <a id="marker-1039320"></a><a id="marker-1039321"></a><a id="marker-1039322"></a><a id="marker-1039323"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_5"><a id="pgfId-1012831"></a>4.1.2 Strong and weak pre- and post-conditions</h3>
+
+  <p class="body"><a id="pgfId-1012850"></a><a id="marker-1039325"></a><a id="marker-1039326"></a><a id="marker-1039327"></a>When defining pre- and post-conditions, an important decision is how weak or strong you want them to be. In the previous example, we handle the pre-condition very strongly: if a negative value comes in, it violates the pre-condition of the method, so we halt the program.</p>
+
+  <p class="body"><a id="pgfId-1012855"></a>One way to avoid halting the program due to negative numbers would be to weaken the pre-condition. In other words, instead of accepting only values that are greater than zero, the method could accept any value, positive or negative. We could do this by removing the <code class="fm-code-in-text">if</code> statement, as shown in the following listing (the developer would have to find a way to take negative numbers into account and handle them).</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1012921"></a>Listing 4.4 <code class="fm-code-in-text">TaxCalculator</code> with a weaker pre-condition</p>
+  <pre class="programlisting"><a id="pgfId-1012870"></a>public double calculateTax(double value) {
+<a id="pgfId-1012969"></a>                             <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1012986"></a> 
+<a id="pgfId-1012981"></a>  // method continues ...
+<a id="pgfId-1012992"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1046504"></a><span class="fm-combinumeral">❶</span> No pre-conditions check; any value is valid.</p>
+
+  <p class="body"><a id="pgfId-1013018"></a>Weaker pre-conditions make it easier for other classes to invoke the method. After all, regardless of the value you pass to <code class="fm-code-in-text">calculateTax</code>, the program will return something. This is in contrast to the previous version, where a negative number throws an error.</p>
+
+  <p class="body"><a id="pgfId-1013033"></a>There is no single answer for whether to use weaker or stronger pre-conditions. It depends on the type of system you are developing as well as what you expect from the consumers of the class you are modeling. I prefer stronger conditions, as I believe they reduce the range of mistakes that may happen in the code. However, this means I spend more time encoding these conditions as assertions, so my code becomes more complex.</p>
+
+  <div class="fm-sidebar-block">
+    <p class="fm-sidebar-title"><a class="calibre13" id="pgfId-1013039"></a>Can you apply the same reasoning to post-conditions?</p>
+
+    <p class="fm-sidebar-text"><a id="pgfId-1013049"></a>You may find a reason to return a value instead of throwing an exception. To be honest, I cannot recall a single time I’ve done that. In the <code class="fm-code-in-text">TaxCalculator</code> example, a negative number would mean there was a bug in the implementation, and you probably do not want someone to pay zero taxes.</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1013064"></a>In some cases, you cannot weaken the pre-condition. For the tax calculation, there is no way to accept negative values, and the pre-condition should be strong. Pragmatically speaking, another way of handling such a case is to return an error value. For example, if a negative number comes in, the program can return 0 instead of halting, as in the following listing.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1013121"></a>Listing 4.5 <code class="fm-code-in-text">TaxCalculator</code> returning an error code instead of an exception</p>
+  <pre class="programlisting"><a id="pgfId-1013070"></a>public double calculateTax(double value) {
+<a id="pgfId-1013169"></a>  // pre-condition check
+<a id="pgfId-1013175"></a>  if(value &lt; 0) {         <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1013187"></a>    return 0;
+<a id="pgfId-1013193"></a>  }
+<a id="pgfId-1013204"></a> 
+<a id="pgfId-1013209"></a> 
+<a id="pgfId-1013199"></a>  // method continues ...
+<a id="pgfId-1013215"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1046443"></a><span class="fm-combinumeral">❶</span> If the pre-condition does not hold, the method returns 0. The client of this method does not need to worry about exceptions.</p>
+
+  <p class="body"><a id="pgfId-1013241"></a>While this approach simplifies the clients’ lives, they now have to be aware that if they receive a 0, it might be because of invalid input. Perhaps the method could return –1 to differentiate from zero taxes. Deciding between a weaker pre-condition or an error value is another decision to make after considering all the possibilities.</p>
+
+  <p class="body"><a id="pgfId-1013247"></a>For those that know the original theory of design-by-contracts: we do not weaken the pre-condition here to make it easier for clients to handle the outcomes of the method. We decided to return an error code instead of throwing an exception. In the remainder of this chapter, you see that my perspective on contracts is more pragmatic than that in the original design-by-contract paper by Meyer in 1992. What matters to me is reflecting on what classes and methods can and cannot handle and what they should do in case a violation happens. <a id="marker-1039373"></a><a id="marker-1039374"></a><a id="marker-1039375"></a><a id="marker-1039376"></a><a id="marker-1039377"></a><a id="marker-1039378"></a><a id="marker-1039379"></a></p>
+
+  <h2 class="fm-head" id="heading_id_6"><a id="pgfId-1013268"></a>4.2 Invariants</h2>
+
+  <p class="body"><a id="pgfId-1013303"></a><a id="marker-1039381"></a><a id="marker-1039382"></a><a id="marker-1039383"></a>We have seen that pre-conditions should hold before a method’s execution, and post-conditions should hold after a method’s execution. Now we move on to conditions that must always hold before <i class="fm-italics">and</i> after a method’s execution. These conditions are called <i class="fm-italics">invariants</i>. An invariant is thus a condition that holds throughout the entire lifetime of an object or a data structure.</p>
+
+  <p class="body"><a id="pgfId-1013364"></a>Imagine a <code class="fm-code-in-text">Basket</code> class that <a id="marker-1039385"></a>stores the products the user is buying from an online shop. The class offers methods such as <code class="fm-code-in-text">add(Product</code> <code class="fm-code-in-text">p,</code> <code class="fm-code-in-text">int</code> <code class="fm-code-in-text">quantity)</code>, which adds a product <code class="fm-code-in-text">p</code> a <code class="fm-code-in-text">quantity</code> number of times, and <code class="fm-code-in-text">remove(Product</code> <code class="fm-code-in-text">p)</code>, which removes the product completely from the cart. Here is a skeleton of the class.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1013424"></a>Listing 4.6 The Basket class</p>
+  <pre class="programlisting"><a id="pgfId-1013373"></a>public class Basket {
+<a id="pgfId-1013463"></a>  private BigDecimal totalValue = BigDecimal.ZERO;       <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1013475"></a>  private Map&lt;Product, Integer&gt; basket = new HashMap&lt;&gt;();
+<a id="pgfId-1013486"></a> 
+<a id="pgfId-1013481"></a>  public void add(Product product, int qtyToAdd) {       <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1013498"></a>    // add the product
+<a id="pgfId-1013504"></a>    // update the total value
+<a id="pgfId-1013510"></a>  }
+<a id="pgfId-1013521"></a> 
+<a id="pgfId-1013516"></a>  public void remove(Product product) {                  <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1013533"></a>    // remove the product from the basket
+<a id="pgfId-1013539"></a>    // update the total value
+<a id="pgfId-1013545"></a>  }
+<a id="pgfId-1013551"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1046251"></a><span class="fm-combinumeral">❶</span> We use BigDecimal instead of double to avoid rounding issues in Java.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1046272"></a><span class="fm-combinumeral">❷</span> Adds the product to the cart and updates the total value of the cart</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1046289"></a><span class="fm-combinumeral">❸</span> Removes a product from the cart and updates its total value</p>
+
+  <p class="body"><a id="pgfId-1013647"></a>Before we talk about invariants, let’s focus on the method’s pre- and post-conditions. For the <code class="fm-code-in-text">add()</code> method, we can <a id="marker-1039426"></a>ensure that the product is not null (you cannot add a null product to the cart) and that the quantity is greater than 0 (you cannot buy a product 0 or fewer times). In addition, a clear post-condition is that the product is now in the basket. Listing 4.7 shows the implementation. Note that I am using Java’s <code class="fm-code-in-text">assert</code> method to <a id="marker-1039427"></a>express the pre-condition, which means I must have assertions enabled in my JVM when I run the system. You could also use a simple <code class="fm-code-in-text">if</code> statement, as I showed earlier.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1013744"></a>Listing 4.7 <code class="fm-code-in-text">Basket</code>'s <code class="fm-code-in-text">add</code> method with its pre-conditions</p>
+  <pre class="programlisting"><a id="pgfId-1013656"></a>public void add(Product product, int qtyToAdd) {
+<a id="pgfId-1013767"></a>  assert product != null : "Product is required";                  <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1013779"></a>  assert qtyToAdd &gt; 0 : "Quantity has to be greater than zero";    <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1013796"></a> 
+<a id="pgfId-1013791"></a>  // ...
+<a id="pgfId-1013802"></a>  // add the product in the basket
+<a id="pgfId-1013808"></a>  // update the total value
+<a id="pgfId-1013814"></a>  // ...
+<a id="pgfId-1013825"></a> 
+<a id="pgfId-1013820"></a>  assert basket.containsKey(product) :
+<a id="pgfId-1013831"></a>   "Product was not inserted in the basket";                       <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1013843"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1046051"></a><span class="fm-combinumeral">❶</span> Pre-condition ensuring that product is not null</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1046072"></a><span class="fm-combinumeral">❷</span> Pre-condition ensuring that qtyToAdd is greater than 0</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1046096"></a><span class="fm-combinumeral">❸</span> Post-condition ensuring that the product was added to the cart</p>
+
+  <p class="body"><a id="pgfId-1013901"></a>You could model other post-conditions here, such as “the new total value should be greater than the previous total value.” Java does not provide an easy way to do that, so we need extra code to keep the old total value, which we use in the post-condition check (see listing 4.8). Interestingly, in languages like Eiffel, doing so would not require an extra variable! Those languages provide old and new values of variables to facilitate the post-condition check.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1013997"></a>Listing 4.8 Another post-condition for <code class="fm-code-in-text">Basket</code>'s <code class="fm-code-in-text">add</code> method</p>
+  <pre class="programlisting"><a id="pgfId-1013907"></a>public void add(Product product, int qtyToAdd) {
+<a id="pgfId-1014022"></a>  assert product != null : "Product is required";
+<a id="pgfId-1014028"></a>  assert qtyToAdd &gt; 0 : "Quantity has to be greater than zero";
+<a id="pgfId-1014034"></a>  BigDecimal oldTotalValue = totalValue;                         <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1014051"></a> 
+<a id="pgfId-1014046"></a>  // add the product in the basket
+<a id="pgfId-1014057"></a>  // update the total value
+<a id="pgfId-1014068"></a> 
+<a id="pgfId-1014063"></a>  assert basket.containsKey(product) :
+<a id="pgfId-1014074"></a>    "Product was not inserted in the basket";
+<a id="pgfId-1014085"></a> 
+<a id="pgfId-1014080"></a>  assert totalValue.compareTo(oldTotalValue) == 1 :
+<a id="pgfId-1014091"></a>    "Total value should be greater than
+<a id="pgfId-1014097"></a>    <span class="fm-code-continuation-arrow">➥</span> previous total value";                                    <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1014120"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1045888"></a><span class="fm-combinumeral">❶</span> For the post-condition to happen, we need to save the old total value.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1045909"></a><span class="fm-combinumeral">❷</span> The post-condition ensures that the total value is greater than before.</p>
+
+  <p class="fm-callout"><a id="pgfId-1014162"></a><span class="fm-callout-head">Note</span> We use the <code class="fm-code-in-text">BigDecimal</code> class here <a id="marker-1039499"></a>instead of a simple <code class="fm-code-in-text">double</code>. <code class="fm-code-in-text">BigDecimal</code>s are recommended whenever you want to avoid rounding issues that may happen when you use doubles. Check your programming language for how to do that. <code class="fm-code-in-text">BigDecimal</code> gives us precision, but it is verbose. In listing 4.8, for example, we have to use the <code class="fm-code-in-text">compareTo</code> method to <a id="marker-1039501"></a>compare two <code class="fm-code-in-text">BigDecimal</code>s, which is more complicated than <code class="fm-code-in-text">a</code> <code class="fm-code-in-text">&gt;</code> <code class="fm-code-in-text">b</code>. Another trick is to represent money in cents and use <code class="fm-code-in-text">integer</code> or <code class="fm-code-in-text">long</code> as the types, but that is beyond the scope of this book.</p>
+
+  <p class="body"><a id="pgfId-1014279"></a>Now for the pre-conditions of the <code class="fm-code-in-text">remove()</code> method. The product <a id="marker-1039502"></a>should not be null; moreover, the product to be removed needs to be in the basket. If the product is not in the basket, how can you remove it? As a post-condition, we can ensure that, after the removal, the product is no longer in the basket. See the implementation of both pre- and post-conditions in the following listing.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1014351"></a>Listing 4.9 Pre- and post-conditions for the <code class="fm-code-in-text">remove</code> method</p>
+  <pre class="programlisting"><a id="pgfId-1014300"></a>public void remove(Product product) {
+<a id="pgfId-1014403"></a>  assert product != null : "product can't be null";                     <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1014415"></a>  assert basket.containsKey(product) : "Product must already be in the
+<a id="pgfId-1014421"></a>  <span class="fm-code-continuation-arrow">➥</span> basket";                                                           <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1014444"></a>  // ...
+<a id="pgfId-1014455"></a>  // remove the product from the basket
+<a id="pgfId-1014461"></a>  // update the total value
+<a id="pgfId-1014467"></a>  // ...
+<a id="pgfId-1014478"></a> 
+<a id="pgfId-1014473"></a>  assert !basket.containsKey(product) : "Product is still in the        <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1014484"></a>  <span class="fm-code-continuation-arrow">➥</span> basket";                                                           <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1014507"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1045722"></a><span class="fm-combinumeral">❶</span> Pre-conditions: the product cannot be null, and it must exist in the basket.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1045743"></a><span class="fm-combinumeral">❷</span> Post-condition: the product is no longer in the basket.</p>
+
+  <p class="body"><a id="pgfId-1014591"></a>We are finished with the pre- and post-conditions. It is time to model the class invariants. Regardless of products being added to and removed from the basket, the total value of the basket should never be negative. This is not a pre-condition nor a post-condition: this is an <i class="fm-italics">invariant</i>, and the class is responsible for maintaining it. For the implementation, you can use assertions or <code class="fm-code-in-text">if</code>s or whatever your programming language offers. Whenever a method that manipulates the <code class="fm-code-in-text">totalValue</code> field is<a id="marker-1039536"></a> called, we ensure that <code class="fm-code-in-text">totalValue</code> is still a positive number at the end of the method. See the implementation of the invariants in the following listing.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1014651"></a>Listing 4.10 Invariants of the <code class="fm-code-in-text">Basket</code> class</p>
+  <pre class="programlisting"><a id="pgfId-1014600"></a>public class Basket {
+<a id="pgfId-1014703"></a>  private BigDecimal totalValue = BigDecimal.ZERO;
+<a id="pgfId-1014709"></a>  private Map&lt;Product, Integer&gt; basket = new HashMap&lt;&gt;();
+<a id="pgfId-1014720"></a> 
+<a id="pgfId-1014715"></a>  public void add(Product product, int qtyToAdd) {
+<a id="pgfId-1014726"></a>    assert product != null : "Product is required";
+<a id="pgfId-1014732"></a>    assert qtyToAdd &gt; 0 : "Quantity has to be greater than zero";
+<a id="pgfId-1014738"></a>    BigDecimal oldTotalValue = totalValue;
+<a id="pgfId-1014749"></a> 
+<a id="pgfId-1014744"></a>    // add the product in the basket
+<a id="pgfId-1014755"></a>    // update the total value
+<a id="pgfId-1014766"></a> 
+<a id="pgfId-1014761"></a>    assert basket.containsKey(product) : "Product was not inserted in
+<a id="pgfId-1014772"></a>    <span class="fm-code-continuation-arrow">➥</span> the basket";
+<a id="pgfId-1014789"></a>    assert totalValue.compareTo(oldTotalValue) == 1 : "Total value should
+<a id="pgfId-1014795"></a>    <span class="fm-code-continuation-arrow">➥</span> be greater than previous total value";
+<a id="pgfId-1014817"></a> 
+<a id="pgfId-1014812"></a>    assert totalValue.compareTo(BigDecimal.ZERO) &gt;= 0 :
+<a id="pgfId-1014823"></a>      "Total value can't be negative."                         <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1014835"></a>  }
+<a id="pgfId-1014846"></a> 
+<a id="pgfId-1014841"></a>  public void remove(Product product) {
+<a id="pgfId-1014852"></a>    assert product != null : "product can't be null";
+<a id="pgfId-1014858"></a>    assert basket.containsKey(product) : "Product must already be in the basket";
+<a id="pgfId-1014864"></a>    <span class="fm-code-continuation-arrow">➥</span> 
+<a id="pgfId-1014881"></a>    // remove the product from the basket
+<a id="pgfId-1014887"></a>    // update the total value
+<a id="pgfId-1014898"></a> 
+<a id="pgfId-1014893"></a>    assert !basket.containsKey(product) : "Product is still in the basket";
+<a id="pgfId-1014909"></a> 
+<a id="pgfId-1014904"></a>    assert totalValue.compareTo(BigDecimal.ZERO) &gt;= 0 :        <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1014921"></a>      "Total value can't be negative."
+<a id="pgfId-1014927"></a>  }
+<a id="pgfId-1014933"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1045587"></a><span class="fm-combinumeral">❶</span> The invariant ensures that the total value is greater than or equal to 0.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1045608"></a><span class="fm-combinumeral">❷</span> The same invariant check for the remove</p>
+
+  <p class="body"><a id="pgfId-1014997"></a>Because the invariant checking may happen at the end of all the methods of a class, you may want to reduce duplication and create a method for such checks, such as the <code class="fm-code-in-text">invariant()</code> method in <a id="marker-1039589"></a>listing 4.11. We call <code class="fm-code-in-text">invariant()</code> at the end of every public method: after each method does its business (and changes the object’s state), we want to ensure that the invariants hold.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1015057"></a>Listing 4.11 <code class="fm-code-in-text">invariant()</code> method for the invariant check</p>
+  <pre class="programlisting"><a id="pgfId-1015006"></a>public class Basket {
+<a id="pgfId-1015110"></a> 
+<a id="pgfId-1015105"></a>  public void add(Product product, int qtyToAdd) {
+<a id="pgfId-1015116"></a>    // ... method here ...
+<a id="pgfId-1015122"></a>    assert invariant() : "Invariant does not hold";
+<a id="pgfId-1015128"></a>  }
+<a id="pgfId-1015139"></a> 
+<a id="pgfId-1015134"></a>  public void remove(Product product) {
+<a id="pgfId-1015145"></a>    // ... method here ...
+<a id="pgfId-1015151"></a>    assert invariant() : "Invariant does not hold";
+<a id="pgfId-1015157"></a>  }
+<a id="pgfId-1015168"></a> 
+<a id="pgfId-1015163"></a>  private boolean invariant() {
+<a id="pgfId-1015174"></a>    return totalValue.compareTo(BigDecimal.ZERO) &gt;= 0;
+<a id="pgfId-1015180"></a>  }
+<a id="pgfId-1015186"></a>}</pre>
+
+  <p class="body"><a id="pgfId-1015192"></a>Note that invariants may not hold, say, in the middle of the method execution. The method may break the invariants for a second, as part of its algorithm. However, the method needs to ensure that, in the end, the invariants hold.</p>
+
+  <p class="fm-callout"><a id="pgfId-1015198"></a><span class="fm-callout-head">Note</span> You might be curious about the concrete implementation of the <code class="fm-code-in-text">Basket</code> class and how we would test it. We cannot test all possible combinations of method calls (<code class="fm-code-in-text">add</code>s and <code class="fm-code-in-text">remove</code>s, in any order). How would you tackle this? We get to property-based testing in chapter 5. <a id="marker-1039612"></a><a id="marker-1039613"></a><a id="marker-1039614"></a></p>
+
+  <h2 class="fm-head" id="heading_id_7"><a id="pgfId-1015250"></a>4.3 Changing contracts, and the Liskov substitution principle</h2>
+
+  <p class="body"><a id="pgfId-1015327"></a><a id="marker-1039616"></a><a id="marker-1039617"></a><a id="marker-1039618"></a>What happens if we change the contract of a class or method? Suppose the <code class="fm-code-in-text">calculateTax</code> method we <a id="marker-1039620"></a>discussed earlier needs new pre-conditions. Instead of “<code class="fm-code-in-text">value</code> should be greater than or equal to 0,” they are changed to “<code class="fm-code-in-text">value</code> should be greater than or equal to 100.” What impact would this change have on the system and our test suites? Or suppose the <code class="fm-code-in-text">add</code> method from <a id="marker-1039621"></a>the previous section, which does not accept null as <code class="fm-code-in-text">product</code>, now accepts it. What is the impact of this decision? Do these two changes impact the system in the same way, or does one change have less impact than the other?</p>
+
+  <p class="body"><a id="pgfId-1015336"></a>In an ideal world, we would not change the contract of a class or method after we define it. In the real world, we are sometimes forced to do so. While there may not be anything we can do to prevent the change, we can understand its impact. If you do not understand the impact of the change, your system may behave unexpectedly—and this is how contract changes are related to testing and quality.</p>
+
+  <p class="body"><a id="pgfId-1015404"></a>The easiest way to understand the impact of a change is not to look at the change itself or at the class in which the change is happening, but at all the other classes (or <i class="fm-italics">dependencies</i>) that may use the changing class. Figure 4.1 shows the <code class="fm-code-in-text">calculateTax()</code> method and<a id="marker-1039624"></a> three other (imaginary) classes that use it. When these classes were created, they knew the pre-conditions of the <code class="fm-code-in-text">calculateTax()</code> at that point: “<code class="fm-code-in-text">value</code> has to be greater than or equal to 0.” They knew <code class="fm-code-in-text">calculateTax()</code> would throw an exception if they passed a negative number. So, these client classes currently ensure that they never pass a negative number to <code class="fm-code-in-text">calculateTax()</code>.</p>
+
+  <p class="body"><a id="pgfId-1015522"></a>Notice that <code class="fm-code-in-text">m1()</code> passes 50 as <code class="fm-code-in-text">value</code>, <code class="fm-code-in-text">m2()</code> passes 150, and <code class="fm-code-in-text">m3</code> passes a value from a database (after ensuring that the value is greater than 0). Now, suppose we change the pre-condition to <code class="fm-code-in-text">value</code> <code class="fm-code-in-text">&gt;</code> <code class="fm-code-in-text">100</code>. What will happen to these three dependencies? Nothing will happen to <code class="fm-code-in-text">m2()</code>: by pure luck, the new pre-condition holds for the value of 150. However, we cannot say the same for the other two methods: <code class="fm-code-in-text">m1()</code> will crash, and <code class="fm-code-in-text">m3()</code> will have erratic behavior, as some values from the database may be greater than 100, while others may be smaller than 100. What do we learn here? If we change our pre-conditions to something stronger and more restrictive, such as accepting a smaller set of values (100 to infinity instead of 0 to infinity), we may have a problem with classes that depend on the previously defined contract.</p>
+
+  <p class="body"><a id="pgfId-1015531"></a>Now, suppose <code class="fm-code-in-text">calculateTax()</code> changes its pre-condition to accept negative numbers as inputs. In this case, the three existing dependencies would not break. The new pre-condition is more relaxed than the previous one: it accepts a larger set of inputs. What do we learn? If we change our pre-conditions to something weaker and less restrictive, we do not break the contracts with the clients of the changing class.</p>
+
+  <p class="body"><a id="pgfId-1015546"></a>The same type of reasoning can be applied to the post-conditions. There, we observe the inverse relation. The clients know that <code class="fm-code-in-text">calculateTax</code> never returns negative numbers. Although this would make no business sense, let’s suppose the method now also returns negative numbers. This is a breaking change: the clients of this class do not expect negative numbers to come back and probably are not ready to handle them. The system may behave erratically, depending on whether the returned tax is negative. We learn that if we change our post-condition to something weaker and less restrictive, our clients may break.</p>
+
+  <p class="body"><a id="pgfId-1015561"></a>On the other hand, if the post-condition changes to “the returned value is always greater than 100,” the clients will not break. They were already prepared for the returning value to be between 0 and infinity, and the range from 100 to infinity is a subset of the previous domain. We learn that changing post-conditions to something stronger and more restrictive prevents breaking changes in the dependencies.</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/04-01.png" width="775" height="313"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1047698"></a>Figure 4.1 The <code class="fm-code-in-text">calculateTax()</code> method and all the classes that possibly depend on it</p>
+  </div>
+
+  <h3 class="fm-head1" id="heading_id_8"><a id="pgfId-1015567"></a>4.3.1 Inheritance and contracts</h3>
+
+  <p class="body"><a id="pgfId-1015620"></a><a id="marker-1039636"></a><a id="marker-1039637"></a>We mostly use Java for the examples in this book, and Java is an object-oriented language, so I must discuss what happens when we use inheritance. Figure 4.2 shows that the <code class="fm-code-in-text">TaxCalculator</code> class has many children (<code class="fm-code-in-text">TaxCalculatorBrazil</code> which calculates taxes in Brazil, <code class="fm-code-in-text">TaxCalculatorNL</code>, which calculates taxes in the Netherlands, and so on). These child classes all override <code class="fm-code-in-text">calculateTax()</code> and change the pre- or post-conditions one way or another. Are these contract changes breaking changes?</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/04-02.png" width="823" height="389"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1047747"></a>Figure 4.2 A base class and its child classes. The client depends on the base class, which means any of its children may be used at run time.</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1015679"></a>We can apply the same reasoning as when we discussed changing contracts. Let’s start by focusing on the client class rather than the child classes. Suppose the client class receives a <code class="fm-code-in-text">TaxCalculator</code> in its constructor and later uses it in its methods. Due to polymorphism, we know that any of the child classes can also be passed to the client: for example, we can pass a <code class="fm-code-in-text">TaxCalculatorBrazil</code> or a <code class="fm-code-in-text">TaxCalculatorUS</code>, and it will be accepted because they are all children of the base class.</p>
+
+  <p class="body"><a id="pgfId-1015704"></a>Since the client class does not know which tax calculator was given to it, it can only assume that whatever class it received will respect the pre- and post-conditions of the base class (the only class the client knows). In this case, <code class="fm-code-in-text">value</code> must be greater than or equal to 0 and should return a value greater than or equal to 0. Let’s explore what will happen if each of the child classes is given to the client class:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1015755"></a><code class="fm-code-in-text">TaxCalculatorBrazil</code> has the same pre-conditions as the base class. This means there is no way the client class will observe strange behavior regarding the pre-conditions if it is given <code class="fm-code-in-text">TaxCalculatorBrazil</code>. On the other hand, the <code class="fm-code-in-text">TaxCalculatorBrazil</code> class has a post-condition that the returned value is any number. This is bad. The client class expects only values that are greater than or equal to zero; it does not expect negative numbers. So if <code class="fm-code-in-text">TaxCalculatorBrazil</code> returns a negative number to the client, this may surprise the client and lead to a failure.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1015802"></a><code class="fm-code-in-text">TaxCalculatorUS</code> has the following pre-condition: “<code class="fm-code-in-text">value</code> greater than or equal to 100.” This pre-condition is stronger than the pre-condition of the base class (<code class="fm-code-in-text">value</code> &gt;= 0), and the client class does not know that. Thus the client may call the tax calculator with a value that is acceptable for the base class but not acceptable for <code class="fm-code-in-text">TaxCalculatorUS</code>. We can expect a failure to happen. The post-condition of <code class="fm-code-in-text">TaxCalculatorUS</code> is the same as that of the base class, so we do not expect problems there.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1015829"></a><code class="fm-code-in-text">TaxCalculatorNL</code> has a different pre-condition from the base class: it accepts any value. In other words, the pre-condition is weaker than that of the base class. So although the client is not aware of this pre-condition, we do not expect failures, as <code class="fm-code-in-text">TaxCalculatorNL</code> can handle all of the client’s inputs.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1015874"></a>If we generalize what we observe in this example, we arrive at the following rules whenever a subclass <code class="fm-code-in-text">S</code> (for example, <code class="fm-code-in-text">TaxCalculatorBrazil</code>) inherits from a base class <code class="fm-code-in-text">B</code> (for example, <code class="fm-code-in-text">TaxCalculator</code>):</p>
+
+  <ol class="calibre14">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1015907"></a>The pre-conditions of subclass <code class="fm-code-in-text">S</code> should be the same as or weaker (accept more values) than the pre-conditions of base class <code class="fm-code-in-text">B</code>.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1015936"></a>The post-conditions of subclass <code class="fm-code-in-text">S</code> should be the same as or stronger (return fewer values) than the post-conditions of base class <code class="fm-code-in-text">B</code>.</p>
+    </li>
+  </ol>
+
+  <p class="body"><a id="pgfId-1015945"></a>This idea that a subclass may be used as a substitution for a base class without breaking the expected behavior of the system is known as the <i class="fm-italics">Liskov substitution principle</i> (LSP). This principle <a id="marker-1039654"></a>was introduced by <a id="marker-1039655"></a>Barbara Liskov in a 1987 keynote and later refined by her and Jeannette <a id="marker-1039656"></a>Wing in the famous “A behavioral notion of subtyping” paper (1994). The LSP became even more popular among software developers when Robert Martin <a id="marker-1039657"></a>popularized the SOLID principles, where the “L” stands for LSP.</p>
+
+  <p class="fm-callout"><a id="pgfId-1015984"></a><span class="fm-callout-head">Note</span> A well-known best practice is to avoid inheritance whenever possible (see Effective Java’s item 16, “favor compostion over inheritance”). If you avoid inheritance, you naturally avoid all the problems just discussed. But it is not the goal of this book to discuss best practices in object-oriented design. If you ever need to use inheritance, you now know what to pay attention to. <a id="marker-1039660"></a><a id="marker-1039661"></a><a id="marker-1039662"></a><a id="marker-1039663"></a><a id="marker-1039664"></a></p>
+
+  <h2 class="fm-head" id="heading_id_9"><a id="pgfId-1016011"></a>4.4 How is design-by-contract related to testing?</h2>
+
+  <p class="body"><a id="pgfId-1016028"></a><a id="marker-1039666"></a><a id="marker-1039667"></a>Defining clear pre-conditions, post-conditions, and invariants (and automating them in your code via, for example, assertions) helps developers in many ways. First, assertions ensure that bugs are detected early in the production environment. As soon as a contract is violated, the program halts instead of continuing its execution, which is usually a good idea. The error you get from an assertion violation is very specific, and you know precisely what to debug for. This may not be the case without assertions. Imagine a program that performs calculations. The method that does the heavy calculation does not work well with negative numbers. However, instead of defining such a restriction as an explicit pre-condition, the method returns an invalid output if a negative number comes in. This invalid number is then passed to other parts of the system, which may incur other unexpected behavior. Given that the program does not crash per se, it may be hard for the developer to know that the root cause of the problem was a violation of the pre-condition.</p>
+
+  <p class="body"><a id="pgfId-1016033"></a>Second, pre-conditions, post-conditions, and invariants provide developers with ideas about what to test. As soon as we see the <code class="fm-code-in-text">qty</code> <code class="fm-code-in-text">&gt;</code> <code class="fm-code-in-text">0</code> pre-condition, we know this is something to exercise via unit, integration, or system tests. Therefore, contracts do not replace (unit) testing: they complement it. In chapter 5, you will see how to use such contracts and write test cases that automatically generate random input data, looking for possible violations.</p>
+
+  <p class="body"><a id="pgfId-1016048"></a>Third, such explicit contracts make the lives of consumers much easier. The class (or server, if you think of it as a client-server application) does its job as long as its methods are used properly by the consumer (or client). If the client uses the server’s methods so that their pre-conditions hold, the server guarantees that the post-conditions will hold after the method call. In other words, the server makes sure the method delivers what it promises. Suppose a method expects only positive numbers (as a pre-condition) and promises to return only positive numbers (as a post-condition). As a client, if you pass a positive number, you are sure the server will return a positive number and never a negative number. The client, therefore, does not need to check if the return is negative, simplifying its code.</p>
+
+  <p class="body"><a id="pgfId-1016054"></a>I do not see design-by-contract as a testing practice per se. I see it as more of a design technique. That is also why I include it in the development part of the developer testing workflow (figure 1.4).</p>
+
+  <p class="fm-callout"><a id="pgfId-1016061"></a><span class="fm-callout-head">Note</span> Another benefit of assertions is that they serve as oracles during fuzzing or other intelligent testing. These tools reason about the pre-conditions, post-conditions, and invariants that are clearly expressed in the code and look for ways to break them. If you want to read more about fuzzing, I suggest <i class="fm-italics">The Fuzzing Book</i> (<a class="url" href="https://fuzzingbook.org">https://fuzzingbook.org</a>). <a id="marker-1042964"></a><a id="marker-1042965"></a></p>
+
+  <h2 class="fm-head" id="heading_id_10"><a id="pgfId-1016099"></a>4.5 Design-by-contract in the real world</h2>
+
+  <p class="body"><a id="pgfId-1016109"></a>Let me close this chapter with some pragmatic tips on how to use design-by-contract in practice.</p>
+
+  <h3 class="fm-head1" id="heading_id_11"><a id="pgfId-1016115"></a>4.5.1 Weak or strong pre-conditions?</h3>
+
+  <p class="body"><a id="pgfId-1016132"></a><a id="marker-1039680"></a><a id="marker-1039681"></a>A very important design decision when modeling contracts is whether to use strong or weak contracts. This is a matter of trade-offs.</p>
+
+  <p class="body"><a id="pgfId-1016137"></a>Consider a method with a weak pre-condition. For example, the method accepts any input value, including null. This method is easy for clients to use for the clients: any call to it will work, and the method will never throw an exception related to a pre-condition being violated (as there are no pre-conditions to be violated). However, this puts an extra burden on the method, as it has to handle any invalid inputs.</p>
+
+  <p class="body"><a id="pgfId-1016143"></a>On the other hand, consider a strong contract: the method only accepts positive numbers and does not accept null values. The extra burden is now on the side of the client. The client must make sure it does not violate the pre-conditions of the method. This may require extra code.</p>
+
+  <p class="body"><a id="pgfId-1016149"></a>There is no clear way to go, and the decision should be made considering the whole context. For example, many methods of the Apache Commons library have weak pre-conditions, making it much easier for clients to use the API. Library developers often prefer to design weaker pre-conditions and simplify the clients’ lives. <a id="marker-1039686"></a><a id="marker-1039687"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_12"><a id="pgfId-1016160"></a>4.5.2 Input validation, contracts, or both?</h3>
+
+  <p class="body"><a id="pgfId-1016179"></a><a id="marker-1039689"></a><a id="marker-1039690"></a><a id="marker-1039691"></a>Developers are aware of how important input validation is. A mistake in the validation may lead to security vulnerabilities. Therefore, developers often handle input validation whenever data comes from the end user.</p>
+
+  <p class="body"><a id="pgfId-1016184"></a>Consider a web application that stores products for an online store. To add a new product, a user must pass a name, a description, and a value. Before saving the new product to the database, the developer performs checks to ensure that the input values are as expected. Here is the greatly simplified pseudo-code.</p>
+
+  <p class="fm-code-listing-caption"><a id="pgfId-1016241"></a>Listing 4.12 Pseudo-code for input validation</p>
+  <pre class="programlisting"><a id="pgfId-1016190"></a>class ProductController {
+<a id="pgfId-1016280"></a>  // more code here ...
+<a id="pgfId-1016291"></a> 
+<a id="pgfId-1016286"></a>  public void add(String productName, String productDescription,
+<a id="pgfId-1016297"></a>   double price) {                                                      <span class="fm-combinumeral">❶</span>
+<a id="pgfId-1016314"></a> 
+<a id="pgfId-1016309"></a>    String sanitizedProductName = sanitize(productName);                <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1016326"></a>    String sanitizedProductDescription = sanitize(productDescription);  <span class="fm-combinumeral">❷</span>
+<a id="pgfId-1016338"></a>    if(!isValidProductName(sanitizedProductName)) {                     <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1016355"></a>       errorMessages.add("Invalid product name");
+<a id="pgfId-1016361"></a>    }
+<a id="pgfId-1016367"></a>    if(!isValidProductDescription(sanitizedProductDescription)) {       <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1016379"></a>       errorMessages.add("Invalid product description");
+<a id="pgfId-1016385"></a>    }
+<a id="pgfId-1016391"></a>    if(!isValidPriceRange(price)) {                                     <span class="fm-combinumeral">❸</span>
+<a id="pgfId-1016403"></a>       errorMessages.add("Invalid price");
+<a id="pgfId-1016409"></a>    }
+<a id="pgfId-1016420"></a> 
+<a id="pgfId-1016415"></a>    if(errorMessages.empty()) {                                         <span class="fm-combinumeral">❹</span>
+<a id="pgfId-1016432"></a>      Product newProduct = new Product(sanitizedProductName,
+<a id="pgfId-1016438"></a>        <span class="fm-code-continuation-arrow">➥</span> productDescription, price);
+<a id="pgfId-1016455"></a>      database.save(newProduct);
+<a id="pgfId-1016466"></a> 
+<a id="pgfId-1016461"></a>      redirectTo("productPage", newProduct.getId());
+<a id="pgfId-1016472"></a>    } else {                                                            <span class="fm-combinumeral">❺</span>
+<a id="pgfId-1016484"></a>      redirectTo("addProduct", errorMessages.getErrors());
+<a id="pgfId-1016490"></a>    }
+<a id="pgfId-1016496"></a>  }
+<a id="pgfId-1016502"></a>}</pre>
+
+  <p class="fm-code-annotation"><a id="pgfId-1045026"></a><span class="fm-combinumeral">❶</span> These parameters come directly from the end user, and they need to be validated before being used.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1045062"></a><span class="fm-combinumeral">❷</span> We use the made-up sanitize() method to sanitize (remove invalid characters from) the inputs.</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1045079"></a><span class="fm-combinumeral">❸</span> Ensures that values are within the expected format, range, and so on</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1045096"></a><span class="fm-combinumeral">❹</span> Only when the parameters are valid do we create objects. Is this a replacement for design-by-contract?</p>
+
+  <p class="fm-code-annotation"><a id="pgfId-1045027"></a><span class="fm-combinumeral">❺</span> Otherwise, we return to the Add Product page and display the error messages.</p>
+
+  <p class="body"><a id="pgfId-1016592"></a>Given all this validation <i class="fm-italics">before</i> the objects are even created, you may be thinking, “Do I need to model pre-conditions and post-conditions in the classes and methods? I already know the values are valid!” Let me give you a pragmatic perspective.</p>
+
+  <p class="body"><a id="pgfId-1016623"></a>First, let’s focus on the difference between <i class="fm-italics">validation</i> and <i class="fm-italics">contracts</i>. Validation ensures that bad or invalid data that may come from users does not infiltrate our systems. For example, if the user types a string in the Quantity field on the Add Product page, we should return a friendly message saying “Quantity should be a numeric value.” This is what validation is about: it validates that the data coming from the user is correct and, if not, returns a message.</p>
+
+  <p class="body"><a id="pgfId-1016632"></a>On the other hand, contracts ensure that communication between classes happens without a problem. We do not expect problems to occur—the data is already validated. However, if a violation occurs, the program halts, since something unexpected happened. The application also returns an error message to the user. Figure 4.3 illustrates the difference between validation and code contracts.</p>
+
+  <div class="figure">
+    <p class="figure1"><img alt="" class="calibre1" src="../../OEBPS/Images/04-03.png" width="569" height="333"/></p>
+
+    <p class="figurecaption"><a id="pgfId-1047792"></a>Figure 4.3 The difference between validation and code contracts. Each circle represents one input coming to the system.</p>
+  </div>
+
+  <p class="body"><a id="pgfId-1016648"></a>Both validation and contracts should happen, as they are different. The question is how to avoid repetition. Maybe the validation and pre-condition are the same, which means either there is code repetition or the check is happening twice.</p>
+
+  <p class="body"><a id="pgfId-1016690"></a>I tend to be pragmatic. As a rule of thumb, I prefer to avoid repetition. If the input validation already checked for, say, the length of the product description being greater than 10 characters, I don’t re-check it as a pre-condition in the constructor of the <code class="fm-code-in-text">Product</code> class. This implies <a id="marker-1039779"></a>that no instances of <code class="fm-code-in-text">Product</code> are instantiated without input validation first. Your architecture must ensure that some zones of the code are safe and that data has been already cleaned up.</p>
+
+  <p class="body"><a id="pgfId-1016699"></a>On the other hand, if a contract is very important and should never be broken (the impact could be significant), I do not mind using a little repetition and extra computational power to check it at both input-validation time and contract-checking time. Again, consider the context to decide what works best for each situation.</p>
+
+  <p class="fm-callout"><a id="pgfId-1016705"></a><span class="fm-callout-head">Note</span> Arie van Deursen offers <a id="marker-1039782"></a>a clear answer on Stack Overflow about the differences between design-by-contract and validation, and I strongly recommend that you check it out: <a class="url" href="https://stackoverflow.com/a/5452329">https://stackoverflow.com/a/5452329</a>. <a id="marker-1039784"></a><a id="marker-1039785"></a><a id="marker-1039786"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_13"><a id="pgfId-1016735"></a>4.5.3 Asserts and exceptions: When to use one or the other</h3>
+
+  <p class="body"><a id="pgfId-1016762"></a><a id="marker-1039788"></a><a id="marker-1039789"></a><a id="marker-1039790"></a><a id="marker-1039791"></a>Java does not offer a clear mechanism for expressing code contracts. Only a few popular programming languages do, such as F#. The <code class="fm-code-in-text">assert</code> keyword in Java is okay, but if you forget to enable it in the runtime, the contracts may not be checked in production. That is why many developers prefer to use (checked or unchecked) exceptions.</p>
+
+  <p class="body"><a id="pgfId-1016771"></a>Here is my rule of thumb:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016777"></a>If I am modeling the contracts of a library or utility class, I favor exceptions, following the wisdom of the most popular libraries.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016811"></a>If I am modeling business classes and their interactions and I know that the data was cleaned up in previous layers (say, in the controller of a Model-View-Controller [MVC] architecture), I favor assertions. The data was already validated, and I am sure they start their work with valid data. I do not expect pre-conditions or post-conditions to be violated, so I prefer to use the <code class="fm-code-in-text">assert</code> instruction. It will throw an <code class="fm-code-in-text">AssertionError</code>, which will halt execution. I also ensure that my final user does not see an exception stack trace but instead is shown a more elegant error page.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1016820"></a>If I am modeling business classes but I am not sure whether the data was already cleaned up, I go for exceptions.</p>
+    </li>
+  </ul>
+
+  <p class="body"><a id="pgfId-1016830"></a>When it comes to validation, I tend not to use either assertions or exceptions. I prefer to model validations in more elegant ways. First, you rarely want to stop the validation when the first check fails. Instead, it is more common to show a complete list of errors to the user. Therefore, you need a structure that allows you to build the error message as you go. Second, you may want to model complex validations, which may require lots of code. Having all the validations in a single class or method may lead to code that is very long, highly complex, and hard to reuse.</p>
+
+  <p class="body"><a id="pgfId-1016855"></a>If you are curious, I suggest the Specification pattern proposed by Eric Evans <a id="marker-1039798"></a>in his seminal <a id="marker-1039800"></a>book, <i class="fm-italics">Domain-Driven Design</i> (2004). Another nice resource is the article “Use of Assertions” by John <a id="marker-1039801"></a>Regehr (2014); it discusses the pros and cons of assertions, misconceptions, and limitations in a very pragmatic way.</p>
+
+  <p class="body"><a id="pgfId-1016886"></a>Finally, in this chapter, I used native Java exceptions, such as <code class="fm-code-in-text">RuntimeException</code>. In practice, you may prefer to throw more specialized and semantic exceptions, such as <code class="fm-code-in-text">NegativeValueException</code>. That helps clients treat business exceptions differently from real one-in-a-million exceptional behavior.</p>
+
+  <p class="fm-callout"><a id="pgfId-1016895"></a><span class="fm-callout-head">Note</span> Formal semantics scholars do not favor the use of assertions over exceptions. I should not use the term <i class="fm-italics">design-by-contract</i> for the snippets where I use an <code class="fm-code-in-text">if</code> statement and throw an exception—that is defensive programming. But, as I said before, I am using the term <i class="fm-italics">design-by-contract</i> for the idea of reflecting about contracts and <i class="fm-italics">somehow</i> making them explicit in the code. <a id="marker-1039805"></a><a id="marker-1039806"></a><a id="marker-1039807"></a><a id="marker-1039808"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_14"><a id="pgfId-1016959"></a>4.5.4 Exception or soft return values?</h3>
+
+  <p class="body"><a id="pgfId-1016980"></a><a id="marker-1039810"></a><a id="marker-1039811"></a><a id="marker-1039812"></a><a id="marker-1039813"></a>We saw that a possible way to simplify clients’ lives is to make your method return a “soft value” instead of throwing an exception. Go back to listing 4.5 for an example.</p>
+
+  <p class="body"><a id="pgfId-1016985"></a>My rule of thumb is the following:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1017012"></a>If it is behavior that should not happen, and clients would not know what to do with it, I throw an exception. That would be the case with <a class="calibre13" id="marker-1039817"></a>the <code class="fm-code-in-text">calculateTax</code> method. If a negative value comes in, that is unexpected behavior, and we should halt the program rather than let it make bad calculations. The monitoring systems will catch the exception, and we will debug the case.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1017021"></a>On the other hand, if I can see a soft return for the client method that would allow the client to keep working, I go for it. Imagine a utility method that trims a string. A pre-condition of this method could be that it does not accept null strings. But returning an empty string in case of a null is a soft return that clients can deal with. <a class="calibre13" id="marker-1039819"></a><a class="calibre13" id="marker-1039820"></a><a class="calibre13" id="marker-1039821"></a><a class="calibre13" id="marker-1039822"></a></p>
+    </li>
+  </ul>
+
+  <h3 class="fm-head1" id="heading_id_15"><a id="pgfId-1017040"></a>4.5.5 When not to use design-by-contract</h3>
+
+  <p class="body"><a id="pgfId-1017057"></a><a id="marker-1039824"></a><a id="marker-1039825"></a>Understanding when not to use a practice is as important as knowing when to use it. In this case, I may disappoint you, as I cannot see a single good reason not to use the design-by-contract ideas presented in this chapter. The development of object-oriented systems is all about ensuring that objects can communicate and collaborate properly. Experience shows me that making the pre-conditions, post-conditions, and invariants explicit in the code is not expensive and does not take a lot of time. Therefore, I recommend that you consider using this approach. (Note that I am not discussing input validation here, which is fundamental and has to be done whether or not you like design-by-contracts.)</p>
+
+  <p class="body"><a id="pgfId-1017062"></a>I also want to highlight that design-by-contract does not replace the need for testing. Why? Because, to the best of my knowledge and experience, you cannot express all the expected behavior of a piece of code solely with pre-conditions, post-conditions, and invariants. In practice, I suggest that you design contracts to ensure that classes can communicate with each other without fear, and test to ensure that the behavior of the class is correct. <a id="marker-1039828"></a><a id="marker-1039829"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_16"><a id="pgfId-1017073"></a>4.5.6 Should we write tests for pre-conditions, post-conditions, and invariants?</h3>
+
+  <p class="body"><a id="pgfId-1017096"></a><a id="marker-1039831"></a><a id="marker-1039832"></a><a id="marker-1039833"></a><a id="marker-1039834"></a><a id="marker-1039835"></a>In a way, assertions, pre-conditions, post-conditions, and invariant checks test the production code from the inside. Do we also need to write (unit) tests for them?</p>
+
+  <p class="body"><a id="pgfId-1017101"></a>To answer this question, let me again discuss the difference between validation and pre-conditions. Validation is what you do to ensure that the data is valid. Pre-conditions explicitly state under what conditions a method can be invoked.</p>
+
+  <p class="body"><a id="pgfId-1017107"></a>I usually write automated tests for validation. We want to ensure that our validation mechanisms are in place and working as expected. On the other hand, I rarely write tests for assertions. They are naturally covered by tests that focus on other business rules. I suggest reading Arie van Deursen’s answer on Stack Overflow about writing tests for assertions (<a class="url" href="https://stackoverflow.com/a/6486294/165292">https://stackoverflow.com/a/6486294/165292</a>).</p>
+
+  <p class="fm-callout"><a id="pgfId-1017114"></a><span class="fm-callout-head">Note</span> Some code coverage tools do not handle asserts well. JaCoCo, for example, cannot report full branch coverage in assertions. This is another great example of why you should not use coverage numbers blindly. <a id="marker-1039841"></a><a id="marker-1039842"></a><a id="marker-1039843"></a><a id="marker-1039844"></a><a id="marker-1039845"></a></p>
+
+  <h3 class="fm-head1" id="heading_id_17"><a id="pgfId-1017141"></a>4.5.7 Tooling support</h3>
+
+  <p class="body"><a id="pgfId-1017197"></a><a id="marker-1039847"></a><a id="marker-1039848"></a>There is more and more support for pre- and post-condition checks, even in languages like Java. For instance, IntelliJ, a famous <a id="marker-1039850"></a>Java <a id="marker-1039851"></a>IDE, offers the <code class="fm-code-in-text">@Nullable</code> and <code class="fm-code-in-text">@NotNull</code> annotations (<a class="url" href="http://mng.bz/QWMe">http://mng.bz/QWMe</a>). You can annotate your methods, attributes, or return values with them, and IntelliJ will alert you about possible violations. IntelliJ can even transform those annotations into proper <code class="fm-code-in-text">assert</code> checks at compile time.</p>
+
+  <p class="body"><a id="pgfId-1017206"></a>In addition, projects such as Bean Validation (<a class="url" href="https://beanvalidation.org">https://beanvalidation.org</a>) enable you to write more complex validations, such as “this string should be an email” or “this integer should be between 1 and 10.” I appreciate such useful tools that help us ensure the quality of our products. The more, the merrier. <a id="marker-1039853"></a><a id="marker-1039854"></a></p>
+
+  <h2 class="fm-head" id="heading_id_18"><a id="pgfId-1017218"></a>Exercises</h2>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1017228"></a>4.1 Which of the following is a valid reason to use assertions in your code?</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1017234"></a>A) To verify expressions with side effects</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1017248"></a>B) To handle exceptional cases in the program</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1017258"></a>C) To conduct user input validation</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1017268"></a>D) To make debugging easier</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1018418"></a>4.2 Consider the following <code class="fm-code-in-text">squareAt</code> method:</p>
+  <pre class="programlistinge"><a id="pgfId-1018433"></a>public Square squareAt(int x, int y){
+<a id="pgfId-1018447"></a>   assert x &gt;= 0;
+<a id="pgfId-1018453"></a>   assert x &lt; board.length;
+<a id="pgfId-1018459"></a>   assert y &gt;= 0;
+<a id="pgfId-1018465"></a>   assert y &lt; board[x].length;
+<a id="pgfId-1018471"></a>   assert board != null;
+<a id="pgfId-1018482"></a> 
+<a id="pgfId-1018477"></a>   Square result = board[x][y];
+<a id="pgfId-1018493"></a> 
+<a id="pgfId-1018488"></a>   assert result != null;
+<a id="pgfId-1018499"></a>   return result;
+<a id="pgfId-1018505"></a>}</pre>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1018527"></a>Suppose we remove the last assertion (<code class="fm-code-in-text">assert</code> <code class="fm-code-in-text">result</code> <code class="fm-code-in-text">!=</code> <code class="fm-code-in-text">null</code>), which states that the result can never be null. Are the existing pre-conditions of the <code class="fm-code-in-text">squareAt</code> method enough to ensure the property of the removed assertion? What can we add to the class (other than the just-removed post-condition) to guarantee this property?</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1018536"></a>4.3 See the <code class="fm-code-in-text">squareAt</code> method in exercise 4.3. Which assertion(s), if any, can be turned into class invariants? Choose all that apply.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1018573"></a>A) <code class="fm-code-in-text">x</code> <code class="fm-code-in-text">&gt;=</code> <code class="fm-code-in-text">0</code> and <code class="fm-code-in-text">x</code> <code class="fm-code-in-text">&lt;</code> <code class="fm-code-in-text">board.length</code></p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1018579"></a>B) <code class="fm-code-in-text">board</code> <code class="fm-code-in-text">!=</code> <code class="fm-code-in-text">null</code></p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1018593"></a>C) <code class="fm-code-in-text">result</code> <code class="fm-code-in-text">!=</code> <code class="fm-code-in-text">null</code></p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1018625"></a>D) <code class="fm-code-in-text">y</code> <code class="fm-code-in-text">&gt;=</code> <code class="fm-code-in-text">0</code> and <code class="fm-code-in-text">y</code> <code class="fm-code-in-text">&lt;</code> <code class="fm-code-in-text">board[x].length</code></p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1018631"></a>4.4 You run your application with assertion checking enabled. Unfortunately, it reports an assertion failure, signaling a <i class="fm-italics">class invariant violation</i> in one of the libraries your application uses. Assume that your application is following all the pre-conditions established by the library.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1018646"></a>Which of the following statements <i class="fm-italics1">best characterizes</i> the situation and corresponding action to take?</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1018661"></a>A) Since you assume that the contract is correct, the safe action is to run the server with assertion checking disabled.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1018675"></a>B) This indicates an integration fault and requires a redesign that involves the interface that is offered by the library and used by your application.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1018685"></a>C) This indicates a problem in the implementation of that library and requires a fix in the library’s code.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1018695"></a>D) This indicates that you invoked one of the methods of the library in the wrong way and requires a fix in your application.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1018705"></a>4.5 Can static methods have invariants? Explain your answer.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1018787"></a>4.6 A method <code class="fm-code-in-text">M</code> belongs to a class <code class="fm-code-in-text">C</code> and has a pre-condition <code class="fm-code-in-text">P</code> and a post-condition <code class="fm-code-in-text">Q</code>. Suppose that a developer creates a class <code class="fm-code-in-text">C'</code> that extends <code class="fm-code-in-text">C</code> and creates a method <code class="fm-code-in-text">M'</code> that overrides <code class="fm-code-in-text">M</code>.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1018822"></a>Which one of the following statements correctly explains the relative strength of the pre- (<code class="fm-code-in-text">P'</code>) and post-conditions (<code class="fm-code-in-text">Q'</code>) of the overridden method <code class="fm-code-in-text">M'</code>?</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1018873"></a>A) <code class="fm-code-in-text">P'</code> should be equal to or weaker than <code class="fm-code-in-text">P</code>, and <code class="fm-code-in-text">Q'</code> should be equal to or stronger than <code class="fm-code-in-text">Q</code>.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1018920"></a>B) <code class="fm-code-in-text">P'</code> should be equal to or stronger than <code class="fm-code-in-text">P</code>, and <code class="fm-code-in-text">Q'</code> should be equal to or stronger than <code class="fm-code-in-text">Q</code>.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1018967"></a>C) <code class="fm-code-in-text">P'</code> should be equal to or weaker than <code class="fm-code-in-text">P</code>, and <code class="fm-code-in-text">Q'</code> should be equal to or weaker than <code class="fm-code-in-text">Q</code>.</p>
+
+  <p class="fm-list-exercise-b"><a id="pgfId-1019014"></a>D) <code class="fm-code-in-text">P'</code> should be equal to or stronger than <code class="fm-code-in-text">P</code>, and <code class="fm-code-in-text">Q'</code> should be equal to or weaker than <code class="fm-code-in-text">Q</code>.</p>
+
+  <h2 class="fm-head" id="heading_id_19"><a id="pgfId-1019023"></a>Summary</h2>
+
+  <ul class="calibre12">
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019033"></a>Contracts ensure that classes can safely communicate with each other without surprises.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019047"></a>In practice, designing contracts boils down to explicitly defining the pre-conditions, post-conditions, and invariants of our classes and methods.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019057"></a>Deciding to go for a weaker or a stronger contract is a contextual decision. Both have advantages and disadvantages.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019067"></a>Design-by-contract does not remove the need for validation. Validation and contract checking are different things with different objectives. Both should be done.</p>
+    </li>
+
+    <li class="fm-list-numbered">
+      <p class="list"><a class="calibre13" id="pgfId-1019077"></a>Whenever changing a contract, we need to reflect on the impact of the change. Some contract changes might be breaking changes.</p>
+    </li>
+  </ul>
+</div>
+</div>
+</body>
+</html>

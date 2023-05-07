@@ -1,0 +1,498 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html>
+<html xml:lang="en"
+      lang="en"
+      xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:epub="http://www.idpf.org/2007/ops">
+<head>
+<title>Effective Software Testing</title>
+<link rel="stylesheet" type="text/css" href="../../override_v1.css"/>
+<link rel="stylesheet" type="text/css" href="../../stylesheet.css"/><link rel="stylesheet" type="text/css" href="../../page_styles.css"/>
+</head>
+<body>
+<div id="book-content">
+<div id="sbo-rt-content" class="calibre"><h1 class="tochead" id="heading_id_2"><a id="pgfId-1041681"></a><a id="pgfId-1041682"></a>Appendix. Answers to exercises</h1>
+
+  <div class="calibre20"></div>
+
+  <div class="calibre21"></div>
+
+  <div class="calibre21"></div><h2 class="fm-head" id="heading_id_3"><a id="pgfId-1041683"></a>Chapter 1</h2>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041684"></a><b class="fm-bold">1.1</b> The goal of systematic testing, as its name says, is to engineer test cases in a more systematic way, rather than simply following gut feelings. Systematic testing gives engineers sound techniques to engineer test cases out of requirements, boundaries, and source code.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041685"></a><b class="fm-bold">1.2</b> The <i class="fm-italics">absence-of-errors fallacy</i>. While the software does not have many bugs, it does not give users what they want. In this case, the verification is good, but the developers need to work on the validation.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041686"></a><b class="fm-bold">1.3</b> B. Exhaustive testing is impossible in most cases.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041687"></a><b class="fm-bold">1.4</b> D. Test early is an important principle, but it is definitely not related to the problem of only doing unit tests. All the other principles can help developers understand that using different types of testing is important.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041688"></a><b class="fm-bold">1.5</b> A. The pesticide paradox fits the discussion best. The development team has high code coverage, but they need to apply different techniques.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041689"></a><b class="fm-bold">1.6</b> A. The primary use of integration tests is to find mistakes in the communication between a system and its external dependencies.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041693"></a><b class="fm-bold">1.7</b> A.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041694"></a><b class="fm-bold">1.8</b> A.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041695"></a><b class="fm-bold">1.9</b> B.</p>
+
+  <div class="calibre20"></div>
+
+  <div class="calibre21"></div>
+
+  <div class="calibre21"></div><h2 class="fm-head" id="heading_id_4"><a id="pgfId-1041697"></a>Chapter 2</h2>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041698"></a><b class="fm-bold">2.1</b> D. This is a functional testing technique. There is no need for the source code.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041700"></a><b class="fm-bold">2.2</b> Possible actions:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-bullet-b">
+      <p class="list"><a class="calibre13" id="pgfId-1041701"></a>We should treat “no filename with this name” and “omitted” as exceptional and test them just once.</p>
+    </li>
+
+    <li class="fm-list-bullet-b">
+      <p class="list"><a class="calibre13" id="pgfId-1041702"></a>We should treat pattern size “empty” as exceptional and test it just once.</p>
+    </li>
+
+    <li class="fm-list-bullet-b">
+      <p class="list"><a class="calibre13" id="pgfId-1041703"></a>We should treat “pattern is improperly quoted” as exceptional and test it just once.</p>
+    </li>
+
+    <li class="fm-list-bullet-b">
+      <p class="list"><a class="calibre13" id="pgfId-1041704"></a>We should constrain the options in the “occurrences in a single line” category to happen only if “occurrences in the file” are either exactly one or more than one. It does not make sense to have no occurrences in a file and one pattern in a line.</p>
+    </li>
+  </ul>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041705"></a><b class="fm-bold">2.3</b> There are no right or wrong answers to this exercise. It shows that many of the decisions we make are based on what we know about the system—or, in this case, what we assume about the system. When context kicks in, there may be more possible invalid test cases than those in the boundaries.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1041706"></a>Regardless of the decisions you make as a tester about specific invalid test cases, it is important to justify those decisions. For example:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-bullet-b">
+      <p class="list"><a class="calibre13" id="pgfId-1041707"></a>Do we need to test negative numbers separately from positive numbers? Based on the specification, there’s no reason to do so. If you look at the source code (assuming you have access to the source code), does it make you feel that this test is necessary?</p>
+    </li>
+
+    <li class="fm-list-bullet-b">
+      <p class="list"><a class="calibre13" id="pgfId-1041708"></a>Do we need to test trailing zeroes? If the user inputs a string that is converted later, testing may be important.</p>
+    </li>
+
+    <li class="fm-list-bullet-b">
+      <p class="list"><a class="calibre13" id="pgfId-1041709"></a>Do we need to test extreme numbers like <code class="fm-code-in-text">Integer.MAX_VALUE</code> or pass a <code class="fm-code-in-text">long</code> or <code class="fm-code-in-text">float</code>?</p>
+    </li>
+
+    <li class="fm-list-bullet-b">
+      <p class="list"><a class="calibre13" id="pgfId-1041710"></a>Do we need to test with a string consisting of only one letter or more than two letters? If there’s no input validation, unintended behavior may occur.</p>
+    </li>
+
+    <li class="fm-list-bullet-b">
+      <p class="list"><a class="calibre13" id="pgfId-1041711"></a>Do we need to test lowercase letters? Maybe the program can’t distinguish between lower- and uppercase letters.</p>
+    </li>
+  </ul>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1041712"></a>Here are some examples of possible invalid partitions:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-bullet-b">
+      <p class="list"><a class="calibre13" id="pgfId-1041713"></a><code class="fm-code-in-text">[Integer.MIN_VALUE,</code> <code class="fm-code-in-text">999]</code></p>
+    </li>
+
+    <li class="fm-list-bullet-b">
+      <p class="list"><a class="calibre13" id="pgfId-1041714"></a><code class="fm-code-in-text">[4001,</code> <code class="fm-code-in-text">Integer.MAX_VALUE]</code></p>
+    </li>
+
+    <li class="fm-list-bullet-b">
+      <p class="list"><a class="calibre13" id="pgfId-1041715"></a><code class="fm-code-in-text">[A,</code> <code class="fm-code-in-text">B]</code></p>
+    </li>
+
+    <li class="fm-list-bullet-b">
+      <p class="list"><a class="calibre13" id="pgfId-1041716"></a><code class="fm-code-in-text">[N,</code> <code class="fm-code-in-text">Z]</code></p>
+    </li>
+
+    <li class="fm-list-bullet-b">
+      <p class="list"><a class="calibre13" id="pgfId-1041717"></a><code class="fm-code-in-text">[0,</code> <code class="fm-code-in-text">999]</code></p>
+    </li>
+
+    <li class="fm-list-bullet-b">
+      <p class="list"><a class="calibre13" id="pgfId-1041718"></a><code class="fm-code-in-text">[AAA,</code> <code class="fm-code-in-text">ZZZ]</code></p>
+    </li>
+  </ul>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041719"></a><b class="fm-bold">2.4</b> We can group the tests cases in their partitions:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-bullet-b">
+      <p class="list"><a class="calibre13" id="pgfId-1041721"></a>Divisible by 3 and 5: T1, T2</p>
+    </li>
+
+    <li class="fm-list-bullet-b">
+      <p class="list"><a class="calibre13" id="pgfId-1041722"></a>Divisible by just 3 (not by 5): T4</p>
+    </li>
+
+    <li class="fm-list-bullet-b">
+      <p class="list"><a class="calibre13" id="pgfId-1041723"></a>Divisible by just 5 (not by 3): T5</p>
+    </li>
+
+    <li class="fm-list-bullet-b">
+      <p class="list"><a class="calibre13" id="pgfId-1041724"></a>Not divisible by 3 or 5: T3</p>
+    </li>
+  </ul>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1041725"></a>Only the partition where the number is divisible by both 3 and 5 has two tests. Therefore we can only remove T1 or T2.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041726"></a><b class="fm-bold">2.5</b> A. The on point can be read from the condition: 570. The on point makes the condition true. So, the off point should make the condition false: 571.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041727"></a><b class="fm-bold">2.6</b> The on point is 10. Here we are dealing with an equality. The value can go both up and down to make the condition false. As such, we have two off points: 9 and 11.</p>
+
+  <div class="calibre20"></div>
+
+  <div class="calibre21"></div>
+
+  <div class="calibre21"></div><h2 class="fm-head" id="heading_id_5"><a id="pgfId-1041728"></a>Chapter 3</h2>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041729"></a><b class="fm-bold">3.1</b> B.</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-bullet-b">
+      <p class="list"><a class="calibre13" id="pgfId-1041730"></a>Lines 2–4, 6, and 8 are always covered.</p>
+    </li>
+
+    <li class="fm-list-bullet-b">
+      <p class="list"><a class="calibre13" id="pgfId-1041731"></a>The condition in line 4 is true, so line 5 is also covered.</p>
+    </li>
+
+    <li class="fm-list-bullet-b">
+      <p class="list"><a class="calibre13" id="pgfId-1041732"></a>The condition in line 6 is false with <code class="fm-code-in-text">right=21</code>, so line 7 is not covered.</p>
+    </li>
+
+    <li class="fm-list-bullet-b">
+      <p class="list"><a class="calibre13" id="pgfId-1041733"></a>The condition on line 8 is false (note that <code class="fm-code-in-text">left</code> has been changed). Therefore, line 9 is not covered, but lines 10 and 11 are.</p>
+    </li>
+  </ul>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1041734"></a>In total, 8 of the 10 lines are covered, so the line coverage is 8/10 × 100 = 80%.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041735"></a><b class="fm-bold">3.2</b> Example of a test suite that achieves 100% line coverage:</p>
+  <pre class="programlistinge"><a id="pgfId-1041736"></a>@Test
+<a id="pgfId-1041737"></a>public void removeNullInListTest() {
+<a id="pgfId-1041738"></a>    LinkedList&lt;Integer&gt; list = new LinkedList&lt;&gt;();
+<a id="pgfId-1041739"></a> 
+<a id="pgfId-1041740"></a>    list.add(null);
+<a id="pgfId-1041741"></a> 
+<a id="pgfId-1041742"></a>    assertTrue(list.remove(null));
+<a id="pgfId-1041743"></a>}
+<a id="pgfId-1041744"></a> 
+<a id="pgfId-1041745"></a>@Test
+<a id="pgfId-1041746"></a>public void removeElementInListTest() {
+<a id="pgfId-1041747"></a>    LinkedList&lt;Integer&gt; list = new LinkedList&lt;&gt;();
+<a id="pgfId-1041748"></a> 
+<a id="pgfId-1041749"></a>    list.add(7);
+<a id="pgfId-1041750"></a> 
+<a id="pgfId-1041751"></a>    assertTrue(list.remove(7));
+<a id="pgfId-1041752"></a>}
+<a id="pgfId-1041753"></a> 
+<a id="pgfId-1041754"></a>@Test
+<a id="pgfId-1041755"></a>public void removeElementNotPresentInListTest() {
+<a id="pgfId-1041756"></a>    LinkedList&lt;Integer&gt; list = new LinkedList&lt;&gt;();
+<a id="pgfId-1041757"></a> 
+<a id="pgfId-1041758"></a>    assertFalse(list.remove(5));
+<a id="pgfId-1041759"></a>}</pre>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1041760"></a>Note that many test suites achieve 100% line coverage; this is just an example.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1041761"></a>You should have three tests. At least one test is needed to cover lines 5 and 6 (<i class="fm-italics1">removeNullInListTest</i>, in this case). This test will also cover lines 2–4.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1041762"></a>Second, you need a test for lines 12–13 (<code class="fm-code-in-text">removeElementInListTest</code>). This test also covers lines 9–11. A third test is needed to cover line 17 (<code class="fm-code-in-text">removeElementNotPresentInListTest</code>).</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041763"></a><b class="fm-bold">3.3</b> C. You need at least one test to cover the <code class="fm-code-in-text">true</code> branch of the decision in line 2. Then, with another test, you can make the decisions in lines 2 and 12 <code class="fm-code-in-text">false</code>. Add another test to cover the <code class="fm-code-in-text">false</code> branch of the decision in line 16. Finally, an additional test is needed to cover the <code class="fm-code-in-text">true</code> branch of the decision in line 16. This gives you a minimum of four tests.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041764"></a><b class="fm-bold">3.4</b> A and B.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041765"></a><b class="fm-bold">3.5</b> The table for the given expression is as follows:</p>
+
+  <table border="1" class="contenttable" width="100%">
+    <tbody class="calibre16">
+      <tr class="calibre17">
+        <th class="fm-contenttable1" colspan="1" rowspan="1">
+          <p class="fm-table-head"><a id="pgfId-1043649"></a>Test</p>
+        </th>
+
+        <th class="fm-contenttable1" colspan="1" rowspan="1">
+          <p class="fm-table-head"><a id="pgfId-1043651"></a>A</p>
+        </th>
+
+        <th class="fm-contenttable1" colspan="1" rowspan="1">
+          <p class="fm-table-head"><a id="pgfId-1043653"></a>B</p>
+        </th>
+
+        <th class="fm-contenttable1" colspan="1" rowspan="1">
+          <p class="fm-table-head"><a id="pgfId-1043655"></a>Result</p>
+        </th>
+      </tr>
+
+      <tr class="calibre17">
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1041776"></a>1</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1041778"></a>F</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1041780"></a>F</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1041782"></a>F</p>
+        </td>
+      </tr>
+
+      <tr class="calibre17">
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1041784"></a>2</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1041786"></a>F</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1041788"></a>T</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1041790"></a>F</p>
+        </td>
+      </tr>
+
+      <tr class="calibre17">
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1041792"></a>3</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1041794"></a>T</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1041796"></a>F</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1041798"></a>T</p>
+        </td>
+      </tr>
+
+      <tr class="calibre17">
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1041800"></a>4</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1041802"></a>T</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1041804"></a>T</p>
+        </td>
+
+        <td class="fm-contenttable2" colspan="1" rowspan="1">
+          <p class="fm-table-body"><a id="pgfId-1041806"></a>T</p>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1041808"></a>From this table, we can deduce sets of independence pairs for each of the parameters:</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-bullet-b">
+      <p class="list"><a class="calibre13" id="pgfId-1041809"></a><code class="fm-code-in-text">A</code>: <code class="fm-code-in-text">{(1,</code> <code class="fm-code-in-text">3),</code> <code class="fm-code-in-text">(2,</code> <code class="fm-code-in-text">4)}</code></p>
+    </li>
+
+    <li class="fm-list-bullet-b">
+      <p class="list"><a class="calibre13" id="pgfId-1041810"></a><code class="fm-code-in-text">B</code>: <code class="fm-code-in-text">{</code> <code class="fm-code-in-text">(empty)</code> <code class="fm-code-in-text">}</code></p>
+    </li>
+  </ul>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1041811"></a>There is no independence pair for <code class="fm-code-in-text">B</code>. Thus it is not possible to achieve MC/DC coverage for this expression.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1041812"></a>Since there is no independence pair for <code class="fm-code-in-text">B</code>, this parameter does not affect the result. You should recommend that the developer restructure the expression without using <code class="fm-code-in-text">B</code>, making the code easier to maintain.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1041813"></a>This example shows that software testers can contribute to code quality not only by spotting bugs but also by suggesting changes that result in better maintainability.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041814"></a><b class="fm-bold">3.6</b> D. The loop in the method makes it impossible to achieve 100% path coverage. You would have to test all possible iterations. For the other answers, you can come up with a test case that makes it possible: <code class="fm-code-in-text">"aXYa"</code>.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041815"></a><b class="fm-bold">3.7</b> A is true. Statement D, about basic condition coverage, is false, although “full condition coverage” does subsume branch coverage as it combines both branch and conditional coverage.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041816"></a><b class="fm-bold">3.8</b> A.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041817"></a><b class="fm-bold">3.9</b> D. All the alternatives are incorrect.</p>
+
+  <ul class="calibre12">
+    <li class="fm-list-bullet-b">
+      <p class="list"><a class="calibre13" id="pgfId-1041818"></a>There are no studies that affirm that structural testing should be preferred over specification-based tests.</p>
+    </li>
+
+    <li class="fm-list-bullet-b">
+      <p class="list"><a class="calibre13" id="pgfId-1041819"></a>We need good requirements, but they do not need to be formal models.</p>
+    </li>
+
+    <li class="fm-list-bullet-b">
+      <p class="list"><a class="calibre13" id="pgfId-1041820"></a>Boundary analysis can be done with the specification or the source code.</p>
+    </li>
+  </ul>
+
+  <div class="calibre20"></div>
+
+  <div class="calibre21"></div>
+
+  <div class="calibre21"></div><h2 class="fm-head" id="heading_id_6"><a id="pgfId-1041821"></a>Chapter 4</h2>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041822"></a><b class="fm-bold">4.1</b> D.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041826"></a><b class="fm-bold">4.2</b> The existing pre-conditions are <i class="fm-italics">not</i> enough to ensure the property of the removed assertion. The post-condition ensured that the returned value was never <code class="fm-code-in-text">null</code>. The pre-conditions ensure that <code class="fm-code-in-text">board</code> itself cannot be <code class="fm-code-in-text">null</code> and that <code class="fm-code-in-text">x</code> and <code class="fm-code-in-text">y</code> are in its range. But it does not ensure that values in <code class="fm-code-in-text">board</code> are not <code class="fm-code-in-text">null</code>. To have the same guarantee, the class would need an invariant that ensures that no place in <code class="fm-code-in-text">board</code> is <code class="fm-code-in-text">null</code>.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041827"></a><b class="fm-bold">4.3</b> B.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041828"></a><b class="fm-bold">4.4</b> C.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041829"></a><b class="fm-bold">4.5</b> Static methods do not have invariants. Class invariants are related to the entire object, while static methods do not belong to any object (they are stateless). So, the idea of (class) invariants does not apply to static methods.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041830"></a><b class="fm-bold">4.6</b> A.</p>
+
+  <div class="calibre20"></div>
+
+  <div class="calibre21"></div>
+
+  <div class="calibre21"></div><h2 class="fm-head" id="heading_id_7"><a id="pgfId-1041831"></a>Chapter 5</h2>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041832"></a><b class="fm-bold">5.1</b> In example-based testing, tests use one concrete instance (out of often infinite possibilities). In property-based testing, tests define the property that needs to hold, and the testing framework generates random inputs, looking for an input that would break the property.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041833"></a><b class="fm-bold">5.2</b> There are two clear properties: strings that are palindromes should return <code class="fm-code-in-text">true</code>, and strings that are not palindromes should return <code class="fm-code-in-text">false</code>. For the first property, the property-based test can generate a random string and then concatenate it with its reversed value. The program should return <code class="fm-code-in-text">true</code> for those. For the second property, the property-based test can generate a random string. The program should return <code class="fm-code-in-text">false</code> for those.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1041834"></a>There are a few caveats to pay attention to. For the first property, we also need to consider palindromes that have an odd length. Imagine that we generate the random string “abc”. “abccba” is a palindrome, but “abc<i class="fm-italics1">X</i>cba” is also a palindrome, where “<i class="fm-italics1">X</i>” is any character. Making the test also generate palindromes with odd lengths is a nice way to test such a boundary.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1041835"></a>For the second property, you can add some random letters in the generated string to ensure that the string is not a palindrome. These random letters should be different from the characters the string is generated with. Otherwise, the random generation may generate a palindrome by chance, which would mistakenly break the test.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041836"></a><b class="fm-bold">5.3</b> Fuzzing or fuzz testing is all about exercising the program with invalid, unexpected, and random data to see if it crashes. Property-based testing also generates random data, but always with the goal of exercising a property. The test should pass with the random data. With fuzzing, we try random inputs until the test crashes. Fuzzing is a major area of research, and these tools are getting smarter by the day. You can read more about it in <i class="fm-italics">The Fuzzing Book</i> (<a class="url1" href="https://www.fuzzingbook.org">www.fuzzingbook.org</a>).</p>
+
+  <div class="calibre20"></div>
+
+  <div class="calibre21"></div>
+
+  <div class="calibre21"></div><h2 class="fm-head" id="heading_id_8"><a id="pgfId-1041837"></a>Chapter 6</h2>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041838"></a><b class="fm-bold">6.1</b> Fakes have real, working implementations of the class they simulate. However, they usually do the same task in a much simpler way.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1041839"></a>Stubs provide hard-coded answers to the calls that are performed during the test. Unlike fakes, stubs do not have a working implementation.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1041840"></a>Mock objects act like stubs but are preconfigured to know what kind of interactions should occur with them.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041841"></a><b class="fm-bold">6.2</b> A.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041842"></a><b class="fm-bold">6.3</b> C.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041843"></a><b class="fm-bold">6.4</b> C.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041844"></a><b class="fm-bold">6.5</b> Anything that is infrastructure-related, too complex, or too slow is a good candidate to be replaced by mocks. On the other hand, entity classes, simple utility functions, and data holders are not commonly mocked.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041845"></a><b class="fm-bold">6.6</b> No set answer.</p>
+
+  <div class="calibre20"></div>
+
+  <div class="calibre21"></div>
+
+  <div class="calibre21"></div><h2 class="fm-head" id="heading_id_9"><a id="pgfId-1041846"></a>Chapter 7</h2>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041847"></a><b class="fm-bold">7.1</b></p>
+
+  <ul class="calibre12">
+    <li class="fm-list-bullet-b">
+      <p class="list"><a class="calibre13" id="pgfId-1041848"></a>Developer 1: Observability</p>
+    </li>
+
+    <li class="fm-list-bullet-b">
+      <p class="list"><a class="calibre13" id="pgfId-1041849"></a>Developer 2: Controllability</p>
+    </li>
+
+    <li class="fm-list-bullet-b">
+      <p class="list"><a class="calibre13" id="pgfId-1041850"></a>Developer 3: Controllability</p>
+    </li>
+  </ul>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041851"></a><b class="fm-bold">7.2</b> The ones to be prioritized are 1 and 3. As we discussed in the chapter, it is very important to keep the domain and infrastructure separated for testability. How would you write a unit test for a piece of code that contains business rules and talks to a database or an external API?</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1041852"></a>Regarding option 2, because the focus is to write unit tests, dependencies such as databases will be mocked. Thus the size of the database does not matter.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1041853"></a>Regarding option 4, testing classes with many attributes and fields requires extra effort because the tester has to instantiate and set values for all these fields. However, this does not prevent you from writing tests.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041854"></a><b class="fm-bold">7.3</b> To test the <code class="fm-code-in-text">runBatch</code> method of <code class="fm-code-in-text">OrderDeliveryBatch</code> (for example, in a unit test), you need to be able to use mocks or stubs for at least the <code class="fm-code-in-text">orderBook</code> and <code class="fm-code-in-text">delivery</code> objects.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1041855"></a>In the current implementation, this is not possible, as you cannot change <code class="fm-code-in-text">orderBook</code> or <code class="fm-code-in-text">delivery</code> from outside the class. In other words, you want to improve controllability to improve testability.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1041856"></a>If you allow the dependencies to be injected, you will be able to use mocks and stubs. Therefore, you should consider <i class="fm-italics1">dependency injection</i>.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041857"></a><b class="fm-bold">7.4</b> The implementation currently lacks controllability. You cannot change the values that <code class="fm-code-in-text">Calendar</code> gives in the method because its <code class="fm-code-in-text">getInstance</code> method is static. Although newer versions of Mockito can mock static methods, try to avoid them as much as possible.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1041858"></a>A solution would be to either receive <code class="fm-code-in-text">Calendar</code> as a parameter of the method or inject a <code class="fm-code-in-text">Clock</code>, which is a layer on top of <code class="fm-code-in-text">Calendar</code> (or whatever other Date class you prefer).</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041859"></a><b class="fm-bold">7.5</b> No set answer.</p>
+
+  <div class="calibre20"></div>
+
+  <div class="calibre21"></div>
+
+  <div class="calibre21"></div><h2 class="fm-head" id="heading_id_10"><a id="pgfId-1041860"></a>Chapter 8</h2>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041861"></a><b class="fm-bold">8.1</b> Look at figure 8.1.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041867"></a><b class="fm-bold">8.2</b> C. Although a few studies show that the number of tests written by TDD practitioners is often greater than the number of tests written by developers not practicing TDD, this is not the main reason developers use TDD. Of the alternatives, this is the least important. All the other choices are more important reasons, according to the TDD literature.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041868"></a><b class="fm-bold">8.3</b> B.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041869"></a><b class="fm-bold">8.4</b> No set answer.</p>
+
+  <div class="calibre20"></div>
+
+  <div class="calibre21"></div>
+
+  <div class="calibre21"></div><h2 class="fm-head" id="heading_id_11"><a id="pgfId-1041870"></a>Chapter 9</h2>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041871"></a><b class="fm-bold">9.1</b> B and D.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041872"></a><b class="fm-bold">9.2</b> C.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041873"></a><b class="fm-bold">9.3</b> A.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041874"></a><b class="fm-bold">9.4</b> A and B.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1041875"></a>C is wrong. There may be cases where you want to cover the same piece of code via unit and integration testing. They catch different bugs.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1041876"></a>D is also wrong. Some types of applications benefit more from integration testing, and in those cases, more integration tests should be used. That said, not being able to write unit tests when they are the best choice may indicate deeper design issues.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041877"></a><b class="fm-bold">9.5</b> A, C, and D.</p>
+
+  <div class="calibre20"></div>
+
+  <div class="calibre21"></div>
+
+  <div class="calibre21"></div><h2 class="fm-head" id="heading_id_12"><a id="pgfId-1041878"></a>Chapter 10</h2>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041879"></a><b class="fm-bold">10.1</b> C.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041880"></a><b class="fm-bold">10.2</b> A.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041881"></a><b class="fm-bold">10.3</b> D. This test requires the existence of a Git repo to work. Although this is explicit in the test, a developer may need to understand what this Git repo looks like to understand a possible test failure. Thus this test suffers from a <i class="fm-italics">mystery guest</i>.</p>
+
+  <p class="fm-list-exercise-body"><a class="calibre13" id="pgfId-1041882"></a>This test is unlikely to be flaky. The Git repository used in the test will never change. It is also unlikely that Git will change its behavior. Everything runs in a single thread, so there are no concurrency issues.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041883"></a><b class="fm-bold">10.4</b> D. The test is about testing the generator and its homogeneity; if we mock the random function, the test loses its purpose.</p>
+
+  <p class="fm-list-exercise-a"><a id="pgfId-1041884"></a><b class="fm-bold">10.5</b> C.</p>
+</div>
+</div>
+</body>
+</html>
